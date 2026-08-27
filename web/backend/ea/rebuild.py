@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from ea.arm import sm_arm_local_ts, ulog_arm_us
+from ea.extract_ha import extract_ha
 from ea.extract_sm import extract_sm
 from ea.extract_ulog import extract_ulog
 from ea.store import open_experiment
@@ -20,6 +21,19 @@ def _sm_csv_paths(drone_dir: Path) -> list[Path]:
     for csv in sorted(drone_dir.glob("*.csv")):
         if "system_manager" in csv.name.lower():
             paths.append(csv)
+    return paths
+
+
+def _ha_log_paths(drone_dir: Path) -> list[Path]:
+    paths: list[Path] = []
+    for path in sorted(drone_dir.iterdir()):
+        if not path.is_file():
+            continue
+        name = path.name.lower()
+        if "adapter_diag" in name and name.endswith(".log"):
+            paths.append(path)
+        elif "mavlink" in name and name.endswith((".txt", ".log")):
+            paths.append(path)
     return paths
 
 
@@ -51,6 +65,15 @@ def rebuild(slug: str) -> dict:
                 if "system_manager" in csv.name.lower():
                     sm_arm = sm_arm_local_ts(pd.read_parquet(parquet))
 
+            ha_derived = exp_path / "derived" / "ha" / f"drone_{drone_id}"
+            ha_notes: list[dict] = []
+            for log_path in _ha_log_paths(drone_dir):
+                result = extract_ha(log_path, ha_derived)
+                if result == "skipped":
+                    ha_notes.append({"file": log_path.name, "status": "skipped"})
+                else:
+                    ha_notes.append({"file": log_path.name, "parquet": result.name})
+
             status_path = derived / "vehicle_status.parquet"
             actuator_path = derived / "actuator_armed.parquet"
             arm_us = ulog_arm_us(
@@ -61,7 +84,11 @@ def rebuild(slug: str) -> dict:
                 "ulog_arm_us": arm_us,
                 "sm_arm_local_ts": sm_arm,
             }
-            drones_out[drone_id] = {"extract": extract_notes, "sm_extract": sm_notes}
+            drones_out[drone_id] = {
+                "extract": extract_notes,
+                "sm_extract": sm_notes,
+                "ha_extract": ha_notes,
+            }
 
     sync = write_sync(exp_path, per_drone)
     return {"ok": True, "drones": drones_out, "sync": sync}

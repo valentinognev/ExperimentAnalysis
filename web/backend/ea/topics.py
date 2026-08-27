@@ -49,12 +49,14 @@ def list_topics(experiment_dir: Path) -> dict:
     if not derived_root.is_dir():
         return {}
 
-    tree: dict[str, dict] = {}
-    for drone_dir in sorted(derived_root.glob("drone_*")):
-        if not drone_dir.is_dir():
-            continue
-        drone_id = drone_dir.name.split("_", 1)[1]
+    drone_ids: set[str] = set()
+    for pattern in ("drone_*", "sm/drone_*", "ha/drone_*"):
+        for drone_dir in derived_root.glob(pattern):
+            if drone_dir.is_dir():
+                drone_ids.add(drone_dir.name.split("_", 1)[1])
 
+    tree: dict[str, dict] = {}
+    for drone_id in sorted(drone_ids, key=lambda x: (not x.isdigit(), int(x) if x.isdigit() else x)):
         sources: dict[str, dict[str, list[str]]] = {}
         ulog_topics = _ulog_topics_for_drone(experiment_dir, drone_id)
         if ulog_topics:

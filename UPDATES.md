@@ -1,5 +1,11 @@
 # Updates
 
+## 0.33.0 - HA log extract
+- `ea/extract_ha.py`: `extract_ha(log, dest)` → `ha_diag.parquet` / `ha_mavlink.parquet` or `"skipped"` when no parseable timestamps
+- `ea/rebuild.py`: extract `*adapter_diag*.log` and `*mavlink*` under `raw/drone_*` into `derived/ha/drone_<id>`
+- `ea/topics.py`: discover drones from `derived/ha/` and `derived/sm/` as well as `derived/drone_*`
+- `tests/test_extract_ha.py`: unparseable skip, datetime lines, float timestamps, rebuild topics
+
 ## 0.32.1 - SM rebuild CSV filter fix
 - `ea/rebuild.py`: `_sm_csv_paths` only matches `*system_manager*` (case insensitive); no arbitrary `*_dN*`
 - `tests/test_rebuild_sm.py`: rebuild → parquet + sync `sm_arm_local_ts`; non-SM `_dN` CSV ignored
