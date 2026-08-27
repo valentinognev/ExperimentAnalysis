@@ -1,5 +1,11 @@
 # Updates
 
+## 0.19.0 - Experiment switcher API client
+- `web/frontend/src/api.ts`: `listExperiments`, `createExperiment`, `openExperiment`, `importPaths`, `rebuild` — relative `/api/...` fetch + json
+- `web/frontend/src/components/ExperimentBar.tsx`: slug dropdown, New name+Create, Import path+Import
+- `App.tsx`: wires ExperimentBar, keeps h1 ExperimentAnalysis
+- `src/api.test.ts`: vitest with mocked fetch for all five API functions
+
 ## 0.18.0 - Vite React Tailwind frontend scaffold
 - `web/frontend/`: React 19 + Vite 7 + Tailwind 4 (`@tailwindcss/vite`); dev server `127.0.0.1:6473`, proxy `/api` → `http://127.0.0.1:6400`
 - `App.tsx`: h1 ExperimentAnalysis, dark `bg-zinc-950 text-zinc-100`
