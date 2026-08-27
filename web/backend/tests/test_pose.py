@@ -97,7 +97,9 @@ def test_pose_at_single_drone_interpolation(tmp_path):
 
     at_mid = pose_at(exp_dir, t=0.005)
     ekf_mid = at_mid["drones"]["2"]["avatars"]["ekf_ned"]
+    assert ekf_mid["e"] == pytest.approx(0.0, abs=1e-6)
     assert ekf_mid["n"] == pytest.approx(0.5, abs=1e-6)
+    assert ekf_mid["u"] == pytest.approx(0.0, abs=1e-6)
 
     at_end = pose_at(exp_dir, t=0.010)
     ekf_end = at_end["drones"]["2"]["avatars"]["ekf_ned"]
@@ -105,6 +107,44 @@ def test_pose_at_single_drone_interpolation(tmp_path):
 
     at_far = pose_at(exp_dir, t=99.0)
     assert at_far["drones"]["2"]["present"] is False
+
+
+def test_pose_at_ned_y_to_e_and_z_to_u(tmp_path):
+    exp_dir = tmp_path / "exp"
+    exp_dir.mkdir()
+    ulg = tmp_path / "drone2.ulg"
+    _write_ulog(
+        ulg,
+        {
+            "vehicle_status": [
+                {"timestamp": 1000, "arming_state": 1},
+                {"timestamp": 5000, "arming_state": 2},
+            ],
+            "vehicle_local_position": [
+                {"timestamp": 5000, "x": 0.0, "y": 0.0, "z": 0.0},
+                {"timestamp": 15000, "x": 0.0, "y": 2.0, "z": 3.0},
+            ],
+            "vehicle_attitude": [
+                {"timestamp": 5000, "q[0]": 1.0, "q[1]": 0.0, "q[2]": 0.0, "q[3]": 0.0},
+                {"timestamp": 15000, "q[0]": 1.0, "q[1]": 0.0, "q[2]": 0.0, "q[3]": 0.0},
+            ],
+        },
+    )
+    derived = _extract_drone(exp_dir, 2, ulg)
+    _write_sync_for_drone(exp_dir, 2, derived)
+    _save_manifest_drones(exp_dir, [2])
+
+    at_zero = pose_at(exp_dir, t=0.0)
+    ekf0 = at_zero["drones"]["2"]["avatars"]["ekf_ned"]
+    assert ekf0["e"] == pytest.approx(0.0, abs=1e-6)
+    assert ekf0["n"] == pytest.approx(0.0, abs=1e-6)
+    assert ekf0["u"] == pytest.approx(0.0, abs=1e-6)
+
+    at_end = pose_at(exp_dir, t=0.010)
+    ekf_end = at_end["drones"]["2"]["avatars"]["ekf_ned"]
+    assert ekf_end["e"] == pytest.approx(2.0, abs=1e-6)
+    assert ekf_end["n"] == pytest.approx(0.0, abs=1e-6)
+    assert ekf_end["u"] == pytest.approx(-3.0, abs=1e-6)
 
 
 def test_pose_at_partial_manifest(tmp_path):
