@@ -13,6 +13,7 @@ import { llaToEnu, newMarkerId, type Marker } from "./markers";
 import { plotsOnSlugChange, type PlotDef } from "./plotBoard";
 import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
+import { bannerText } from "./unsynced";
 import { filterVisible, idsChanged, mergeDroneIds } from "./visibleDrones";
 
 type TrailPoint = { t: number; pos: EnuPos };
@@ -245,6 +246,11 @@ export default function App() {
     [droneIds, visibleIds],
   );
 
+  const unsyncedBanner = useMemo(
+    () => (pose?.drones ? bannerText(pose.drones) : ""),
+    [pose?.drones],
+  );
+
   useEffect(() => {
     if (!pose) return;
 
@@ -343,6 +349,14 @@ export default function App() {
       />
       {poseError && (
         <p className="px-4 text-sm text-red-400">Pose: {poseError}</p>
+      )}
+      {unsyncedBanner && (
+        <p
+          className="mx-4 mb-2 rounded border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-sm font-medium text-amber-300"
+          role="status"
+        >
+          {unsyncedBanner}
+        </p>
       )}
       <div className="min-h-0 flex-1 p-4">
         <div className="flex h-[min(70vh,640px)] gap-4">

@@ -1,5 +1,9 @@
 # Updates
 
+## 0.31.0 - Unsynced ARM banner
+- `unsynced.ts` / `unsynced.test.ts`: `bannerText(drones)` lists unsynced ids from `pose.drones[].synced`
+- `App.tsx`: amber status banner when any drone is unsynced; 3D still renders all visible drones
+
 ## 0.30.0 - start/kill/attach/install scripts
 - `start.sh`: tmux `experiment_analysis` session, backend `127.0.0.1:6400`, frontend `127.0.0.1:6473`; `--port=` overrides frontend only
 - `killall.sh`: frees only 6400/6473 (and frontend override); leaves ObservationBoard untouched
