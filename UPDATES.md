@@ -1,9 +1,14 @@
 # Updates
 
+## 0.32.1 - SM rebuild CSV filter fix
+- `ea/rebuild.py`: `_sm_csv_paths` only matches `*system_manager*` (case insensitive); no arbitrary `*_dN*`
+- `tests/test_rebuild_sm.py`: rebuild → parquet + sync `sm_arm_local_ts`; non-SM `_dN` CSV ignored
+- `tests/test_extract_sm.py`: string `"4"` counts as ARM
+
 ## 0.32.0 - SM CSV extract + S4 ARM
 - `ea/extract_sm.py`: `extract_sm(csv, dest)` → `sm_system_manager.parquet` (original columns)
 - `ea/arm.py`: `sm_arm_local_ts(df)` — first S4 row via `local_ts` (`4`, `"4"`, `S4_TAKEOFF`)
-- `ea/rebuild.py`: extract `*system_manager*.csv` and `*_dN*.csv` from `raw/drone_*`, fill `sm_arm_local_ts` in sync
+- `ea/rebuild.py`: extract `*system_manager*.csv` from `raw/drone_*`, fill `sm_arm_local_ts` in sync
 - `tests/test_extract_sm.py`: S4 parquet/ARM, no-S4 None, numeric 4, Pi/FC T=0 alignment
 
 ## 0.31.0 - Unsynced ARM banner

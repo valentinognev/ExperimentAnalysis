@@ -57,6 +57,17 @@ def test_sm_arm_local_ts_numeric_four_counts_as_arm():
     assert sm_arm_local_ts(df) == arm_local
 
 
+def test_sm_arm_local_ts_string_four_counts_as_arm():
+    arm_local = 300.25
+    df = pd.DataFrame(
+        [
+            {"local_ts": 100.0, "state_machine_state": "S3"},
+            {"local_ts": arm_local, "state_machine_state": "4"},
+        ]
+    )
+    assert sm_arm_local_ts(df) == arm_local
+
+
 def test_pi_fc_t_zero_alignment_same_experiment_t():
     arm_us = 5_000_000
     first_us = 1_000_000

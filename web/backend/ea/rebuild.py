@@ -15,11 +15,10 @@ from ea.sync import write_sync
 _EXTRA_TOPICS = ("actuator_armed",)
 
 
-def _sm_csv_paths(drone_dir: Path, drone_id: str) -> list[Path]:
+def _sm_csv_paths(drone_dir: Path) -> list[Path]:
     paths: list[Path] = []
     for csv in sorted(drone_dir.glob("*.csv")):
-        name = csv.name.lower()
-        if "system_manager" in name or f"_d{drone_id}" in name:
+        if "system_manager" in csv.name.lower():
             paths.append(csv)
     return paths
 
@@ -46,7 +45,7 @@ def rebuild(slug: str) -> dict:
 
             sm_notes: list[dict] = []
             sm_arm: float | None = None
-            for csv in _sm_csv_paths(drone_dir, drone_id):
+            for csv in _sm_csv_paths(drone_dir):
                 parquet = extract_sm(csv, derived)
                 sm_notes.append({"file": csv.name, "parquet": parquet.name})
                 if "system_manager" in csv.name.lower():
