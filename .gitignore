@@ -1,0 +1,11 @@
+experiments/
+web/backend/.venv/
+web/backend/__pycache__/
+web/backend/**/__pycache__/
+web/frontend/node_modules/
+web/frontend/dist/
+.env
+.env.*
+secrets.json
+*.pyc
+.pytest_cache/
