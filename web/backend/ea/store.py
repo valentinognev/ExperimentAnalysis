@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from ea.manifest import empty_manifest, load_manifest, save_manifest
 from ea.slug import slugify
 from paths import experiments_dir
