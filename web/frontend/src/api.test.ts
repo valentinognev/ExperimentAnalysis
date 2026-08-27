@@ -8,6 +8,7 @@ import {
   rebuild,
   getPose,
   getSeries,
+  patchManifest,
 } from "./api";
 
 describe("api", () => {
@@ -115,6 +116,28 @@ describe("api", () => {
     expect(url).toContain("/api/experiments/foo/series?");
     expect(url).toContain("channels=2.ulog.vehicle_local_position.x");
     expect(url).toContain("channels=2.ulog.vehicle_local_position.y");
+    expect(result).toEqual(body);
+  });
+
+  it("patchManifest PATCHes manifest body", async () => {
+    const patch = {
+      ui: {
+        plots: [{ id: "plot-1", channels: ["2.ulog.vehicle_local_position.x"] }],
+      },
+    };
+    const body = { slug: "foo", manifest: { ui: patch.ui } };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await patchManifest("foo", patch);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/manifest", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
     expect(result).toEqual(body);
   });
 

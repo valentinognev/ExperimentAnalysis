@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
 import { getSeries, getTopics, type SeriesResponse } from "../api";
 import {
   addPlot,
   flattenTopics,
-  plotsForSlug,
   removePlot,
   type PlotDef,
 } from "../plotBoard";
@@ -125,21 +124,25 @@ type Props = {
   slug: string | null;
   t: number;
   refreshToken?: number;
+  plots: PlotDef[];
+  onPlotsChange: (plots: PlotDef[]) => void;
 };
 
-export default function PlotBoard({ slug, t, refreshToken = 0 }: Props) {
-  const [plots, setPlots] = useState<PlotDef[]>([]);
+export default function PlotBoard({
+  slug,
+  t,
+  refreshToken = 0,
+  plots,
+  onPlotsChange,
+}: Props) {
   const [channelIds, setChannelIds] = useState<string[]>([]);
   const [topicsError, setTopicsError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const prevSlugRef = useRef(slug);
 
   useEffect(() => {
-    setPlots((prev) => plotsForSlug(prevSlugRef.current, slug, prev));
     setPickerOpen(false);
     setSelected(new Set());
-    prevSlugRef.current = slug;
   }, [slug]);
 
   useEffect(() => {
@@ -179,13 +182,13 @@ export default function PlotBoard({ slug, t, refreshToken = 0 }: Props) {
 
   const handleAddPlot = () => {
     if (selected.size === 0) return;
-    setPlots((prev) => addPlot(prev, [...selected].sort()));
+    onPlotsChange(addPlot(plots, [...selected].sort()));
     setSelected(new Set());
     setPickerOpen(false);
   };
 
   const handleRemove = (id: string) => {
-    setPlots((prev) => removePlot(prev, id));
+    onPlotsChange(removePlot(plots, id));
   };
 
   if (!slug) return null;

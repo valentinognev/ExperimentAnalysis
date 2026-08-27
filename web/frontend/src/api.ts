@@ -32,6 +32,17 @@ export function openExperiment(slug: string): Promise<ExperimentDetail> {
   return json(`/api/experiments/${slug}`);
 }
 
+export function patchManifest(
+  slug: string,
+  patch: Record<string, unknown>,
+): Promise<ExperimentDetail> {
+  return json(`/api/experiments/${slug}/manifest`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+}
+
 export function importPaths(
   slug: string,
   paths: string[],

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { listExperiments } from "./api";
+import { listExperiments, openExperiment, patchManifest } from "./api";
 import ChannelPlot from "./components/ChannelPlot";
 import PlotBoard from "./components/PlotBoard";
 import DroneList from "./components/DroneList";
@@ -7,6 +7,7 @@ import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
 import View3D, { type DronePose } from "./components/View3D";
 import { downsampleHz } from "./downsample";
+import type { PlotDef } from "./plotBoard";
 import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
 import { filterVisible, idsChanged, mergeDroneIds } from "./visibleDrones";
@@ -29,11 +30,17 @@ export default function App() {
   const [t, setT] = useState(0);
   const [droneIds, setDroneIds] = useState<string[]>([]);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
+  const [plots, setPlots] = useState<PlotDef[]>([]);
+  const [avatars, setAvatars] = useState<Record<string, unknown>>({});
+  const [engine3d, setEngine3d] = useState("plotly");
+  const [mapLinked, setMapLinked] = useState(true);
   const { pose, error: poseError } = usePose(slug, t, refreshToken);
   const [trailHistory, setTrailHistory] = useState<
     Record<string, TrailPoint[]>
   >({});
   const prevSlugRef = useRef<string | null>(null);
+  const uiHydratedRef = useRef(false);
+  const skipSaveRef = useRef(true);
 
   const handleImported = useCallback(() => {
     setRefreshToken((n) => n + 1);
@@ -48,22 +55,50 @@ export default function App() {
     if (!slug) {
       setDroneIds([]);
       setVisibleIds(new Set());
+      setPlots([]);
+      setAvatars({});
+      setEngine3d("plotly");
+      setMapLinked(true);
       prevSlugRef.current = null;
+      uiHydratedRef.current = false;
+      skipSaveRef.current = true;
       return;
     }
 
     const slugChanged = prevSlugRef.current !== slug;
-    prevSlugRef.current = slug;
+    if (slugChanged) prevSlugRef.current = slug;
 
     let cancelled = false;
-    listExperiments()
-      .then((list) => {
+    skipSaveRef.current = true;
+    uiHydratedRef.current = false;
+
+    Promise.all([openExperiment(slug), listExperiments()])
+      .then(([detail, list]) => {
         if (cancelled) return;
         const exp = list.find((e) => e.slug === slug);
         const listed = (exp?.drone_ids ?? []).map(String);
+        const ui = (detail.manifest.ui ?? {}) as {
+          visible_drone_ids?: (string | number)[];
+          plots?: PlotDef[];
+          avatars?: Record<string, unknown>;
+          engine3d?: string;
+          map_linked?: boolean;
+        };
+
         if (slugChanged) {
           setDroneIds(listed);
-          setVisibleIds(new Set(listed));
+          const saved = ui.visible_drone_ids ?? [];
+          setVisibleIds(
+            new Set(saved.length > 0 ? saved.map(String) : listed),
+          );
+          setPlots(Array.isArray(ui.plots) ? ui.plots : []);
+          setEngine3d(typeof ui.engine3d === "string" ? ui.engine3d : "plotly");
+          setAvatars(
+            ui.avatars && typeof ui.avatars === "object" ? ui.avatars : {},
+          );
+          setMapLinked(
+            ui.map_linked !== undefined ? Boolean(ui.map_linked) : true,
+          );
         } else {
           setDroneIds((prev) => {
             const merged = mergeDroneIds(listed, prev);
@@ -81,12 +116,18 @@ export default function App() {
             return changed ? next : prev;
           });
         }
+
+        uiHydratedRef.current = true;
+        queueMicrotask(() => {
+          skipSaveRef.current = false;
+        });
       })
       .catch(() => {
         if (cancelled) return;
         if (slugChanged) {
           setDroneIds([]);
           setVisibleIds(new Set());
+          setPlots([]);
         }
       });
 
@@ -94,6 +135,32 @@ export default function App() {
       cancelled = true;
     };
   }, [slug, refreshToken]);
+
+  const visibleIdsKey = useMemo(
+    () => [...visibleIds].sort().join(","),
+    [visibleIds],
+  );
+
+  useEffect(() => {
+    if (!slug || !uiHydratedRef.current || skipSaveRef.current) return;
+
+    const timer = setTimeout(() => {
+      patchManifest(slug, {
+        ui: {
+          visible_drone_ids: [...visibleIds].map((id) => {
+            const n = Number(id);
+            return Number.isNaN(n) ? id : n;
+          }),
+          avatars,
+          plots,
+          engine3d,
+          map_linked: mapLinked,
+        },
+      }).catch(() => {});
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [slug, visibleIdsKey, plots, avatars, engine3d, mapLinked]);
 
   useEffect(() => {
     if (!pose?.drones) return;
@@ -195,7 +262,13 @@ export default function App() {
         t={t}
         refreshToken={refreshToken}
       />
-      <PlotBoard slug={slug} t={t} refreshToken={refreshToken} />
+      <PlotBoard
+        slug={slug}
+        t={t}
+        refreshToken={refreshToken}
+        plots={plots}
+        onPlotsChange={setPlots}
+      />
       <Timeline t={t} tMax={60} onTChange={setT} />
     </div>
   );

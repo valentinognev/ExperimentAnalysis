@@ -1,5 +1,12 @@
 # Updates
 
+## 0.26.0 - Persist UI layout in manifest
+- `web/backend/tests/test_api_manifest_ui.py`: PATCH `ui.plots` + `visible_drone_ids` roundtrip via GET
+- `web/frontend/src/api.ts`: `patchManifest(slug, patch)` → PATCH manifest
+- `web/frontend/src/debounce.ts`: 300ms debounce helper + unit tests
+- `App.tsx`: load `visible_drone_ids`, `plots`, `avatars`, `engine3d`, `map_linked` from manifest on open; debounced PATCH on change
+- `PlotBoard.tsx`: plots lifted to App for manifest persist
+
 ## 0.25.1 - PlotBoard refresh on slug switch and rebuild
 - `plotBoard.ts`: `plotsForSlug` clears plots when experiment slug changes (A→B)
 - `PlotBoard.tsx` / `ChannelPlot.tsx`: `refreshToken` prop refetches topics/series after import-rebuild
