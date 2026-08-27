@@ -1,5 +1,10 @@
 # Updates
 
+## 0.16.0 - Channel topics and series
+- `ea/topics.py`: `list_topics(experiment_dir)` — drone → source → topic → fields from derived parquet (ulog/sm/ha when present)
+- `ea/series.py`: `series(experiment_dir, channels, t0, t1)` — experiment-time arrays via `t_ulog`, 20 Hz downsample on pose topics, invalid channels → empty arrays
+- `tests/test_series.py`: ARM T=0, invalid channel, list_topics tree, t0/t1 window, dense downsample
+
 ## 0.15.0 - pose_at query builder
 - `ea/pose.py`: `pose_at(experiment_dir, t)` — manifest drones, sync synced flag, EKF NED→ENU (world via GPS/home at ARM or `local_frame`), attitude wxyz→xyzw, origin from mean GPS LLA at T=0
 - `tests/test_pose.py`: single-drone interpolation, partial manifest, GPS int scaling origin, no-GPS local frame
