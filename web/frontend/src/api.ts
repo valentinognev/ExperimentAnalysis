@@ -48,3 +48,24 @@ export function rebuild(slug: string): Promise<Record<string, unknown>> {
     method: "POST",
   });
 }
+
+export type PoseAvatar = { e: number; n: number; u: number };
+
+export type PoseDrone = {
+  present: boolean;
+  synced: boolean;
+  attitude_q_xyzw?: [number, number, number, number];
+  avatars?: {
+    ekf_ned: PoseAvatar;
+  };
+};
+
+export type PoseResponse = {
+  t: number;
+  origin: { lat: number; lon: number; alt_m: number };
+  drones: Record<string, PoseDrone>;
+};
+
+export function getPose(slug: string, t: number): Promise<PoseResponse> {
+  return json(`/api/experiments/${slug}/pose?t=${t}`);
+}

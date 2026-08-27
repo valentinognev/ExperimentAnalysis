@@ -1,4 +1,5 @@
 import Plot from "react-plotly.js";
+import type { Data } from "plotly.js";
 import { triadTraces, type EnuPos } from "../triad";
 import { sceneLayout } from "../view3dLayout";
 
@@ -6,18 +7,54 @@ type QuatXyzw = [number, number, number, number];
 
 export { sceneLayout };
 
-type View3DProps = {
+const DRONE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6"];
+
+export type DronePose = {
+  id: string;
   pos: EnuPos;
   attitude_q_xyzw: QuatXyzw;
+  trail?: EnuPos[];
+};
+
+type View3DProps = {
+  drones: DronePose[];
   scale?: number;
 };
 
-export default function View3D({
-  pos,
-  attitude_q_xyzw,
-  scale = 1,
-}: View3DProps) {
-  const traces = triadTraces(pos, attitude_q_xyzw, scale);
+function trailTrace(
+  id: string,
+  trail: EnuPos[],
+  color: string,
+): Data {
+  return {
+    type: "scatter3d",
+    mode: "lines+markers",
+    name: `D${id} trail`,
+    x: trail.map((p) => p.e),
+    y: trail.map((p) => p.n),
+    z: trail.map((p) => p.u),
+    line: { color, width: 2 },
+    marker: { size: 2, color },
+    showlegend: true,
+  };
+}
+
+export default function View3D({ drones, scale = 1 }: View3DProps) {
+  const traces: Data[] = [];
+
+  drones.forEach((drone, index) => {
+    const color = DRONE_COLORS[index % DRONE_COLORS.length];
+    if (drone.trail && drone.trail.length > 0) {
+      traces.push(trailTrace(drone.id, drone.trail, color));
+    }
+    const triads = triadTraces(drone.pos, drone.attitude_q_xyzw, scale);
+    for (const trace of triads) {
+      traces.push({
+        ...trace,
+        name: `D${drone.id} ${trace.name ?? ""}`.trim(),
+      });
+    }
+  });
 
   return (
     <Plot

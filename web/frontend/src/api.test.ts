@@ -6,6 +6,7 @@ import {
   openExperiment,
   importPaths,
   rebuild,
+  getPose,
 } from "./api";
 
 describe("api", () => {
@@ -90,6 +91,23 @@ describe("api", () => {
     expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/rebuild", {
       method: "POST",
     });
+    expect(result).toEqual(body);
+  });
+
+  it("getPose GETs pose?t=", async () => {
+    const body = {
+      t: 0,
+      origin: { lat: 0, lon: 0, alt_m: 0 },
+      drones: {},
+    };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await getPose("foo", 1.5);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/pose?t=1.5");
     expect(result).toEqual(body);
   });
 });

@@ -1,5 +1,13 @@
 # Updates
 
+## 0.21.0 - 20 Hz pose trails
+- `web/frontend/src/downsample.ts`: `downsampleHz(ts, maxHz=20)` — keep first/last and samples ≥1/maxHz apart
+- `web/frontend/src/api.ts`: `getPose(slug, t)` + `PoseResponse` types; GET `/api/experiments/{slug}/pose?t=`
+- `web/frontend/src/usePose.ts`: fetch pose when slug or T changes
+- `App.tsx`: pose at T=0, per-drone trail history downsampled to ≤20 Hz; View3D for present drones
+- `View3D.tsx`: multi-drone triads + scatter3d trail lines per drone
+- `src/downsample.test.ts`, `api.test.ts`: dense/sparse downsample, getPose URL
+
 ## 0.20.0 - Plotly 3D body-axis triads
 - `web/frontend/src/triad.ts`: `triadTraces(pos, q_xyzw, scale)` — scatter3d line traces RGB body x/y/z; FRD→NED quaternion rotate, `ned_to_enu` mapping
 - `web/frontend/src/components/View3D.tsx`: react-plotly.js Plot; re-exports `sceneLayout` from `view3dLayout.ts` (x=E, y=N, z=U)
