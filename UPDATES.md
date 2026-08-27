@@ -1,5 +1,9 @@
 # Updates
 
+## 0.35.0 - MAVLink ulog download (mocked)
+- `ea/ingest_mavlink.py`: `mavlink_pull(slug, drone_id, connect=...)` LOG_REQUEST_LIST/DATA into `raw/drone_<id>/`; url from `mavlink.url` or `tcp:{ssh.host}:5760`; no COMMAND_LONG
+- `tests/test_ingest_mavlink.py`: fake conn download, COMMAND_LONG spy, no-logs error preserves raw
+
 ## 0.34.1 - SSH ingest empty-remote fix
 - `ea/ingest_ssh.py`: empty remote detected by zero new files / empty rsync listing, not empty dest (preserves imported ulogs)
 - `tests/test_ingest_ssh.py`: lock rsync argv (both remotes, pi@host:, publickey, timeout 30, no password in argv); empty remote with existing raw
