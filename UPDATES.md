@@ -1,5 +1,9 @@
 # Updates
 
+## 0.14.0 - Pose interpolation
+- `ea/interp.py`: `interp_scalar` (numpy linear, None outside range/empty), `slerp_xyzw` (normalize, flip sign if dot<0, sin blend)
+- `tests/test_interp.py`: midpoint scalar, range/empty None, slerp identity→90° z at midpoint ≈45°, endpoints
+
 ## 0.13.0 - Geo ENU helpers
 - `ea/geo.py`: `WGS84_A_M`, `METERS_PER_DEG_LAT`, `lla_to_enu`, `ned_to_enu`, `mean_origin` (spherical WGS84, matches OB `geo.ts`)
 - `tests/test_geo.py`: 1m north ENU, NED→ENU, mean origin, empty llas `ValueError`
