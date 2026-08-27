@@ -1,5 +1,13 @@
 # Updates
 
+## 0.23.0 - Default NED plots and drone visibility
+- `web/frontend/src/visibleDrones.ts`: `filterVisible(ids, visible)` — empty visible → none shown
+- `web/frontend/src/api.ts`: `getSeries(slug, channels, t0?, t1?)` — repeatable `channels` query params
+- `web/frontend/src/components/DroneList.tsx`: checkbox per drone id toggles visible set
+- `web/frontend/src/components/ChannelPlot.tsx`: Plotly 2D NED x/y/z vs t for visible drones; vertical T cursor via shapes
+- `App.tsx`: DroneList + ChannelPlot; View3D filters to visible present drones
+- `src/visibleDrones.test.ts`, `api.test.ts`: filterVisible + getSeries URL
+
 ## 0.22.0 - Timeline scrub and playback
 - `web/frontend/src/components/Timeline.tsx`: range slider, numeric T, Play/Reverse/Pause, speed 0.25/1/2/4×; rAF + `advance` from `timeCursor`; exported `nextDirection`
 - `App.tsx`: mounts Timeline with `t`/`setT`, `tMax=60`

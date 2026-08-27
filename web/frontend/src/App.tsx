@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { listExperiments } from "./api";
+import ChannelPlot from "./components/ChannelPlot";
+import DroneList from "./components/DroneList";
 import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
 import View3D, { type DronePose } from "./components/View3D";
 import { downsampleHz } from "./downsample";
 import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
+import { filterVisible } from "./visibleDrones";
 
 type TrailPoint = { t: number; pos: EnuPos };
 
@@ -21,6 +25,8 @@ function downsampleTrail(
 export default function App() {
   const [slug, setSlug] = useState<string | null>(null);
   const [t, setT] = useState(0);
+  const [droneIds, setDroneIds] = useState<string[]>([]);
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const { pose, error: poseError } = usePose(slug, t);
   const [trailHistory, setTrailHistory] = useState<
     Record<string, TrailPoint[]>
@@ -29,7 +35,37 @@ export default function App() {
   useEffect(() => {
     setTrailHistory({});
     setT(0);
+    if (!slug) {
+      setDroneIds([]);
+      setVisibleIds(new Set());
+      return;
+    }
+    listExperiments()
+      .then((list) => {
+        const exp = list.find((e) => e.slug === slug);
+        const ids = (exp?.drone_ids ?? []).map(String);
+        setDroneIds(ids);
+        setVisibleIds(new Set(ids));
+      })
+      .catch(() => {
+        setDroneIds([]);
+        setVisibleIds(new Set());
+      });
   }, [slug]);
+
+  const handleDroneToggle = useCallback((id: string, checked: boolean) => {
+    setVisibleIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const visibleDroneIds = useMemo(
+    () => filterVisible(droneIds, visibleIds),
+    [droneIds, visibleIds],
+  );
 
   useEffect(() => {
     if (!pose) return;
@@ -53,9 +89,11 @@ export default function App() {
 
   const drones = useMemo((): DronePose[] => {
     if (!pose) return [];
+    const visible = new Set(visibleDroneIds);
     return Object.entries(pose.drones)
       .filter(
-        ([, d]) =>
+        ([id, d]) =>
+          visible.has(id) &&
           d.present &&
           d.attitude_q_xyzw !== undefined &&
           d.avatars?.ekf_ned !== undefined,
@@ -66,12 +104,17 @@ export default function App() {
         attitude_q_xyzw: d.attitude_q_xyzw!,
         trail: downsampleTrail(trailHistory[id] ?? []),
       }));
-  }, [pose, trailHistory]);
+  }, [pose, trailHistory, visibleDroneIds]);
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
       <h1 className="px-4 pt-4 text-xl font-semibold">ExperimentAnalysis</h1>
       <ExperimentBar slug={slug} onSlugChange={setSlug} />
+      <DroneList
+        droneIds={droneIds}
+        visible={visibleIds}
+        onToggle={handleDroneToggle}
+      />
       {poseError && (
         <p className="px-4 text-sm text-red-400">Pose: {poseError}</p>
       )}
@@ -80,6 +123,7 @@ export default function App() {
           <View3D drones={drones} />
         </div>
       </div>
+      <ChannelPlot slug={slug} visibleDroneIds={visibleDroneIds} t={t} />
       <Timeline t={t} tMax={60} onTChange={setT} />
     </div>
   );

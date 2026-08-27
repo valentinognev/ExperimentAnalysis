@@ -7,6 +7,7 @@ import {
   importPaths,
   rebuild,
   getPose,
+  getSeries,
 } from "./api";
 
 describe("api", () => {
@@ -91,6 +92,29 @@ describe("api", () => {
     expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/rebuild", {
       method: "POST",
     });
+    expect(result).toEqual(body);
+  });
+
+  it("getSeries GETs series with repeatable channels params", async () => {
+    const channels = [
+      "2.ulog.vehicle_local_position.x",
+      "2.ulog.vehicle_local_position.y",
+    ];
+    const body = {
+      [channels[0]]: { t: [0], y: [1] },
+      [channels[1]]: { t: [0], y: [2] },
+    };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await getSeries("foo", channels);
+
+    const url = vi.mocked(fetch).mock.calls[0][0] as string;
+    expect(url).toContain("/api/experiments/foo/series?");
+    expect(url).toContain("channels=2.ulog.vehicle_local_position.x");
+    expect(url).toContain("channels=2.ulog.vehicle_local_position.y");
     expect(result).toEqual(body);
   });
 

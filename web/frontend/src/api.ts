@@ -69,3 +69,22 @@ export type PoseResponse = {
 export function getPose(slug: string, t: number): Promise<PoseResponse> {
   return json(`/api/experiments/${slug}/pose?t=${t}`);
 }
+
+export type SeriesChannel = { t: number[]; y: number[] };
+
+export type SeriesResponse = Record<string, SeriesChannel>;
+
+export function getSeries(
+  slug: string,
+  channels: string[],
+  t0?: number,
+  t1?: number,
+): Promise<SeriesResponse> {
+  const params = new URLSearchParams();
+  for (const ch of channels) {
+    params.append("channels", ch);
+  }
+  if (t0 !== undefined) params.set("t0", String(t0));
+  if (t1 !== undefined) params.set("t1", String(t1));
+  return json(`/api/experiments/${slug}/series?${params}`);
+}
