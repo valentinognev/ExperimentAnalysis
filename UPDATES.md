@@ -1,5 +1,8 @@
 # Updates
 
+## 0.3.0 - Slug sanitizer
+- `ea/slug.py`: `slugify()` keeps `[A-Za-z0-9_-]`, spaces → `_`, rejects empty (`ValueError`)
+
 ## 0.2.0 - Ports and paths helpers
 - `ports.py`: BACKEND_HOST, BACKEND_PORT 6400, FRONTEND_PORT 6473, FORBIDDEN_PORTS
 - `paths.py`: `repo_root()`, `experiments_dir()` with `EA_EXPERIMENTS_DIR` override
