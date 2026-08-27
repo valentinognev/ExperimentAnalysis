@@ -1,5 +1,9 @@
 # Updates
 
+## 0.27.2 - Dense pickable ground surface
+- `groundPlane.ts`: 21×21 `surface` at u=0, `hoverinfo: "none"` (gl3d picks skip `"skip"`)
+- `groundPlane.test.ts`: assert surface/mesh3d density, z=0, `hoverinfo === "none"`
+
 ## 0.27.1 - Clickable ground plane for markers
 - `groundPlane.ts`: `groundPlaneExtent`, `groundPlaneTrace` (mesh3d u=0 quad)
 - `groundPlane.test.ts`: extent bbox + mesh3d z=0 unit tests

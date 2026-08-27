@@ -10,6 +10,7 @@ export type GroundPlaneExtent = {
 
 export const DEFAULT_GROUND_HALF_EXTENT_M = 200;
 export const GROUND_PLANE_PADDING_M = 20;
+export const GROUND_PLANE_GRID_SIZE = 21;
 
 /** E/N bbox for the ground plane; ±halfExtent when empty, else trace bbox + padding. */
 export function groundPlaneExtent(
@@ -44,21 +45,25 @@ export function groundPlaneExtent(
   };
 }
 
-/** Clickable u=0 ground quad for Plotly scatter3d scene clicks. */
+/** Dense u=0 ground surface for Plotly gl3d scene picks (hoverinfo must not be "skip"). */
 export function groundPlaneTrace(extent: GroundPlaneExtent): Data {
   const { eMin, eMax, nMin, nMax } = extent;
+  const n = GROUND_PLANE_GRID_SIZE;
+  const x = Array.from({ length: n }, (_, i) => eMin + ((eMax - eMin) * i) / (n - 1));
+  const y = Array.from({ length: n }, (_, i) => nMin + ((nMax - nMin) * i) / (n - 1));
+  const z = Array.from({ length: n }, () => Array.from({ length: n }, () => 0));
   return {
-    type: "mesh3d",
+    type: "surface",
     name: "Ground",
-    x: [eMin, eMax, eMax, eMin],
-    y: [nMin, nMin, nMax, nMax],
-    z: [0, 0, 0, 0],
-    i: [0, 0, 1],
-    j: [1, 2, 2],
-    k: [2, 3, 3],
-    color: "rgba(128,128,128,0.15)",
-    flatshading: true,
-    hoverinfo: "skip",
+    x,
+    y,
+    z,
+    colorscale: [
+      [0, "rgba(128,128,128,0.15)"],
+      [1, "rgba(128,128,128,0.15)"],
+    ],
+    showscale: false,
+    hoverinfo: "none",
     showlegend: false,
   };
 }

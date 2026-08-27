@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DEFAULT_GROUND_HALF_EXTENT_M,
+  GROUND_PLANE_GRID_SIZE,
   groundPlaneExtent,
   groundPlaneTrace,
 } from "./groundPlane";
@@ -29,22 +30,41 @@ describe("groundPlaneExtent", () => {
   });
 });
 
+function allZValues(trace: ReturnType<typeof groundPlaneTrace>): number[] {
+  if (trace.type === "surface") {
+    return trace.z!.flat();
+  }
+  if (trace.type === "mesh3d") {
+    return trace.z as number[];
+  }
+  return [];
+}
+
 describe("groundPlaneTrace", () => {
-  it("returns mesh3d with all z at 0", () => {
+  it("returns dense pickable surface at z=0 with hoverinfo none", () => {
     const trace = groundPlaneTrace({
       eMin: -50,
       eMax: 50,
       nMin: -100,
       nMax: 100,
     });
-    expect(trace.type === "mesh3d" || trace.type === "surface").toBe(true);
-    if (trace.type === "mesh3d") {
-      expect(trace.z).toEqual([0, 0, 0, 0]);
+
+    expect(trace.hoverinfo).toBe("none");
+    expect(trace.hoverinfo).not.toBe("skip");
+
+    if (trace.type === "surface") {
+      expect(trace.x!.length).toBe(GROUND_PLANE_GRID_SIZE);
+      expect(trace.y!.length).toBe(GROUND_PLANE_GRID_SIZE);
+      expect(trace.z!.length).toBe(GROUND_PLANE_GRID_SIZE);
+      expect(trace.z![0]!.length).toBe(GROUND_PLANE_GRID_SIZE);
+    } else if (trace.type === "mesh3d") {
+      expect(trace.x!.length).toBeGreaterThanOrEqual(16);
     } else {
-      expect(trace.z).toEqual([
-        [0, 0],
-        [0, 0],
-      ]);
+      throw new Error(`unexpected trace type: ${trace.type}`);
     }
+
+    const zValues = allZValues(trace);
+    expect(zValues.length).toBeGreaterThanOrEqual(16);
+    expect(zValues.every((z) => z === 0)).toBe(true);
   });
 });
