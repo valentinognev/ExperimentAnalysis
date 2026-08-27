@@ -1,5 +1,9 @@
 # Updates
 
+## 0.34.1 - SSH ingest empty-remote fix
+- `ea/ingest_ssh.py`: empty remote detected by zero new files / empty rsync listing, not empty dest (preserves imported ulogs)
+- `tests/test_ingest_ssh.py`: lock rsync argv (both remotes, pi@host:, publickey, timeout 30, no password in argv); empty remote with existing raw
+
 ## 0.34.0 - SSH ingest (mocked)
 - `ea/ingest_ssh.py`: `ssh_pull(slug, drone_id, runner=...)` rsyncs Pi SM/HA logs into `raw/drone_<id>/`; publickey-only SSH, 30s timeout, password redaction, empty-remote error
 - `tests/test_ingest_ssh.py`: fake runner argv/timeout, password redaction, empty remote, raw preserved on failure

@@ -107,6 +107,8 @@ def ssh_pull(slug: str, drone_id: int, runner=subprocess.run) -> dict:
 
     dest_dir = exp_path / "raw" / f"drone_{drone_id}"
     dest_dir.mkdir(parents=True, exist_ok=True)
+    before = {p.name for p in dest_dir.iterdir() if p.is_file()}
+    rsync_listed = False
     for remote in (SM_REMOTE, HA_REMOTE):
         cmd = _rsync_cmd(user, host, remote, dest_dir)
         try:
@@ -116,9 +118,12 @@ def ssh_pull(slug: str, drone_id: int, runner=subprocess.run) -> dict:
         if proc.returncode != 0:
             err = (proc.stderr or proc.stdout or "rsync failed").strip()
             return {"ok": False, "error": _redact_password(err, password)}
+        out = (proc.stdout or "").strip()
+        if out:
+            rsync_listed = True
 
-    after = {p for p in dest_dir.iterdir() if p.is_file()}
-    if not after:
+    after = {p.name for p in dest_dir.iterdir() if p.is_file()}
+    if not (after - before) and not rsync_listed:
         return {"ok": False, "error": "empty remote dir"}
 
     _update_manifest_sources(manifest, drone_id, exp_path, dest_dir)
