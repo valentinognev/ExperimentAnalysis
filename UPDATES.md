@@ -1,5 +1,10 @@
 # Updates
 
+## 0.7.0 - FastAPI health and experiment CRUD
+- `web/backend/app.py`: `GET /api/health`, `GET|POST /api/experiments`, `GET /api/experiments/{slug}`, `PATCH /api/experiments/{slug}/manifest`; CORS for frontend port; 404 `{"detail": "experiment not found"}`
+- `web/backend/requirements.txt`: fastapi, uvicorn, pyulog, pyarrow, pandas, pymavlink, pytest, httpx
+- `web/backend/tests/test_api_experiments.py`: health + CRUD integration tests via TestClient
+
 ## 0.6.0 - Experiment store create/list/open
 - `ea/store.py`: `create_experiment`, `list_experiments`, `open_experiment`; creates `raw/`, `derived/`, `manifest.json`; `FileExistsError` if folder exists; `missing` = drone ids with empty `sources.ulg`
 
