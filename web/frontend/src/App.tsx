@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { listExperiments, openExperiment, patchManifest } from "./api";
+import { listExperiments, openExperiment, patchManifest, patchMarkers } from "./api";
 import ChannelPlot from "./components/ChannelPlot";
+import MarkerPanel from "./components/MarkerPanel";
 import PlotBoard from "./components/PlotBoard";
 import DroneList from "./components/DroneList";
 import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
 import View3D, { type DronePose } from "./components/View3D";
 import { downsampleHz } from "./downsample";
+import { llaToEnu, newMarkerId, type Marker } from "./markers";
 import { plotsOnSlugChange, type PlotDef } from "./plotBoard";
 import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
@@ -34,6 +36,8 @@ export default function App() {
   const [avatars, setAvatars] = useState<Record<string, unknown>>({});
   const [engine3d, setEngine3d] = useState("plotly");
   const [mapLinked, setMapLinked] = useState(true);
+  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [selectedMarkerIds, setSelectedMarkerIds] = useState<string[]>([]);
   const { pose, error: poseError } = usePose(slug, t, refreshToken);
   const [trailHistory, setTrailHistory] = useState<
     Record<string, TrailPoint[]>
@@ -49,6 +53,8 @@ export default function App() {
   useEffect(() => {
     setTrailHistory({});
     setT(0);
+    setMarkers([]);
+    setSelectedMarkerIds([]);
     const cleared = plotsOnSlugChange(prevSlugRef.current, slug);
     if (cleared !== null) setPlots(cleared);
   }, [slug]);
@@ -61,6 +67,8 @@ export default function App() {
       setAvatars({});
       setEngine3d("plotly");
       setMapLinked(true);
+      setMarkers([]);
+      setSelectedMarkerIds([]);
       prevSlugRef.current = null;
       uiHydratedRef.current = false;
       skipSaveRef.current = true;
@@ -85,6 +93,7 @@ export default function App() {
           avatars?: Record<string, unknown>;
           engine3d?: string;
           map_linked?: boolean;
+          markers?: Marker[];
         };
 
         if (slugChanged) {
@@ -101,6 +110,8 @@ export default function App() {
           setMapLinked(
             ui.map_linked !== undefined ? Boolean(ui.map_linked) : true,
           );
+          setMarkers(Array.isArray(ui.markers) ? ui.markers : []);
+          setSelectedMarkerIds([]);
         } else {
           setDroneIds((prev) => {
             const merged = mergeDroneIds(listed, prev);
@@ -142,6 +153,18 @@ export default function App() {
     () => [...visibleIds].sort().join(","),
     [visibleIds],
   );
+
+  const markersKey = useMemo(() => JSON.stringify(markers), [markers]);
+
+  useEffect(() => {
+    if (!slug || !uiHydratedRef.current || skipSaveRef.current) return;
+
+    const timer = setTimeout(() => {
+      patchMarkers(slug, markers).catch(() => {});
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [slug, markersKey]);
 
   useEffect(() => {
     if (!slug || !uiHydratedRef.current || skipSaveRef.current) return;
@@ -237,6 +260,34 @@ export default function App() {
       }));
   }, [pose, trailHistory, visibleDroneIds]);
 
+  const markerPositions = useMemo(() => {
+    if (!pose?.origin) return [];
+    const { lat, lon, alt_m } = pose.origin;
+    return markers.map((m) => llaToEnu(m.lat, m.lon, m.alt_m, lat, lon, alt_m));
+  }, [markers, pose?.origin]);
+
+  const handleGroundClick = useCallback(
+    (lla: { lat: number; lon: number; alt_m: number }) => {
+      const id = newMarkerId();
+      setMarkers((prev) => [
+        ...prev,
+        { id, label: `M${prev.length + 1}`, ...lla },
+      ]);
+    },
+    [],
+  );
+
+  const handleMarkerLabelChange = useCallback((id: string, label: string) => {
+    setMarkers((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, label } : m)),
+    );
+  }, []);
+
+  const handleMarkerRemove = useCallback((id: string) => {
+    setMarkers((prev) => prev.filter((m) => m.id !== id));
+    setSelectedMarkerIds((prev) => prev.filter((x) => x !== id));
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
       <h1 className="px-4 pt-4 text-xl font-semibold">ExperimentAnalysis</h1>
@@ -254,8 +305,24 @@ export default function App() {
         <p className="px-4 text-sm text-red-400">Pose: {poseError}</p>
       )}
       <div className="min-h-0 flex-1 p-4">
-        <div className="h-[min(70vh,640px)] rounded border border-zinc-800">
-          <View3D drones={drones} />
+        <div className="flex h-[min(70vh,640px)] gap-4">
+          <div className="min-w-0 flex-1 rounded border border-zinc-800">
+            <View3D
+              drones={drones}
+              origin={pose?.origin}
+              markerPositions={markerPositions}
+              onGroundClick={handleGroundClick}
+            />
+          </div>
+          <div className="w-56 shrink-0">
+            <MarkerPanel
+              markers={markers}
+              selectedIds={selectedMarkerIds}
+              onSelect={setSelectedMarkerIds}
+              onLabelChange={handleMarkerLabelChange}
+              onRemove={handleMarkerRemove}
+            />
+          </div>
         </div>
       </div>
       <ChannelPlot

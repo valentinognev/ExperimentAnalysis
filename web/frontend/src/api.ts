@@ -43,6 +43,25 @@ export function patchManifest(
   });
 }
 
+export type MarkerRecord = {
+  id: string;
+  label: string;
+  lat: number;
+  lon: number;
+  alt_m: number;
+};
+
+export function patchMarkers(
+  slug: string,
+  markers: MarkerRecord[],
+): Promise<ExperimentDetail> {
+  return json(`/api/experiments/${slug}/markers`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ markers }),
+  });
+}
+
 export function importPaths(
   slug: string,
   paths: string[],

@@ -1,5 +1,14 @@
 # Updates
 
+## 0.27.0 - Ground markers and distances
+- `ea/markers.py`: `Marker`, `enu_to_lla`, `distance_m` (haversine horizontal + 3D ENU)
+- `app.py`: PATCH `/api/experiments/{slug}/markers` replaces `ui.markers`
+- `tests/test_markers.py`: 1 m north, roundtrip, PATCH roundtrip, alt delta 3D
+- `markers.ts` / `markers.test.ts`: frontend geo + `groundClickToLla`
+- `MarkerPanel.tsx`: list markers, select two → distances
+- `View3D.tsx`: ground click adds marker; scatter3d marker diamonds
+- `App.tsx`: marker state, debounced `patchMarkers`, panel beside 3D
+
 ## 0.26.0 - Persist UI layout in manifest
 - `web/backend/tests/test_api_manifest_ui.py`: PATCH `ui.plots` + `visible_drone_ids` roundtrip via GET
 - `web/frontend/src/api.ts`: `patchManifest(slug, patch)` → PATCH manifest

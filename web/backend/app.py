@@ -30,6 +30,18 @@ class ImportBody(BaseModel):
     paths: list[str]
 
 
+class MarkerBody(BaseModel):
+    id: str
+    label: str
+    lat: float
+    lon: float
+    alt_m: float
+
+
+class MarkersBody(BaseModel):
+    markers: list[MarkerBody]
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True}
@@ -75,6 +87,18 @@ def patch_manifest(slug: str, patch: dict):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="experiment not found")
     merged = merge_manifest(result["manifest"], patch)
+    save_manifest(result["path"] / "manifest.json", merged)
+    return {"slug": slug, "manifest": merged}
+
+
+@app.patch("/api/experiments/{slug}/markers")
+def patch_markers(slug: str, body: MarkersBody):
+    try:
+        result = open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    markers = [m.model_dump() for m in body.markers]
+    merged = merge_manifest(result["manifest"], {"ui": {"markers": markers}})
     save_manifest(result["path"] / "manifest.json", merged)
     return {"slug": slug, "manifest": merged}
 

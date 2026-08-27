@@ -1,7 +1,9 @@
 import Plot from "react-plotly.js";
-import type { Data } from "plotly.js";
+import type { Data, PlotMouseEvent } from "plotly.js";
 import { triadTraces, type EnuPos } from "../triad";
 import { sceneLayout } from "../view3dLayout";
+import type { Origin } from "../markers";
+import { groundClickToLla } from "../markers";
 
 type QuatXyzw = [number, number, number, number];
 
@@ -19,6 +21,9 @@ export type DronePose = {
 type View3DProps = {
   drones: DronePose[];
   scale?: number;
+  origin?: Origin;
+  markerPositions?: EnuPos[];
+  onGroundClick?: (lla: { lat: number; lon: number; alt_m: number }) => void;
 };
 
 function trailTrace(
@@ -39,8 +44,27 @@ function trailTrace(
   };
 }
 
-export default function View3D({ drones, scale = 1 }: View3DProps) {
+export default function View3D({
+  drones,
+  scale = 1,
+  origin,
+  markerPositions = [],
+  onGroundClick,
+}: View3DProps) {
   const traces: Data[] = [];
+
+  if (markerPositions.length > 0) {
+    traces.push({
+      type: "scatter3d",
+      mode: "markers",
+      name: "Markers",
+      x: markerPositions.map((p) => p.e),
+      y: markerPositions.map((p) => p.n),
+      z: markerPositions.map((p) => p.u),
+      marker: { size: 5, color: "#facc15", symbol: "diamond" },
+      showlegend: true,
+    });
+  }
 
   drones.forEach((drone, index) => {
     const color = DRONE_COLORS[index % DRONE_COLORS.length];
@@ -56,12 +80,19 @@ export default function View3D({ drones, scale = 1 }: View3DProps) {
     }
   });
 
+  const handleClick = (event: PlotMouseEvent) => {
+    if (!origin || !onGroundClick) return;
+    const lla = groundClickToLla(event, origin);
+    if (lla) onGroundClick(lla);
+  };
+
   return (
     <Plot
       data={traces}
       layout={sceneLayout()}
       config={{ responsive: true }}
       style={{ width: "100%", height: "100%" }}
+      onClick={handleClick}
     />
   );
 }
