@@ -1,5 +1,8 @@
 # Updates
 
+## 0.5.0 - Manifest v1 load/save
+- `ea/manifest.py`: `MANIFEST_VERSION`, `empty_manifest`, `load_manifest`, `save_manifest`, `merge_manifest` (deep-merge ui/sync, per-drone ssh/mavlink; sources preserved unless patch includes them)
+
 ## 0.4.0 - Drone id from filename
 - `ea/drone_id.py`: `drone_id_from_filename()` via `Group3RLcat(?P<id>\d+)_` or `_d(?P<id>\d+)`; `None` → needs_id
 
