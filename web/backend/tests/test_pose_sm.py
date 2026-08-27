@@ -367,6 +367,95 @@ def test_pose_at_sm_ned_local_frame_without_reference(tmp_path):
     assert sm_ned["u"] == pytest.approx(-3.0, abs=1e-6)
 
 
+def _offset_north_lat_deg(base_lat: float, meters: float) -> float:
+    return base_lat + meters / METERS_PER_DEG_LAT
+
+
+def test_pose_at_sm_ned_prefers_initial_pos_lla_over_px4_home(tmp_path):
+    exp_dir = _sm_with_ulog_fixture(tmp_path)
+    derived = exp_dir / "derived" / "drone_2"
+    init_lat = _offset_north_lat_deg(_BASE_LAT, 10.0)
+    _write_sm_parquet(
+        derived,
+        [
+            {
+                "local_ts": _S4_LOCAL,
+                "state_machine_state": "S4_TAKEOFF",
+                "pos_ned/x": 0.0,
+                "pos_ned/y": 0.0,
+                "pos_ned/z": 0.0,
+                "lla/lat_deg": _BASE_LAT,
+                "lla/lon_deg": _BASE_LON,
+                "lla/alt": _BASE_ALT,
+                "initialPos_lla/lat_deg": init_lat,
+                "initialPos_lla/lon_deg": _BASE_LON,
+                "initialPos_lla/alt": _BASE_ALT,
+            },
+        ],
+    )
+
+    result = pose_at(exp_dir, t=0.0)
+    sm_ned = result["drones"]["2"]["avatars"]["sm_ned"]
+    assert sm_ned["n"] == pytest.approx(10.0, abs=0.05)
+    assert sm_ned["e"] == pytest.approx(0.0, abs=0.05)
+
+
+def test_pose_at_sm_ned_prefers_initial_pos_lla_over_sm_lla_at_arm(tmp_path):
+    exp_dir = _sm_with_ulog_fixture(tmp_path)
+    derived = exp_dir / "derived" / "drone_2"
+    init_lat = _offset_north_lat_deg(_BASE_LAT, 10.0)
+    arm_lla_lat = _offset_north_lat_deg(_BASE_LAT, 20.0)
+    _write_sm_parquet(
+        derived,
+        [
+            {
+                "local_ts": _S4_LOCAL,
+                "state_machine_state": "S4_TAKEOFF",
+                "pos_ned/x": 0.0,
+                "pos_ned/y": 0.0,
+                "pos_ned/z": 0.0,
+                "lla/lat_deg": arm_lla_lat,
+                "lla/lon_deg": _BASE_LON,
+                "lla/alt": _BASE_ALT,
+                "initialPos_lla/lat_deg": init_lat,
+                "initialPos_lla/lon_deg": _BASE_LON,
+                "initialPos_lla/alt": _BASE_ALT,
+            },
+        ],
+    )
+
+    result = pose_at(exp_dir, t=0.0)
+    sm_ned = result["drones"]["2"]["avatars"]["sm_ned"]
+    assert sm_ned["n"] == pytest.approx(10.0, abs=0.05)
+    assert sm_ned["n"] != pytest.approx(20.0, abs=0.05)
+
+
+def test_pose_at_sm_ned_uses_sm_lla_at_arm_when_no_initial_pos(tmp_path):
+    exp_dir = _sm_with_ulog_fixture(tmp_path)
+    derived = exp_dir / "derived" / "drone_2"
+    arm_lla_lat = _offset_north_lat_deg(_BASE_LAT, 10.0)
+    _write_sm_parquet(
+        derived,
+        [
+            {
+                "local_ts": _S4_LOCAL,
+                "state_machine_state": "S4_TAKEOFF",
+                "pos_ned/x": 0.0,
+                "pos_ned/y": 0.0,
+                "pos_ned/z": 0.0,
+                "lla/lat_deg": arm_lla_lat,
+                "lla/lon_deg": _BASE_LON,
+                "lla/alt": _BASE_ALT,
+            },
+        ],
+    )
+
+    result = pose_at(exp_dir, t=0.0)
+    sm_ned = result["drones"]["2"]["avatars"]["sm_ned"]
+    assert sm_ned["n"] == pytest.approx(10.0, abs=0.05)
+    assert sm_ned["e"] == pytest.approx(0.0, abs=0.05)
+
+
 def test_pose_at_sm_uses_local_ts_not_timestamp(tmp_path):
     exp_dir = _sm_with_ulog_fixture(tmp_path)
     derived = exp_dir / "derived" / "drone_2"

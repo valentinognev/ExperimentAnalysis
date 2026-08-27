@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -258,25 +259,51 @@ def _sm_lla_columns(df: pd.DataFrame) -> tuple[str, str, str] | None:
 
 def _initial_pos_lla_from_sm(df: pd.DataFrame) -> tuple[float, float, float] | None:
     deg_cols = ("initialPos_lla/lat_deg", "initialPos_lla/lon_deg", "initialPos_lla/alt")
-    if all(c in df.columns for c in deg_cols):
-        row = df.iloc[0]
-        return float(row[deg_cols[0]]), float(row[deg_cols[1]]), float(row[deg_cols[2]])
-    idx_cols = ("initialPos_lla/0", "initialPos_lla/1", "initialPos_lla/2")
-    if all(c in df.columns for c in idx_cols):
-        row = df.iloc[0]
-        return float(row[idx_cols[0]]), float(row[idx_cols[1]]), float(row[idx_cols[2]])
+    if not all(c in df.columns for c in deg_cols):
+        return None
+    row = df.iloc[0]
+    lat = float(row[deg_cols[0]])
+    lon = float(row[deg_cols[1]])
+    alt = float(row[deg_cols[2]])
+    if all(math.isfinite(v) for v in (lat, lon, alt)):
+        return lat, lon, alt
+    return None
+
+
+def _sm_lla_at_arm(
+    sm_df: pd.DataFrame,
+    sm_arm_local: float | None,
+) -> tuple[float, float, float] | None:
+    lat_col, lon_col, alt_col = "lla/lat_deg", "lla/lon_deg", "lla/alt"
+    if not all(c in sm_df.columns for c in (lat_col, lon_col, alt_col)):
+        return None
+    ts = _sm_experiment_times(sm_df, sm_arm_local)
+    for i in sorted(range(len(ts)), key=lambda j: abs(ts[j])):
+        row = sm_df.iloc[i]
+        try:
+            lat = float(row[lat_col])
+            lon = float(row[lon_col])
+            alt = float(row[alt_col])
+        except (TypeError, ValueError):
+            continue
+        if all(math.isfinite(v) for v in (lat, lon, alt)):
+            return lat, lon, alt
     return None
 
 
 def _sm_ned_reference_lla(
     derived: Path,
     arm_us: int | None,
+    sm_arm_local: float | None,
     sm_df: pd.DataFrame,
 ) -> tuple[float, float, float] | None:
-    ref = _reference_lla(derived, arm_us)
+    ref = _initial_pos_lla_from_sm(sm_df)
     if ref is not None:
         return ref
-    return _initial_pos_lla_from_sm(sm_df)
+    ref = _sm_lla_at_arm(sm_df, sm_arm_local)
+    if ref is not None:
+        return ref
+    return _reference_lla(derived, arm_us)
 
 
 def _interpolate_sm_ned(
@@ -304,7 +331,7 @@ def _interpolate_sm_ned(
     if x is None or y is None or z is None:
         return None, False, False
 
-    ref_lla = _sm_ned_reference_lla(derived, arm_us, sm_df)
+    ref_lla = _sm_ned_reference_lla(derived, arm_us, sm_arm_local, sm_df)
     if ref_lla is not None:
         ref_lat, ref_lon, ref_alt = ref_lla
         ref_e, ref_n, ref_u = lla_to_enu(

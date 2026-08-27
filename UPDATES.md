@@ -1,5 +1,9 @@
 # Updates
 
+## 0.38.1 - SM NED reference priority fix
+- `ea/pose.py`: `sm_ned` ref order — `initialPos_lla/*`, then SM `lla/*` at ARM, then PX4 home/GPS; dropped `initialPos_lla/0..2` heuristic
+- `tests/test_pose_sm.py`: 3 tests where SM origin offset ≠ PX4 home
+
 ## 0.38.0 - SM pose avatars sm_ned and sm_lla
 - `ea/pose.py`: `sm_ned` / `sm_lla` avatars from `sm_system_manager.parquet` via `t_sm(local_ts)`; NED ref from home/GPS-at-ARM or `initialPos_lla`; `filt_lla/*` fallback
 - `tests/test_pose_sm.py`: SM-only without ulog `present`, beside ekf/gps, column omission, local frame
