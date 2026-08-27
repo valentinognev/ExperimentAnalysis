@@ -1,5 +1,10 @@
 # Updates
 
+## 0.18.0 - Vite React Tailwind frontend scaffold
+- `web/frontend/`: React 19 + Vite 7 + Tailwind 4 (`@tailwindcss/vite`); dev server `127.0.0.1:6473`, proxy `/api` → `http://127.0.0.1:6400`
+- `App.tsx`: h1 ExperimentAnalysis, dark `bg-zinc-950 text-zinc-100`
+- `src/ports.test.ts`: vitest asserts port 6473, proxy target 6400, app title
+
 ## 0.17.0 - Rebuild pipeline and pose/series HTTP API
 - `ea/rebuild.py`: `rebuild(slug)` — extract all `raw/drone_*/*.ulg` to `derived/drone_{id}/` via `extract_ulog` with `extra_topics=("actuator_armed",)`, `ulog_arm_us` per drone, `write_sync` → `derived/sync.json`
 - `app.py`: `POST /api/experiments/{slug}/rebuild`, `GET pose?t=`, `GET series?channels=` (repeatable), `GET topics`; unknown slug → 404 `experiment not found`
