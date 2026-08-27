@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import type { Viewer } from "cesium";
-import { markerEntity } from "../cesiumMarkers";
+import { globePickToLla, markerEntity } from "../cesiumMarkers";
 import { enuToLla, type Marker, type Origin } from "../markers";
 import { triadSegments, type EnuPos } from "../triad";
 import type { DronePose } from "./View3D";
@@ -225,11 +225,13 @@ export default function View3DCesium({
       if (!cartesian) return;
 
       const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-      onGroundClick({
-        lat: Cesium.Math.toDegrees(cartographic.latitude),
-        lon: Cesium.Math.toDegrees(cartographic.longitude),
-        alt_m: cartographic.height,
-      });
+      onGroundClick(
+        globePickToLla(
+          Cesium.Math.toDegrees(cartographic.latitude),
+          Cesium.Math.toDegrees(cartographic.longitude),
+          origin,
+        ),
+      );
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
     return () => {
