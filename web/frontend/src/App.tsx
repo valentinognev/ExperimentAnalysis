@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listExperiments, openExperiment, patchManifest, patchMarkers } from "./api";
 import ChannelPlot from "./components/ChannelPlot";
 import MarkerPanel from "./components/MarkerPanel";
@@ -8,6 +8,7 @@ import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
 import Map2D, { hasGpsAvatar } from "./components/Map2D";
 import View3D, { type DronePose } from "./components/View3D";
+import { shouldLoadCesium } from "./engineToggle";
 import { downsampleHz } from "./downsample";
 import { llaToEnu, newMarkerId, type Marker } from "./markers";
 import { plotsOnSlugChange, type PlotDef } from "./plotBoard";
@@ -15,6 +16,8 @@ import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
 import { bannerText } from "./unsynced";
 import { filterVisible, idsChanged, mergeDroneIds } from "./visibleDrones";
+
+const View3DCesium = lazy(() => import("./components/View3DCesium"));
 
 type TrailPoint = { t: number; pos: EnuPos };
 
@@ -363,12 +366,49 @@ export default function App() {
       <div className="min-h-0 flex-1 p-4">
         <div className="flex h-[min(70vh,640px)] gap-4">
           <div className="min-w-0 flex-1 rounded border border-zinc-800">
-            <View3D
-              drones={drones}
-              origin={pose?.origin}
-              markerPositions={markerPositions}
-              onGroundClick={handleGroundClick}
-            />
+            <div className="flex items-center gap-2 border-b border-zinc-800 px-2 py-1">
+              <span className="text-xs text-zinc-400">3D engine</span>
+              <button
+                type="button"
+                className={`rounded px-2 py-0.5 text-xs ${
+                  engine3d === "plotly"
+                    ? "bg-zinc-700 text-zinc-100"
+                    : "text-zinc-400 hover:bg-zinc-900"
+                }`}
+                onClick={() => setEngine3d("plotly")}
+              >
+                Plotly
+              </button>
+              <button
+                type="button"
+                className={`rounded px-2 py-0.5 text-xs ${
+                  engine3d === "cesium"
+                    ? "bg-zinc-700 text-zinc-100"
+                    : "text-zinc-400 hover:bg-zinc-900"
+                }`}
+                onClick={() => setEngine3d("cesium")}
+              >
+                Cesium
+              </button>
+            </div>
+            {shouldLoadCesium(engine3d) ? (
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center text-sm text-zinc-400">
+                    Loading globe…
+                  </div>
+                }
+              >
+                <View3DCesium drones={drones} origin={pose?.origin} />
+              </Suspense>
+            ) : (
+              <View3D
+                drones={drones}
+                origin={pose?.origin}
+                markerPositions={markerPositions}
+                onGroundClick={handleGroundClick}
+              />
+            )}
           </div>
           <Map2D
             pose={pose}

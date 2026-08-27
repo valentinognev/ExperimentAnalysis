@@ -4,7 +4,7 @@ import { groundPlaneExtent, groundPlaneTrace } from "../groundPlane";
 import { triadTraces, type EnuPos } from "../triad";
 import { sceneLayout } from "../view3dLayout";
 import type { Origin } from "../markers";
-import { groundClickToLla } from "../markers";
+import { groundClickToLla, type PlotlyGroundClick } from "../markers";
 
 type QuatXyzw = [number, number, number, number];
 
@@ -128,7 +128,7 @@ export default function View3D({
 
   const handleClick = (event: PlotMouseEvent) => {
     if (!origin || !onGroundClick) return;
-    const lla = groundClickToLla(event, origin);
+    const lla = groundClickToLla(event as PlotlyGroundClick, origin);
     if (lla) onGroundClick(lla);
   };
 

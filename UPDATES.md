@@ -1,5 +1,11 @@
 # Updates
 
+## 0.40.0 - Cesium lazy 3D engine
+- `engineToggle.ts`: `shouldLoadCesium`; Plotly | Cesium toggle PATCHes `ui.engine3d`
+- `View3DCesium.tsx`: lazy `import("cesium")`, OSM `UrlTemplateImageryProvider`, body triads as polylines
+- `vite.config.ts`: `CESIUM_BASE_URL`, static copy Workers/Assets/Widgets; port 6473 unchanged
+- `triad.ts`: `triadSegments` shared by Plotly and Cesium
+
 ## 0.39.1 - SM LLA-at-ARM offset fix
 - `ea/pose.py`: `_sm_lla_at_arm` uses unoffset experiment times (spatial ref at raw ARM, like `_gps_lla_at_arm`)
 - `tests/test_manual_offset.py`: offset 1.5 must not shift SM NED reference LLA to pre-ARM sample

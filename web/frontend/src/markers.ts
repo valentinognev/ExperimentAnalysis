@@ -78,7 +78,7 @@ export function distanceM(
 
 /** Plotly scene click with x/y as E/N; projects to ground plane u=0. */
 export type PlotlyGroundClick = {
-  points?: Array<{ x?: number; y?: number }>;
+  points?: Array<{ x?: number | null; y?: number | null }>;
 };
 
 export function groundClickToLla(
@@ -86,7 +86,7 @@ export function groundClickToLla(
   origin: Origin,
 ): { lat: number; lon: number; alt_m: number } | null {
   const pt = plotlyClick.points?.[0];
-  if (pt?.x === undefined || pt?.y === undefined) return null;
+  if (pt?.x == null || pt?.y == null) return null;
   return enuToLla(pt.x, pt.y, 0, origin.lat, origin.lon, origin.alt_m);
 }
 

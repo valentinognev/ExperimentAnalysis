@@ -48,21 +48,41 @@ function bodyAxisEnu(
   return [de, dn, du];
 }
 
+export type TriadSegment = {
+  name: string;
+  color: string;
+  start: EnuPos;
+  end: EnuPos;
+};
+
+export function triadSegments(
+  pos: EnuPos,
+  q_xyzw: QuatXyzw,
+  scale = 1,
+): TriadSegment[] {
+  return BODY_AXES.map(({ name, body, color }) => {
+    const [de, dn, du] = bodyAxisEnu(body, q_xyzw, scale);
+    return {
+      name,
+      color,
+      start: pos,
+      end: { e: pos.e + de, n: pos.n + dn, u: pos.u + du },
+    };
+  });
+}
+
 export function triadTraces(
   pos: EnuPos,
   q_xyzw: QuatXyzw,
   scale = 1,
 ): Data[] {
-  return BODY_AXES.map(({ name, body, color }) => {
-    const [de, dn, du] = bodyAxisEnu(body, q_xyzw, scale);
-    return {
-      type: "scatter3d",
-      mode: "lines",
-      name,
-      x: [pos.e, pos.e + de],
-      y: [pos.n, pos.n + dn],
-      z: [pos.u, pos.u + du],
-      line: { color, width: 4 },
-    } satisfies Data;
-  });
+  return triadSegments(pos, q_xyzw, scale).map(({ name, color, start, end }) => ({
+    type: "scatter3d",
+    mode: "lines",
+    name,
+    x: [start.e, end.e],
+    y: [start.n, end.n],
+    z: [start.u, end.u],
+    line: { color, width: 4 },
+  } satisfies Data));
 }
