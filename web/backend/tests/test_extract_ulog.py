@@ -53,3 +53,32 @@ def test_extract_ulog_to_parquet(tmp_path):
     lp = pq.read_table(dest / "vehicle_local_position.parquet")
     assert list(lp.column("x").to_pylist()) == [0.0, 1.0]
     assert lp.schema.field("timestamp").type == pa.uint64()
+
+
+def test_extract_ulog_gps_fallback_to_global_position(tmp_path):
+    ulg = tmp_path / "sitl.ulg"
+    dest = tmp_path / "out"
+    write_min_ulog(
+        ulg,
+        {
+            "vehicle_status": [
+                {"timestamp": 1000, "arming_state": 1},
+            ],
+            "vehicle_local_position": [
+                {"timestamp": 1000, "x": 0.0, "y": 0.0, "z": 0.0},
+            ],
+            "vehicle_attitude": [
+                {"timestamp": 1000, "q[0]": 1.0, "q[1]": 0.0, "q[2]": 0.0, "q[3]": 0.0},
+            ],
+            "vehicle_global_position": [
+                {"timestamp": 5000, "lat": 320800000, "lon": 347800000, "alt": 50000},
+            ],
+        },
+    )
+
+    written = extract_ulog(ulg, dest)
+
+    assert "vehicle_global_position" in written
+    assert "vehicle_gps_position" not in written
+    assert (dest / "vehicle_global_position.parquet").is_file()
+    assert not (dest / "vehicle_gps_position.parquet").exists()
