@@ -1,5 +1,9 @@
 # Updates
 
+## 0.34.0 - SSH ingest (mocked)
+- `ea/ingest_ssh.py`: `ssh_pull(slug, drone_id, runner=...)` rsyncs Pi SM/HA logs into `raw/drone_<id>/`; publickey-only SSH, 30s timeout, password redaction, empty-remote error
+- `tests/test_ingest_ssh.py`: fake runner argv/timeout, password redaction, empty remote, raw preserved on failure
+
 ## 0.33.0 - HA log extract
 - `ea/extract_ha.py`: `extract_ha(log, dest)` → `ha_diag.parquet` / `ha_mavlink.parquet` or `"skipped"` when no parseable timestamps
 - `ea/rebuild.py`: extract `*adapter_diag*.log` and `*mavlink*` under `raw/drone_*` into `derived/ha/drone_<id>`
