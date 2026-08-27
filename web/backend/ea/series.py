@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ea.manifest import load_manifest
 from ea.sync import t_ulog
 
 _POSE_TOPICS = frozenset(
@@ -26,6 +27,11 @@ _SOURCE_PARQUET_DIRS = {
     "sm": lambda exp_dir, drone_id: exp_dir / "derived" / "sm" / f"drone_{drone_id}",
     "ha": lambda exp_dir, drone_id: exp_dir / "derived" / "ha" / f"drone_{drone_id}",
 }
+
+
+def _manual_offset_s(manifest: dict, drone_id: str) -> float:
+    offsets = manifest.get("sync", {}).get("manual_offsets_s", {})
+    return float(offsets.get(str(drone_id), 0))
 
 
 def _read_sync(experiment_dir: Path) -> dict:
@@ -82,6 +88,7 @@ def _load_channel_series(
     topic: str,
     field: str,
     arm_us: int | None,
+    offset_s: float = 0.0,
 ) -> tuple[list[float], list[float]]:
     base = _SOURCE_PARQUET_DIRS[source](experiment_dir, drone_id)
     parquet_path = base / f"{topic}.parquet"
@@ -93,7 +100,7 @@ def _load_channel_series(
         return [], []
 
     first_us = int(df["timestamp"].iloc[0])
-    t_vals = [t_ulog(float(ts), arm_us, first_us) for ts in df["timestamp"]]
+    t_vals = [t_ulog(float(ts), arm_us, first_us, offset_s) for ts in df["timestamp"]]
     y_vals = [float(v) for v in df[field]]
 
     if topic in _POSE_TOPICS:
@@ -115,11 +122,13 @@ def channel_value_at_t(
         return None
 
     drone_id, source, topic, field = parsed
+    manifest = load_manifest(experiment_dir / "manifest.json")
     sync_drones = _read_sync(experiment_dir)
     arm_us = sync_drones.get(drone_id, {}).get("ulog_arm_us")
+    offset_s = _manual_offset_s(manifest, drone_id)
 
     t_vals, y_vals = _load_channel_series(
-        experiment_dir, drone_id, source, topic, field, arm_us
+        experiment_dir, drone_id, source, topic, field, arm_us, offset_s
     )
     if not t_vals:
         return None
@@ -151,6 +160,7 @@ def series(
     t1: float | None = None,
 ) -> dict:
     sync_drones = _read_sync(experiment_dir)
+    manifest = load_manifest(experiment_dir / "manifest.json")
     result: dict[str, dict[str, list[float]]] = {}
 
     for channel in channels:
@@ -162,9 +172,10 @@ def series(
         drone_id, source, topic, field = parsed
         sync_info = sync_drones.get(drone_id, {})
         arm_us = sync_info.get("ulog_arm_us")
+        offset_s = _manual_offset_s(manifest, drone_id)
 
         t_vals, y_vals = _load_channel_series(
-            experiment_dir, drone_id, source, topic, field, arm_us
+            experiment_dir, drone_id, source, topic, field, arm_us, offset_s
         )
         t_vals, y_vals = _apply_window(t_vals, y_vals, t0, t1)
         result[channel] = {"t": t_vals, "y": y_vals}

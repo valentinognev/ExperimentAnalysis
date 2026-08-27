@@ -6,16 +6,20 @@ import json
 from pathlib import Path
 
 
-def t_ulog(t_us: float, arm_us: int | None, first_us: int) -> float:
+def t_ulog(
+    t_us: float, arm_us: int | None, first_us: int, offset_s: float = 0.0
+) -> float:
     if arm_us is not None:
-        return (t_us - arm_us) / 1e6
-    return (t_us - first_us) / 1e6
+        return (t_us - arm_us) / 1e6 + offset_s
+    return (t_us - first_us) / 1e6 + offset_s
 
 
-def t_sm(local_ts: float, arm_local: float | None, first_local: float) -> float:
+def t_sm(
+    local_ts: float, arm_local: float | None, first_local: float, offset_s: float = 0.0
+) -> float:
     if arm_local is not None:
-        return local_ts - arm_local
-    return local_ts - first_local
+        return local_ts - arm_local + offset_s
+    return local_ts - first_local + offset_s
 
 
 def write_sync(experiment_dir: Path, per_drone: dict) -> dict:

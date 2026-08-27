@@ -1,5 +1,10 @@
 # Updates
 
+## 0.39.0 - Per-drone manual time offsets
+- `ea/sync.py`: `t_ulog` / `t_sm` accept `offset_s` (default 0); `T_final = T_arm + offset`
+- `ea/pose.py`, `ea/series.py`: read `manifest.sync.manual_offsets_s[str(drone_id)]` per drone
+- `tests/test_manual_offset.py`: offset 1.5 shifts pose; unit tests for `t_ulog`/`t_sm`
+
 ## 0.38.1 - SM NED reference priority fix
 - `ea/pose.py`: `sm_ned` ref order — `initialPos_lla/*`, then SM `lla/*` at ARM, then PX4 home/GPS; dropped `initialPos_lla/0..2` heuristic
 - `tests/test_pose_sm.py`: 3 tests where SM origin offset ≠ PX4 home

@@ -51,9 +51,16 @@ def _gps_parquet(derived: Path) -> Path | None:
     return None
 
 
-def _experiment_times(df: pd.DataFrame, arm_us: int | None) -> list[float]:
+def _manual_offset_s(manifest: dict, drone_id: str) -> float:
+    offsets = manifest.get("sync", {}).get("manual_offsets_s", {})
+    return float(offsets.get(str(drone_id), 0))
+
+
+def _experiment_times(
+    df: pd.DataFrame, arm_us: int | None, offset_s: float = 0.0
+) -> list[float]:
     first_us = int(df["timestamp"].iloc[0])
-    return [t_ulog(float(ts), arm_us, first_us) for ts in df["timestamp"]]
+    return [t_ulog(float(ts), arm_us, first_us, offset_s) for ts in df["timestamp"]]
 
 
 def _attitude_wxyz_columns(df: pd.DataFrame) -> tuple[str, str, str, str] | None:
@@ -116,6 +123,7 @@ def _interpolate_ekf_ned(
     derived: Path,
     arm_us: int | None,
     t: float,
+    offset_s: float = 0.0,
 ) -> tuple[tuple[float, float, float] | None, bool]:
     lp_path = _parquet_path(derived, "vehicle_local_position")
     if lp_path is None:
@@ -124,7 +132,7 @@ def _interpolate_ekf_ned(
     if df.empty:
         return None, False
 
-    ts = _experiment_times(df, arm_us)
+    ts = _experiment_times(df, arm_us, offset_s)
     if t < ts[0] or t > ts[-1]:
         return None, False
 
@@ -143,6 +151,7 @@ def _interpolate_gps_enu(
     origin_lat: float,
     origin_lon: float,
     origin_alt: float,
+    offset_s: float = 0.0,
 ) -> tuple[tuple[float, float, float] | None, bool]:
     gps_path = _gps_parquet(derived)
     if gps_path is None:
@@ -151,7 +160,7 @@ def _interpolate_gps_enu(
     if df.empty:
         return None, False
 
-    ts = _experiment_times(df, arm_us)
+    ts = _experiment_times(df, arm_us, offset_s)
     if t < ts[0] or t > ts[-1]:
         return None, False
 
@@ -182,6 +191,7 @@ def _interpolate_attitude(
     derived: Path,
     arm_us: int | None,
     t: float,
+    offset_s: float = 0.0,
 ) -> tuple[tuple[float, float, float, float] | None, bool]:
     att_path = _parquet_path(derived, "vehicle_attitude")
     if att_path is None:
@@ -194,7 +204,7 @@ def _interpolate_attitude(
     if cols is None:
         return None, False
 
-    ts = _experiment_times(df, arm_us)
+    ts = _experiment_times(df, arm_us, offset_s)
     if t < ts[0] or t > ts[-1]:
         return None, False
 
@@ -235,9 +245,13 @@ def _sm_parquet_path(derived: Path) -> Path | None:
     return path if path.is_file() else None
 
 
-def _sm_experiment_times(df: pd.DataFrame, sm_arm_local: float | None) -> list[float]:
+def _sm_experiment_times(
+    df: pd.DataFrame, sm_arm_local: float | None, offset_s: float = 0.0
+) -> list[float]:
     first_local = float(df["local_ts"].iloc[0])
-    return [t_sm(float(ts), sm_arm_local, first_local) for ts in df["local_ts"]]
+    return [
+        t_sm(float(ts), sm_arm_local, first_local, offset_s) for ts in df["local_ts"]
+    ]
 
 
 def _sm_pos_ned_columns(df: pd.DataFrame) -> tuple[str, str, str] | None:
@@ -273,11 +287,12 @@ def _initial_pos_lla_from_sm(df: pd.DataFrame) -> tuple[float, float, float] | N
 def _sm_lla_at_arm(
     sm_df: pd.DataFrame,
     sm_arm_local: float | None,
+    offset_s: float = 0.0,
 ) -> tuple[float, float, float] | None:
     lat_col, lon_col, alt_col = "lla/lat_deg", "lla/lon_deg", "lla/alt"
     if not all(c in sm_df.columns for c in (lat_col, lon_col, alt_col)):
         return None
-    ts = _sm_experiment_times(sm_df, sm_arm_local)
+    ts = _sm_experiment_times(sm_df, sm_arm_local, offset_s)
     for i in sorted(range(len(ts)), key=lambda j: abs(ts[j])):
         row = sm_df.iloc[i]
         try:
@@ -296,11 +311,12 @@ def _sm_ned_reference_lla(
     arm_us: int | None,
     sm_arm_local: float | None,
     sm_df: pd.DataFrame,
+    offset_s: float = 0.0,
 ) -> tuple[float, float, float] | None:
     ref = _initial_pos_lla_from_sm(sm_df)
     if ref is not None:
         return ref
-    ref = _sm_lla_at_arm(sm_df, sm_arm_local)
+    ref = _sm_lla_at_arm(sm_df, sm_arm_local, offset_s)
     if ref is not None:
         return ref
     return _reference_lla(derived, arm_us)
@@ -315,12 +331,13 @@ def _interpolate_sm_ned(
     origin_lon: float,
     origin_alt: float,
     sm_df: pd.DataFrame,
+    offset_s: float = 0.0,
 ) -> tuple[dict[str, float] | None, bool, bool]:
     cols = _sm_pos_ned_columns(sm_df)
     if cols is None:
         return None, False, False
 
-    ts = _sm_experiment_times(sm_df, sm_arm_local)
+    ts = _sm_experiment_times(sm_df, sm_arm_local, offset_s)
     if t < ts[0] or t > ts[-1]:
         return None, False, False
 
@@ -331,7 +348,7 @@ def _interpolate_sm_ned(
     if x is None or y is None or z is None:
         return None, False, False
 
-    ref_lla = _sm_ned_reference_lla(derived, arm_us, sm_arm_local, sm_df)
+    ref_lla = _sm_ned_reference_lla(derived, arm_us, sm_arm_local, sm_df, offset_s)
     if ref_lla is not None:
         ref_lat, ref_lon, ref_alt = ref_lla
         ref_e, ref_n, ref_u = lla_to_enu(
@@ -351,12 +368,13 @@ def _interpolate_sm_lla(
     origin_lon: float,
     origin_alt: float,
     sm_df: pd.DataFrame,
+    offset_s: float = 0.0,
 ) -> tuple[dict[str, float] | None, bool]:
     cols = _sm_lla_columns(sm_df)
     if cols is None:
         return None, False
 
-    ts = _sm_experiment_times(sm_df, sm_arm_local)
+    ts = _sm_experiment_times(sm_df, sm_arm_local, offset_s)
     if t < ts[0] or t > ts[-1]:
         return None, False
 
@@ -379,6 +397,7 @@ def _sm_avatars_at(
     origin_lat: float,
     origin_lon: float,
     origin_alt: float,
+    offset_s: float = 0.0,
 ) -> tuple[dict[str, dict[str, float]], bool]:
     sm_path = _sm_parquet_path(derived)
     if sm_path is None:
@@ -401,6 +420,7 @@ def _sm_avatars_at(
         origin_lon,
         origin_alt,
         sm_df,
+        offset_s,
     )
     if ned_ok and sm_ned is not None:
         avatars["sm_ned"] = sm_ned
@@ -414,6 +434,7 @@ def _sm_avatars_at(
         origin_lon,
         origin_alt,
         sm_df,
+        offset_s,
     )
     if lla_ok and sm_lla is not None:
         avatars["sm_lla"] = sm_lla
@@ -458,9 +479,10 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
         sync_info = sync_drones.get(drone_id, {})
         arm_us = sync_info.get("ulog_arm_us")
         synced = sync_info.get("synced", arm_us is not None)
+        offset_s = _manual_offset_s(manifest, drone_id)
 
-        ekf_ned, pos_ok = _interpolate_ekf_ned(derived, arm_us, t)
-        attitude, att_ok = _interpolate_attitude(derived, arm_us, t)
+        ekf_ned, pos_ok = _interpolate_ekf_ned(derived, arm_us, t, offset_s)
+        attitude, att_ok = _interpolate_attitude(derived, arm_us, t, offset_s)
         present = pos_ok and att_ok
 
         drone_dict: dict = {
@@ -489,7 +511,7 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
                 avatars["ekf_ned"] = {"e": e, "n": n, "u": u}
 
             gps_enu, gps_ok = _interpolate_gps_enu(
-                derived, arm_us, t, origin_lat, origin_lon, origin_alt
+                derived, arm_us, t, origin_lat, origin_lon, origin_alt, offset_s
             )
             if gps_ok and gps_enu is not None:
                 e_g, n_g, u_g = gps_enu
@@ -506,6 +528,7 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
             origin_lat,
             origin_lon,
             origin_alt,
+            offset_s,
         )
         if sm_avatars:
             if "avatars" not in drone_dict:
