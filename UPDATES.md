@@ -1,5 +1,9 @@
 # Updates
 
+## 0.11.0 - Detect PX4 ARM timestamp
+- `ea/arm.py`: `ulog_arm_us(status_parquet, actuator_parquet)` — first `arming_state == 2`, else first `armed` in actuator parquet; `None` if never armed
+- `tests/test_arm.py`: two-row vehicle_status → 5000; all-disarmed → `None`
+
 ## 0.10.0 - Extract ulog topics to parquet
 - `ea/extract_ulog.py`: `extract_ulog(ulg_path, dest_dir, extra_topics=())` writes `ALWAYS` topics (+ GPS fallback to `vehicle_global_position`) as `{topic}.parquet` with uint64 `timestamp`
 - `tests/test_extract_ulog.py`: fixture via `write_min_ulog`, parquet round-trip asserts `arming_state` and `x`
