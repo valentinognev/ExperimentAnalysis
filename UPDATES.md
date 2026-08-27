@@ -1,5 +1,11 @@
 # Updates
 
+## 0.22.0 - Timeline scrub and playback
+- `web/frontend/src/components/Timeline.tsx`: range slider, numeric T, Play/Reverse/Pause, speed 0.25/1/2/4×; rAF + `advance` from `timeCursor`; exported `nextDirection`
+- `App.tsx`: mounts Timeline with `t`/`setT`, `tMax=60`
+- `src/components/Timeline.test.tsx`: vitest + testing-library (direction helpers, speed buttons, play/pause/reverse)
+- devDeps: `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`
+
 ## 0.21.0 - 20 Hz pose trails
 - `web/frontend/src/downsample.ts`: `downsampleHz(ts, maxHz=20)` — keep first/last and samples ≥1/maxHz apart
 - `web/frontend/src/api.ts`: `getPose(slug, t)` + `PoseResponse` types; GET `/api/experiments/{slug}/pose?t=`

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ExperimentBar from "./components/ExperimentBar";
+import Timeline from "./components/Timeline";
 import View3D, { type DronePose } from "./components/View3D";
 import { downsampleHz } from "./downsample";
 import type { EnuPos } from "./triad";
@@ -79,6 +80,7 @@ export default function App() {
           <View3D drones={drones} />
         </div>
       </div>
+      <Timeline t={t} tMax={60} onTChange={setT} />
     </div>
   );
 }
