@@ -9,6 +9,7 @@ import {
   rebuild,
   getPose,
   getSeries,
+  getDuration,
   patchManifest,
 } from "./api";
 
@@ -131,6 +132,29 @@ describe("api", () => {
       method: "POST",
     });
     expect(result).toEqual(body);
+  });
+
+  it("throws when response is not ok", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      text: async () => "experiment not found",
+    } as Response);
+
+    await expect(openExperiment("nope")).rejects.toThrow("experiment not found");
+  });
+
+  it("getDuration GETs duration URL", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ t_max_s: 155 }),
+    } as Response);
+
+    const result = await getDuration("Baseball");
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/Baseball/duration");
+    expect(result).toEqual({ t_max_s: 155 });
   });
 
   it("getSeries GETs series with repeatable channels params", async () => {

@@ -1,3 +1,5 @@
+import copy
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -7,11 +9,21 @@ from ea.ingest_mavlink import mavlink_pull
 from ea.ingest_ssh import _redact_password, ssh_pull
 from ea.manifest import merge_manifest, save_manifest
 from ea.pose import pose_at
+from ea.duration import experiment_t_max_s
 from ea.rebuild import rebuild
 from ea.series import series
-from ea.store import create_experiment, list_experiments, open_experiment
 from ea.topics import list_topics
+from ea.store import create_experiment, list_experiments, open_experiment
 from ports import FRONTEND_PORT
+
+
+def _manifest_for_api(manifest: dict) -> dict:
+    redacted = copy.deepcopy(manifest)
+    for drone in redacted.get("drones", []):
+        ssh = drone.get("ssh")
+        if isinstance(ssh, dict) and "password" in ssh:
+            del ssh["password"]
+    return redacted
 
 app = FastAPI()
 
@@ -77,7 +89,7 @@ def get_experiment(slug: str):
         result = open_experiment(slug)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="experiment not found")
-    return {"slug": result["slug"], "manifest": result["manifest"]}
+    return {"slug": result["slug"], "manifest": _manifest_for_api(result["manifest"])}
 
 
 @app.post("/api/experiments/{slug}/import")
@@ -121,6 +133,7 @@ def post_pull(slug: str, body: PullBody):
             last_error = _redact_password(err, password)
 
     if any_ok:
+        rebuild(slug)
         drones_out = {drone_key: {"ok": True}}
     else:
         drones_out = {
@@ -151,6 +164,15 @@ def patch_markers(slug: str, body: MarkersBody):
     merged = merge_manifest(result["manifest"], {"ui": {"markers": markers}})
     save_manifest(result["path"] / "manifest.json", merged)
     return {"slug": slug, "manifest": merged}
+
+
+@app.get("/api/experiments/{slug}/duration")
+def get_duration(slug: str):
+    try:
+        result = open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return {"t_max_s": experiment_t_max_s(result["path"])}
 
 
 @app.post("/api/experiments/{slug}/rebuild")

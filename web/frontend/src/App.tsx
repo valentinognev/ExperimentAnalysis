@@ -1,12 +1,19 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { listExperiments, openExperiment, patchManifest, patchMarkers } from "./api";
+import { getDuration, listExperiments, openExperiment, patchManifest, patchMarkers } from "./api";
+import {
+  avatarUsesTriad,
+  enabledAvatarKeys,
+  hasAnyMapAvatar,
+  primaryAvatarPos,
+  type AvatarKey,
+} from "./avatars";
 import ChannelPlot from "./components/ChannelPlot";
 import MarkerPanel from "./components/MarkerPanel";
 import PlotBoard from "./components/PlotBoard";
 import DroneList from "./components/DroneList";
 import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
-import Map2D, { hasGpsAvatar } from "./components/Map2D";
+import Map2D from "./components/Map2D";
 import View3D, { type DronePose } from "./components/View3D";
 import { shouldLoadCesium } from "./engineToggle";
 import { downsampleHz } from "./downsample";
@@ -35,6 +42,7 @@ export default function App() {
   const [slug, setSlug] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [t, setT] = useState(0);
+  const [tMax, setTMax] = useState(60);
   const [droneIds, setDroneIds] = useState<string[]>([]);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const [plots, setPlots] = useState<PlotDef[]>([]);
@@ -63,6 +71,7 @@ export default function App() {
   useEffect(() => {
     setTrailHistory({});
     setT(0);
+    setTMax(60);
     setMarkers([]);
     setSelectedMarkerIds([]);
     mapDefaultAppliedRef.current = false;
@@ -169,6 +178,26 @@ export default function App() {
     };
   }, [slug, refreshToken]);
 
+  useEffect(() => {
+    if (!slug) {
+      setTMax(60);
+      return;
+    }
+    let cancelled = false;
+    getDuration(slug)
+      .then((data) => {
+        if (!cancelled) {
+          setTMax(Math.max(1, data.t_max_s));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTMax(60);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, refreshToken]);
+
   const visibleIdsKey = useMemo(
     () => [...visibleIds].sort().join(","),
     [visibleIds],
@@ -231,7 +260,7 @@ export default function App() {
     if (!pose || mapLinkedFromManifestRef.current || mapDefaultAppliedRef.current) {
       return;
     }
-    setMapLinked(hasGpsAvatar(pose));
+    setMapLinked(hasAnyMapAvatar(pose.drones));
     mapDefaultAppliedRef.current = true;
   }, [pose]);
 
@@ -260,9 +289,10 @@ export default function App() {
     setTrailHistory((prev) => {
       const next = { ...prev };
       for (const [id, drone] of Object.entries(pose.drones)) {
-        if (!drone.present || !drone.avatars?.ekf_ned) continue;
+        const enabled = enabledAvatarKeys(id, drone.avatars, avatars);
+        const pos = primaryAvatarPos(drone.avatars, enabled);
+        if (!pos) continue;
         const pts = [...(next[id] ?? [])];
-        const pos = drone.avatars.ekf_ned;
         if (pts.length > 0 && pts[pts.length - 1].t === pose.t) {
           pts[pts.length - 1] = { t: pose.t, pos };
         } else {
@@ -272,42 +302,57 @@ export default function App() {
       }
       return next;
     });
-  }, [pose]);
+  }, [pose, avatars]);
 
   const drones = useMemo((): DronePose[] => {
     if (!pose) return [];
     const visible = new Set(visibleDroneIds);
-    return Object.entries(pose.drones)
-      .filter(
-        ([id, d]) =>
-          visible.has(id) &&
-          d.present &&
-          d.attitude_q_xyzw !== undefined &&
-          d.avatars?.ekf_ned !== undefined,
-      )
-      .map(([id, d]) => {
-        const cfg = vectorConfigs[id];
-        const avatarKey = cfg?.avatar ?? "ekf_ned";
-        const avatars = d.avatars!;
+    const out: DronePose[] = [];
+    const identity: [number, number, number, number] = [0, 0, 0, 1];
+
+    for (const [id, d] of Object.entries(pose.drones)) {
+      if (!visible.has(id) || !d.avatars) continue;
+      const enabled = enabledAvatarKeys(id, d.avatars, avatars);
+      if (enabled.length === 0) continue;
+
+      const cfg = vectorConfigs[id];
+      const vectorAvatar = (cfg?.avatar ?? "ekf_ned") as AvatarKey;
+
+      enabled.forEach((key, index) => {
+        const pos = d.avatars![key];
+        if (!pos) return;
+        const useTriad = avatarUsesTriad(key, d);
         const vectorBase =
-          avatarKey === "gps" && avatars.gps
-            ? avatars.gps
-            : avatars.ekf_ned;
-        return {
+          vectorAvatar === "gps" && d.avatars!.gps
+            ? d.avatars!.gps
+            : d.avatars!.ekf_ned ?? pos;
+
+        out.push({
           id,
-          pos: avatars.ekf_ned,
-          attitude_q_xyzw: d.attitude_q_xyzw!,
-          trail: downsampleTrail(trailHistory[id] ?? []),
-          vectors: d.vectors?.velocity
-            ? {
-                velocity: d.vectors.velocity,
-                scale: cfg?.scale ?? 1,
-                base: vectorBase,
-              }
-            : undefined,
-        };
+          label: key,
+          pos,
+          attitude_q_xyzw: useTriad ? d.attitude_q_xyzw : identity,
+          style: useTriad ? "triad" : "point",
+          trail:
+            index === 0
+              ? downsampleTrail(trailHistory[id] ?? [])
+              : undefined,
+          vectors:
+            useTriad &&
+            key === vectorAvatar &&
+            d.vectors?.velocity &&
+            vectorBase
+              ? {
+                  velocity: d.vectors.velocity,
+                  scale: cfg?.scale ?? 1,
+                  base: vectorBase,
+                }
+              : undefined,
+        });
       });
-  }, [pose, trailHistory, visibleDroneIds, vectorConfigs]);
+    }
+    return out;
+  }, [pose, trailHistory, visibleDroneIds, vectorConfigs, avatars]);
 
   const markerPositions = useMemo(() => {
     if (!pose?.origin) return [];
@@ -448,7 +493,7 @@ export default function App() {
         plots={plots}
         onPlotsChange={setPlots}
       />
-      <Timeline t={t} tMax={60} onTChange={setT} />
+      <Timeline t={t} tMax={tMax} onTChange={setT} />
     </div>
   );
 }

@@ -1,5 +1,12 @@
 # Updates
 
+## 0.43.1 - Review fix-wave (duration, SM, avatars)
+- `ea/duration.py`, `GET .../duration`, `sync.json` `t_max_s`; `App.tsx` dynamic Timeline `tMax`
+- SM topics/series from `derived/drone_*/sm_system_manager.parquet`; `local_ts`+`t_sm`; HA first-sample time; exclude `sm_*` from ulog topics
+- Pull success triggers `rebuild`; `ExperimentBar` Rebuild button; `DroneList` rebuild after ok pull
+- Multi-avatar 3D/map (`ekf_ned`, `gps`, `sm_ned`, `sm_lla`); `ui.avatars` default-on
+- `api.ts` throws on HTTP error; GET experiment redacts `ssh.password`
+
 ## 0.43.0 - Baseball UI E2E
 - `web/frontend/e2e/baseball.spec.ts`: Playwright import/rebuild on `/home/valentin/RL/TESTFLIGHTS/Baseball`; asserts D2/D3/D4, Plotly 3D, time slider
 - `web/frontend/playwright.config.ts`: spawns API `:6400` (`EA_EXPERIMENTS_DIR=/tmp/ea-e2e-experiments`, cleaned each run) and Vite `:6473` (`CHOKIDAR_USEPOLLING` for EMFILE)

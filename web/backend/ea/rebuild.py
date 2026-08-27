@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +12,7 @@ from ea.extract_ha import extract_ha
 from ea.extract_sm import extract_sm
 from ea.extract_ulog import extract_ulog
 from ea.store import open_experiment
+from ea.duration import experiment_t_max_s
 from ea.sync import write_sync
 
 _EXTRA_TOPICS = ("actuator_armed",)
@@ -91,4 +93,10 @@ def rebuild(slug: str) -> dict:
             }
 
     sync = write_sync(exp_path, per_drone)
-    return {"ok": True, "drones": drones_out, "sync": sync}
+    t_max_s = experiment_t_max_s(exp_path)
+    sync["t_max_s"] = t_max_s
+    sync_path = exp_path / "derived" / "sync.json"
+    with open(sync_path, "w") as f:
+        json.dump(sync, f, indent=2)
+        f.write("\n")
+    return {"ok": True, "drones": drones_out, "sync": sync, "t_max_s": t_max_s}

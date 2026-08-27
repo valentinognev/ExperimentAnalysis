@@ -29,8 +29,12 @@ def test_pull_mocked_ingest(tmp_path, monkeypatch):
         calls.append(("mavlink", slug, drone_id))
         return {"ok": True}
 
+    def fake_rebuild(slug):
+        return {"ok": True}
+
     monkeypatch.setattr("app.ssh_pull", fake_ssh)
     monkeypatch.setattr("app.mavlink_pull", fake_mavlink)
+    monkeypatch.setattr("app.rebuild", fake_rebuild)
 
     c = TestClient(app)
     r = c.post(
@@ -52,6 +56,30 @@ def test_pull_unknown_slug_404(tmp_path, monkeypatch):
         json={"drone_id": 2, "adapters": ["ssh"]},
     )
     assert r.status_code == 404
+
+
+def test_pull_success_triggers_rebuild(tmp_path, monkeypatch):
+    _setup_experiment(tmp_path, monkeypatch)
+    rebuild_calls = []
+
+    def fake_ssh(slug, drone_id, runner=None):
+        return {"ok": True}
+
+    def fake_rebuild(slug):
+        rebuild_calls.append(slug)
+        return {"ok": True}
+
+    monkeypatch.setattr("app.ssh_pull", fake_ssh)
+    monkeypatch.setattr("app.rebuild", fake_rebuild)
+
+    c = TestClient(app)
+    r = c.post(
+        "/api/experiments/PullApi/pull",
+        json={"drone_id": 2, "adapters": ["ssh"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    assert rebuild_calls == ["PullApi"]
 
 
 def test_pull_password_not_in_json(tmp_path, monkeypatch):

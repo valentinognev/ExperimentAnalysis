@@ -1,5 +1,6 @@
 import Plot from "react-plotly.js";
 import type { PoseResponse } from "../api";
+import { hasAnyMapAvatar } from "../avatars";
 import { enuToLla, type Marker } from "../markers";
 import { mapFigure } from "../map2d";
 
@@ -15,7 +16,13 @@ type Map2DProps = {
 
 export function hasGpsAvatar(pose: PoseResponse | null): boolean {
   if (!pose) return false;
-  return Object.values(pose.drones).some((d) => d.avatars?.gps !== undefined);
+  return hasAnyMapAvatar(pose.drones);
+}
+
+function mapAvatarPos(
+  avatars: NonNullable<PoseResponse["drones"][string]["avatars"]>,
+): { e: number; n: number; u: number } | undefined {
+  return avatars.gps ?? avatars.sm_lla;
 }
 
 export default function Map2D({
@@ -33,12 +40,13 @@ export default function Map2D({
 
   const points = [];
   if (pose && origin) {
-    const droneEntries = Object.entries(pose.drones).filter(
-      ([id, d]) => visible.has(id) && d.present && d.avatars?.gps,
-    );
+    const droneEntries = Object.entries(pose.drones).filter(([id, d]) => {
+      if (!visible.has(id)) return false;
+      return mapAvatarPos(d.avatars ?? {}) !== undefined;
+    });
     droneEntries.forEach(([id, d], index) => {
-      const gps = d.avatars!.gps!;
-      const lla = enuToLla(gps.e, gps.n, gps.u, origin.lat, origin.lon, origin.alt_m);
+      const enu = mapAvatarPos(d.avatars!)!;
+      const lla = enuToLla(enu.e, enu.n, enu.u, origin.lat, origin.lon, origin.alt_m);
       points.push({
         lat: lla.lat,
         lon: lla.lon,

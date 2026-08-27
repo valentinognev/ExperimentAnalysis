@@ -1,4 +1,4 @@
-import { pullDrone } from "../api";
+import { pullDrone, rebuild } from "../api";
 
 type Props = {
   droneIds: string[];
@@ -19,7 +19,10 @@ export default function DroneList({
 
   async function handlePull(droneId: string, adapter: "ssh" | "mavlink") {
     if (!slug) return;
-    await pullDrone(slug, Number(droneId), [adapter]);
+    const result = await pullDrone(slug, Number(droneId), [adapter]);
+    if (result.ok) {
+      await rebuild(slug);
+    }
     onPulled?.();
   }
 

@@ -14,8 +14,10 @@ const DRONE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6"];
 
 export type DronePose = {
   id: string;
+  label?: string;
   pos: EnuPos;
-  attitude_q_xyzw: QuatXyzw;
+  attitude_q_xyzw?: QuatXyzw;
+  style?: "triad" | "point";
   trail?: EnuPos[];
   vectors?: {
     velocity: EnuPos;
@@ -104,15 +106,31 @@ export default function View3D({
 
   drones.forEach((drone, index) => {
     const color = DRONE_COLORS[index % DRONE_COLORS.length];
+    const namePrefix = drone.label
+      ? `D${drone.id} ${drone.label}`
+      : `D${drone.id}`;
     if (drone.trail && drone.trail.length > 0) {
       traces.push(trailTrace(drone.id, drone.trail, color));
     }
-    const triads = triadTraces(drone.pos, drone.attitude_q_xyzw, scale);
-    for (const trace of triads) {
+    if (drone.style === "point" || !drone.attitude_q_xyzw) {
       traces.push({
-        ...trace,
-        name: `D${drone.id} ${trace.name ?? ""}`.trim(),
+        type: "scatter3d",
+        mode: "markers",
+        name: namePrefix,
+        x: [drone.pos.e],
+        y: [drone.pos.n],
+        z: [drone.pos.u],
+        marker: { size: 6, color },
+        showlegend: true,
       });
+    } else {
+      const triads = triadTraces(drone.pos, drone.attitude_q_xyzw, scale);
+      for (const trace of triads) {
+        traces.push({
+          ...trace,
+          name: `${namePrefix} ${trace.name ?? ""}`.trim(),
+        });
+      }
     }
     if (drone.vectors?.velocity) {
       traces.push(

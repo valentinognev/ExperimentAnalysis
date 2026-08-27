@@ -75,3 +75,6 @@ def test_baseball_import_rebuild_pose(tmp_path, monkeypatch):
     topics = r.json()
     for i in ("2", "3", "4"):
         assert i in topics or int(i) in {int(k) for k in topics}
+    r = c.get("/api/experiments/Baseball/duration")
+    assert r.status_code == 200
+    assert r.json()["t_max_s"] >= 150

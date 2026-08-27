@@ -13,6 +13,10 @@ export type ExperimentDetail = {
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const res =
     init === undefined ? await fetch(url) : await fetch(url, init);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `${res.status} ${res.statusText}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -107,8 +111,10 @@ export type PoseDrone = {
   synced: boolean;
   attitude_q_xyzw?: [number, number, number, number];
   avatars?: {
-    ekf_ned: PoseAvatar;
+    ekf_ned?: PoseAvatar;
     gps?: PoseAvatar;
+    sm_ned?: PoseAvatar;
+    sm_lla?: PoseAvatar;
   };
   vectors?: {
     velocity?: PoseVector;
@@ -120,6 +126,10 @@ export type PoseResponse = {
   origin: { lat: number; lon: number; alt_m: number };
   drones: Record<string, PoseDrone>;
 };
+
+export function getDuration(slug: string): Promise<{ t_max_s: number }> {
+  return json(`/api/experiments/${slug}/duration`);
+}
 
 export function getPose(slug: string, t: number): Promise<PoseResponse> {
   return json(`/api/experiments/${slug}/pose?t=${t}`);

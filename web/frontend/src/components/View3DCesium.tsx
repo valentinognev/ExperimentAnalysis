@@ -78,21 +78,43 @@ function updateEntities(
   }
 
   for (const drone of drones) {
-    for (const segment of triadSegments(
-      drone.pos,
-      drone.attitude_q_xyzw,
-      scale,
-    )) {
+    if (drone.style === "point" || !drone.attitude_q_xyzw) {
       viewer.entities.add({
-        polyline: {
-          positions: [
-            enuToCartesian(segment.start, origin, Cesium),
-            enuToCartesian(segment.end, origin, Cesium),
-          ],
-          width: 4,
-          material: Cesium.Color.fromCssColorString(segment.color),
+        position: enuToCartesian(drone.pos, origin, Cesium),
+        point: {
+          pixelSize: 10,
+          color: Cesium.Color.ORANGE,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 1,
+        },
+        label: {
+          text: drone.label ? `D${drone.id} ${drone.label}` : `D${drone.id}`,
+          font: "11px sans-serif",
+          fillColor: Cesium.Color.WHITE,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -10),
         },
       });
+    } else {
+      for (const segment of triadSegments(
+        drone.pos,
+        drone.attitude_q_xyzw,
+        scale,
+      )) {
+        viewer.entities.add({
+          polyline: {
+            positions: [
+              enuToCartesian(segment.start, origin, Cesium),
+              enuToCartesian(segment.end, origin, Cesium),
+            ],
+            width: 4,
+            material: Cesium.Color.fromCssColorString(segment.color),
+          },
+        });
+      }
     }
 
     if (drone.trail && drone.trail.length > 1) {

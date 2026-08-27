@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from ea.manifest import load_manifest
-from ea.sync import t_ulog
+from ea.sync import t_sm, t_ulog
 
 _POSE_TOPICS = frozenset(
     {
@@ -24,7 +24,7 @@ _MIN_POSE_INTERVAL_S = 1.0 / _MAX_POSE_HZ
 
 _SOURCE_PARQUET_DIRS = {
     "ulog": lambda exp_dir, drone_id: exp_dir / "derived" / f"drone_{drone_id}",
-    "sm": lambda exp_dir, drone_id: exp_dir / "derived" / "sm" / f"drone_{drone_id}",
+    "sm": lambda exp_dir, drone_id: exp_dir / "derived" / f"drone_{drone_id}",
     "ha": lambda exp_dir, drone_id: exp_dir / "derived" / "ha" / f"drone_{drone_id}",
 }
 
@@ -81,13 +81,18 @@ def _downsample_max_hz(t: list[float], y: list[float], max_hz: float) -> tuple[l
     return out_t, out_y
 
 
+def _ha_experiment_times(df: pd.DataFrame, offset_s: float = 0.0) -> list[float]:
+    first = float(df["timestamp"].iloc[0])
+    return [float(ts) - first + offset_s for ts in df["timestamp"]]
+
+
 def _load_channel_series(
     experiment_dir: Path,
     drone_id: str,
     source: str,
     topic: str,
     field: str,
-    arm_us: int | None,
+    sync_info: dict,
     offset_s: float = 0.0,
 ) -> tuple[list[float], list[float]]:
     base = _SOURCE_PARQUET_DIRS[source](experiment_dir, drone_id)
@@ -96,14 +101,31 @@ def _load_channel_series(
         return [], []
 
     df = pd.read_parquet(parquet_path)
-    if df.empty or field not in df.columns or "timestamp" not in df.columns:
+    if df.empty or field not in df.columns:
         return [], []
 
-    first_us = int(df["timestamp"].iloc[0])
-    t_vals = [t_ulog(float(ts), arm_us, first_us, offset_s) for ts in df["timestamp"]]
+    if source == "sm":
+        if "local_ts" not in df.columns:
+            return [], []
+        sm_arm = sync_info.get("sm_arm_local_ts")
+        first_local = float(df["local_ts"].iloc[0])
+        t_vals = [
+            t_sm(float(ts), sm_arm, first_local, offset_s) for ts in df["local_ts"]
+        ]
+    elif source == "ha":
+        if "timestamp" not in df.columns:
+            return [], []
+        t_vals = _ha_experiment_times(df, offset_s)
+    else:
+        if "timestamp" not in df.columns:
+            return [], []
+        arm_us = sync_info.get("ulog_arm_us")
+        first_us = int(df["timestamp"].iloc[0])
+        t_vals = [t_ulog(float(ts), arm_us, first_us, offset_s) for ts in df["timestamp"]]
+
     y_vals = [float(v) for v in df[field]]
 
-    if topic in _POSE_TOPICS:
+    if source == "ulog" and topic in _POSE_TOPICS:
         t_vals, y_vals = _downsample_max_hz(t_vals, y_vals, _MAX_POSE_HZ)
 
     return t_vals, y_vals
@@ -124,11 +146,11 @@ def channel_value_at_t(
     drone_id, source, topic, field = parsed
     manifest = load_manifest(experiment_dir / "manifest.json")
     sync_drones = _read_sync(experiment_dir)
-    arm_us = sync_drones.get(drone_id, {}).get("ulog_arm_us")
+    sync_info = sync_drones.get(drone_id, {})
     offset_s = _manual_offset_s(manifest, drone_id)
 
     t_vals, y_vals = _load_channel_series(
-        experiment_dir, drone_id, source, topic, field, arm_us, offset_s
+        experiment_dir, drone_id, source, topic, field, sync_info, offset_s
     )
     if not t_vals:
         return None
@@ -171,11 +193,10 @@ def series(
 
         drone_id, source, topic, field = parsed
         sync_info = sync_drones.get(drone_id, {})
-        arm_us = sync_info.get("ulog_arm_us")
         offset_s = _manual_offset_s(manifest, drone_id)
 
         t_vals, y_vals = _load_channel_series(
-            experiment_dir, drone_id, source, topic, field, arm_us, offset_s
+            experiment_dir, drone_id, source, topic, field, sync_info, offset_s
         )
         t_vals, y_vals = _apply_window(t_vals, y_vals, t0, t1)
         result[channel] = {"t": t_vals, "y": y_vals}

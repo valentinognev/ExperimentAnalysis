@@ -104,6 +104,21 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
     }
   }
 
+  async function handleRebuild() {
+    if (!slug) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await rebuild(slug);
+      await refresh();
+      onImported?.();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-zinc-800 px-4 py-3">
       <label className="flex items-center gap-2 text-sm">
@@ -168,6 +183,15 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
           Import
         </button>
       </div>
+
+      <button
+        className="rounded bg-zinc-700 px-2 py-1 text-sm hover:bg-zinc-600 disabled:opacity-50"
+        type="button"
+        disabled={busy || !slug}
+        onClick={handleRebuild}
+      >
+        Rebuild
+      </button>
 
       {error && <span className="text-sm text-red-400">{error}</span>}
     </div>
