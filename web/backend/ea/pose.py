@@ -10,6 +10,7 @@ import pandas as pd
 from ea.geo import lla_to_enu, mean_origin, ned_to_enu
 from ea.interp import interp_scalar, slerp_xyzw
 from ea.manifest import load_manifest
+from ea.series import channel_value_at_t
 from ea.sync import t_ulog
 
 _GPS_TOPICS = ("vehicle_gps_position", "vehicle_global_position")
@@ -212,6 +213,22 @@ def _interpolate_attitude(
     return q, True
 
 
+def _interpolate_vector_enu(
+    experiment_dir: Path,
+    channels: list[str],
+    t: float,
+) -> dict[str, float] | None:
+    if len(channels) != 3:
+        return None
+    vx = channel_value_at_t(experiment_dir, channels[0], t)
+    vy = channel_value_at_t(experiment_dir, channels[1], t)
+    vz = channel_value_at_t(experiment_dir, channels[2], t)
+    if vx is None or vy is None or vz is None:
+        return None
+    e, n, u = ned_to_enu(vx, vy, vz)
+    return {"e": e, "n": n, "u": u}
+
+
 def _compute_origin(
     experiment_dir: Path,
     drone_ids: list[str],
@@ -237,6 +254,7 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
     manifest = load_manifest(experiment_dir / "manifest.json")
     sync_drones = _read_sync(experiment_dir)
     drone_ids = [str(d["id"]) for d in manifest.get("drones", [])]
+    ui_vectors = manifest.get("ui", {}).get("vectors", {})
     origin = _compute_origin(experiment_dir, drone_ids, sync_drones)
     origin_lat = origin["lat"]
     origin_lon = origin["lon"]
@@ -287,6 +305,14 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
 
             drone_dict["avatars"] = avatars
             drone_dict["attitude_q_xyzw"] = list(attitude)
+
+        vec_cfg = ui_vectors.get(drone_id)
+        if vec_cfg:
+            channels = vec_cfg.get("channels")
+            if isinstance(channels, list) and len(channels) == 3:
+                velocity = _interpolate_vector_enu(experiment_dir, channels, t)
+                if velocity is not None:
+                    drone_dict["vectors"] = {"velocity": velocity}
 
         drones_out[drone_id] = drone_dict
 

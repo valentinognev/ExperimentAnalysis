@@ -35,6 +35,9 @@ export default function App() {
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const [plots, setPlots] = useState<PlotDef[]>([]);
   const [avatars, setAvatars] = useState<Record<string, unknown>>({});
+  const [vectorConfigs, setVectorConfigs] = useState<
+    Record<string, { avatar?: string; scale?: number }>
+  >({});
   const [engine3d, setEngine3d] = useState("plotly");
   const [mapLinked, setMapLinked] = useState(true);
   const [markers, setMarkers] = useState<Marker[]>([]);
@@ -69,6 +72,7 @@ export default function App() {
       setVisibleIds(new Set());
       setPlots([]);
       setAvatars({});
+      setVectorConfigs({});
       setEngine3d("plotly");
       setMapLinked(true);
       setMarkers([]);
@@ -97,6 +101,7 @@ export default function App() {
           visible_drone_ids?: (string | number)[];
           plots?: PlotDef[];
           avatars?: Record<string, unknown>;
+          vectors?: Record<string, { avatar?: string; scale?: number }>;
           engine3d?: string;
           map_linked?: boolean;
           markers?: Marker[];
@@ -112,6 +117,9 @@ export default function App() {
           setEngine3d(typeof ui.engine3d === "string" ? ui.engine3d : "plotly");
           setAvatars(
             ui.avatars && typeof ui.avatars === "object" ? ui.avatars : {},
+          );
+          setVectorConfigs(
+            ui.vectors && typeof ui.vectors === "object" ? ui.vectors : {},
           );
           setMapLinked(
             ui.map_linked !== undefined ? Boolean(ui.map_linked) : false,
@@ -268,13 +276,29 @@ export default function App() {
           d.attitude_q_xyzw !== undefined &&
           d.avatars?.ekf_ned !== undefined,
       )
-      .map(([id, d]) => ({
-        id,
-        pos: d.avatars!.ekf_ned,
-        attitude_q_xyzw: d.attitude_q_xyzw!,
-        trail: downsampleTrail(trailHistory[id] ?? []),
-      }));
-  }, [pose, trailHistory, visibleDroneIds]);
+      .map(([id, d]) => {
+        const cfg = vectorConfigs[id];
+        const avatarKey = cfg?.avatar ?? "ekf_ned";
+        const avatars = d.avatars!;
+        const vectorBase =
+          avatarKey === "gps" && avatars.gps
+            ? avatars.gps
+            : avatars.ekf_ned;
+        return {
+          id,
+          pos: avatars.ekf_ned,
+          attitude_q_xyzw: d.attitude_q_xyzw!,
+          trail: downsampleTrail(trailHistory[id] ?? []),
+          vectors: d.vectors?.velocity
+            ? {
+                velocity: d.vectors.velocity,
+                scale: cfg?.scale ?? 1,
+                base: vectorBase,
+              }
+            : undefined,
+        };
+      });
+  }, [pose, trailHistory, visibleDroneIds, vectorConfigs]);
 
   const markerPositions = useMemo(() => {
     if (!pose?.origin) return [];

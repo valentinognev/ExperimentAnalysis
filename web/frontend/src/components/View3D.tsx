@@ -17,6 +17,11 @@ export type DronePose = {
   pos: EnuPos;
   attitude_q_xyzw: QuatXyzw;
   trail?: EnuPos[];
+  vectors?: {
+    velocity: EnuPos;
+    scale: number;
+    base: EnuPos;
+  };
 };
 
 type View3DProps = {
@@ -42,6 +47,27 @@ function trailTrace(
     line: { color, width: 2 },
     marker: { size: 2, color },
     showlegend: true,
+  };
+}
+
+function vectorTrace(
+  base: EnuPos,
+  velocity: EnuPos,
+  scale: number,
+  color: string,
+): Data {
+  const de = velocity.e * scale;
+  const dn = velocity.n * scale;
+  const du = velocity.u * scale;
+  return {
+    type: "scatter3d",
+    mode: "lines",
+    name: "velocity",
+    x: [base.e, base.e + de],
+    y: [base.n, base.n + dn],
+    z: [base.u, base.u + du],
+    line: { color, width: 4, dash: "dash" },
+    showlegend: false,
   };
 }
 
@@ -87,6 +113,16 @@ export default function View3D({
         ...trace,
         name: `D${drone.id} ${trace.name ?? ""}`.trim(),
       });
+    }
+    if (drone.vectors?.velocity) {
+      traces.push(
+        vectorTrace(
+          drone.vectors.base,
+          drone.vectors.velocity,
+          drone.vectors.scale,
+          color,
+        ),
+      );
     }
   });
 

@@ -81,6 +81,8 @@ export function rebuild(slug: string): Promise<Record<string, unknown>> {
 
 export type PoseAvatar = { e: number; n: number; u: number };
 
+export type PoseVector = { e: number; n: number; u: number };
+
 export type PoseDrone = {
   present: boolean;
   synced: boolean;
@@ -88,6 +90,9 @@ export type PoseDrone = {
   avatars?: {
     ekf_ned: PoseAvatar;
     gps?: PoseAvatar;
+  };
+  vectors?: {
+    velocity?: PoseVector;
   };
 };
 

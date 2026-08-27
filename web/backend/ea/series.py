@@ -102,6 +102,30 @@ def _load_channel_series(
     return t_vals, y_vals
 
 
+def channel_value_at_t(
+    experiment_dir: Path,
+    channel: str,
+    t: float,
+) -> float | None:
+    """Interpolate a single channel value at experiment time t."""
+    from ea.interp import interp_scalar
+
+    parsed = _parse_channel(channel)
+    if parsed is None:
+        return None
+
+    drone_id, source, topic, field = parsed
+    sync_drones = _read_sync(experiment_dir)
+    arm_us = sync_drones.get(drone_id, {}).get("ulog_arm_us")
+
+    t_vals, y_vals = _load_channel_series(
+        experiment_dir, drone_id, source, topic, field, arm_us
+    )
+    if not t_vals:
+        return None
+    return interp_scalar(t, t_vals, y_vals)
+
+
 def _apply_window(
     t: list[float], y: list[float], t0: float | None, t1: float | None
 ) -> tuple[list[float], list[float]]:

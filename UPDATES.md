@@ -1,5 +1,12 @@
 # Updates
 
+## 0.29.0 - Vector arrows on avatars
+- `ea/series.py`: `channel_value_at_t()` — single-channel interpolation at t from parquet
+- `ea/pose.py`: `drones[id].vectors.velocity` from `ui.vectors` channels via `ned_to_enu`
+- `tests/test_vectors.py`: NED vy=1 → ENU e=1; omitted without manifest config
+- `View3D.tsx`: dashed velocity line from avatar base, scaled by manifest `scale`
+- `App.tsx` / `api.ts`: hydrate `ui.vectors`, pass vector overlay to View3D
+
 ## 0.28.0 - Linked 2D OSM scattermap
 - `map2d.ts` / `map2d.test.ts`: `mapFigure` helper — Plotly `scattermap`, `map.style: "open-street-map"`, lat/lon arrays
 - `Map2D.tsx`: GPS avatar positions (ENU→LLA via origin) + markers at current T; collapsible panel
