@@ -26,7 +26,7 @@ def _mavlink_url(drone: dict) -> str | None:
 
 
 def _collect_log_entries(conn, timeout: float) -> list:
-    conn.mav.log_request_list_send(0, 0xFFFF, TARGET_SYSTEM, TARGET_COMPONENT)
+    conn.mav.log_request_list_send(TARGET_SYSTEM, TARGET_COMPONENT, 0, 0xFFFF)
     entries = []
     seen: set[int] = set()
     deadline = time.monotonic() + timeout
@@ -57,7 +57,7 @@ def _download_log(conn, entry, timeout: float) -> bytes:
     while offset < size and time.monotonic() < deadline:
         count = min(CHUNK_SIZE, size - offset)
         conn.mav.log_request_data_send(
-            log_id, offset, count, TARGET_SYSTEM, TARGET_COMPONENT
+            TARGET_SYSTEM, TARGET_COMPONENT, log_id, offset, count
         )
         msg = conn.recv_match(type="LOG_DATA", blocking=True, timeout=1.0)
         if msg is None or msg.id != log_id:

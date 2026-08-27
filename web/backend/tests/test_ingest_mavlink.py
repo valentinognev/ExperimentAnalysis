@@ -40,8 +40,10 @@ class FakeMav:
         self.parent = parent
         self.command_long_calls = []
 
-    def log_request_list_send(self, start, end, target_system, target_component):
-        self.parent.requests.append(("log_request_list", start, end))
+    def log_request_list_send(self, target_system, target_component, start, end):
+        self.parent.requests.append(
+            ("log_request_list", target_system, target_component, start, end)
+        )
         m = mavlink2.MAVLink(None)
         n = len(self.parent.logs)
         for log in self.parent.logs:
@@ -51,8 +53,10 @@ class FakeMav:
                 )
             )
 
-    def log_request_data_send(self, log_id, ofs, count, target_system, target_component):
-        self.parent.requests.append(("log_request_data", log_id, ofs, count))
+    def log_request_data_send(self, target_system, target_component, log_id, ofs, count):
+        self.parent.requests.append(
+            ("log_request_data", target_system, target_component, log_id, ofs, count)
+        )
         log = self.parent.logs_by_id[log_id]
         chunk = log["data"][ofs : ofs + count]
         m = mavlink2.MAVLink(None)
@@ -153,6 +157,24 @@ def test_no_logs_returns_error_preserves_raw(tmp_path, monkeypatch):
     assert keeper.is_file()
     assert keeper.read_bytes() == b"keep me"
     assert list(raw_dir.glob("*.ulg")) == [keeper]
+
+
+def test_log_request_list_uses_pymavlink_arg_order(tmp_path, monkeypatch):
+    logs = [{"id": 1, "time_utc": 1000, "size": 3, "data": b"abc"}]
+    connect, holder = _make_connect(logs)
+    _setup_experiment(tmp_path, monkeypatch)
+
+    result = mavlink_pull("MavTest", 2, connect=connect)
+
+    assert result["ok"] is True
+    conn = holder["conn"]
+    list_requests = [r for r in conn.requests if r[0] == "log_request_list"]
+    assert len(list_requests) == 1
+    _, target_system, target_component, start, end = list_requests[0]
+    assert target_system == 1
+    assert target_component == 1
+    assert start == 0
+    assert end == 0xFFFF
 
 
 def test_mavlink_url_from_manifest(tmp_path, monkeypatch):

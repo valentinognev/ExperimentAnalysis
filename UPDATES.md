@@ -1,5 +1,9 @@
 # Updates
 
+## 0.35.1 - MAVLink LOG_REQUEST arg order fix
+- `ea/ingest_mavlink.py`: `log_request_list_send(1, 1, 0, 0xFFFF)` and `log_request_data_send(1, 1, id, ofs, count)` — pymavlink parameter order
+- `tests/test_ingest_mavlink.py`: FakeMav signatures aligned; `test_log_request_list_uses_pymavlink_arg_order`
+
 ## 0.35.0 - MAVLink ulog download (mocked)
 - `ea/ingest_mavlink.py`: `mavlink_pull(slug, drone_id, connect=...)` LOG_REQUEST_LIST/DATA into `raw/drone_<id>/`; url from `mavlink.url` or `tcp:{ssh.host}:5760`; no COMMAND_LONG
 - `tests/test_ingest_mavlink.py`: fake conn download, COMMAND_LONG spy, no-logs error preserves raw
