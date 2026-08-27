@@ -1,5 +1,9 @@
 # Updates
 
+## 0.9.0 - Minimal ULog fixture writer
+- `ea/ulog_min.py`: `write_min_ulog(path, messages)` writes ULog v1 readable by pyulog (vehicle_status, vehicle_local_position, vehicle_attitude, vehicle_gps_position)
+- `tests/test_ulog_min.py`: pyulog round-trip test
+
 ## 0.8.0 - Import ulog files into experiment raw/
 - `ea/ingest_files.py`: `import_paths(slug, paths)` copies `.ulg` into `raw/drone_<id>/`, non-recursive directory scan, `needs_id` for unknown filenames, append-only UTC suffix on collision, manifest `sources.ulg` updated
 - `app.py`: `POST /api/experiments/{slug}/import` body `{paths: string[]}`
