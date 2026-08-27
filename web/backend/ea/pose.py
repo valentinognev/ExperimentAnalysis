@@ -15,6 +15,23 @@ from ea.series import channel_value_at_t
 from ea.sync import t_sm, t_ulog
 
 _GPS_TOPICS = ("vehicle_gps_position", "vehicle_global_position")
+_ARM_T0_SLACK_S = 0.5
+
+
+def _in_experiment_time_range(t: float, ts: list[float]) -> bool:
+    if not ts:
+        return False
+    if t > ts[-1]:
+        return False
+    if t >= ts[0]:
+        return True
+    return t == 0.0 and ts[0] <= _ARM_T0_SLACK_S
+
+
+def _effective_experiment_t(t: float, ts: list[float]) -> float:
+    if t < ts[0] and t == 0.0 and ts[0] <= _ARM_T0_SLACK_S:
+        return ts[0]
+    return t
 
 
 def _scale_gps(lat: float, lon: float, alt: float) -> tuple[float, float, float]:
@@ -23,6 +40,18 @@ def _scale_gps(lat: float, lon: float, alt: float) -> tuple[float, float, float]
         lon /= 1e7
         alt /= 1000
     return lat, lon, alt
+
+
+def _lla_from_row(row: pd.Series) -> tuple[float, float, float]:
+    if "latitude_deg" in row.index:
+        lat = float(row["latitude_deg"])
+        lon = float(row["longitude_deg"])
+        alt = float(row.get("altitude_msl_m", row.get("altitude_ellipsoid_m", 0)))
+        return lat, lon, alt
+    lat = float(row.get("lat", row.get("latitude", 0)))
+    lon = float(row.get("lon", row.get("longitude", 0)))
+    alt = float(row.get("alt", row.get("altitude", 0)))
+    return _scale_gps(lat, lon, alt)
 
 
 def _read_sync(experiment_dir: Path) -> dict:
@@ -80,10 +109,7 @@ def _lla_at_timestamp(df: pd.DataFrame, t_us: int) -> tuple[float, float, float]
         return None
     idx = (df["timestamp"] - t_us).abs().idxmin()
     row = df.loc[idx]
-    lat = float(row["lat"])
-    lon = float(row["lon"])
-    alt = float(row["alt"])
-    return _scale_gps(lat, lon, alt)
+    return _lla_from_row(row)
 
 
 def _home_lla(derived: Path) -> tuple[float, float, float] | None:
@@ -93,11 +119,7 @@ def _home_lla(derived: Path) -> tuple[float, float, float] | None:
     df = pd.read_parquet(path)
     if df.empty:
         return None
-    row = df.iloc[0]
-    lat = float(row.get("lat", row.get("latitude", 0)))
-    lon = float(row.get("lon", row.get("longitude", 0)))
-    alt = float(row.get("alt", row.get("altitude", 0)))
-    return _scale_gps(lat, lon, alt)
+    return _lla_from_row(df.iloc[0])
 
 
 def _reference_lla(derived: Path, arm_us: int | None) -> tuple[float, float, float] | None:
@@ -133,8 +155,9 @@ def _interpolate_ekf_ned(
         return None, False
 
     ts = _experiment_times(df, arm_us, offset_s)
-    if t < ts[0] or t > ts[-1]:
+    if not _in_experiment_time_range(t, ts):
         return None, False
+    t = _effective_experiment_t(t, ts)
 
     x = interp_scalar(t, ts, [float(v) for v in df["x"]])
     y = interp_scalar(t, ts, [float(v) for v in df["y"]])
@@ -161,18 +184,15 @@ def _interpolate_gps_enu(
         return None, False
 
     ts = _experiment_times(df, arm_us, offset_s)
-    if t < ts[0] or t > ts[-1]:
+    if not _in_experiment_time_range(t, ts):
         return None, False
+    t = _effective_experiment_t(t, ts)
 
     lats: list[float] = []
     lons: list[float] = []
     alts: list[float] = []
     for _, row in df.iterrows():
-        lat, lon, alt = _scale_gps(
-            float(row["lat"]),
-            float(row["lon"]),
-            float(row["alt"]),
-        )
+        lat, lon, alt = _lla_from_row(row)
         lats.append(lat)
         lons.append(lon)
         alts.append(alt)
@@ -205,8 +225,9 @@ def _interpolate_attitude(
         return None, False
 
     ts = _experiment_times(df, arm_us, offset_s)
-    if t < ts[0] or t > ts[-1]:
+    if not _in_experiment_time_range(t, ts):
         return None, False
+    t = _effective_experiment_t(t, ts)
 
     qw_col, qx_col, qy_col, qz_col = cols
     quats_xyzw = [
