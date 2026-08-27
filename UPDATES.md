@@ -1,5 +1,12 @@
 # Updates
 
+## 0.30.0 - start/kill/attach/install scripts
+- `start.sh`: tmux `experiment_analysis` session, backend `127.0.0.1:6400`, frontend `127.0.0.1:6473`; `--port=` overrides frontend only
+- `killall.sh`: frees only 6400/6473 (and frontend override); leaves ObservationBoard untouched
+- `attach.sh`: `tmux attach -t experiment_analysis`
+- `install.sh`: `web/backend/.venv`, pip requirements, `npm install` in frontend
+- `tests/test_scripts.py`: scoped port/session assertions
+
 ## 0.29.0 - Vector arrows on avatars
 - `ea/series.py`: `channel_value_at_t()` — single-channel interpolation at t from parquet
 - `ea/pose.py`: `drones[id].vectors.velocity` from `ui.vectors` channels via `ned_to_enu`
