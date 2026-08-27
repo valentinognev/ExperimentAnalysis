@@ -69,3 +69,46 @@ def test_write_sync_json_shape(tmp_path):
     with open(sync_path) as f:
         on_disk = json.load(f)
     assert on_disk == result
+
+
+def test_write_sync_ulog_only_mixed_row_synced_true(tmp_path):
+    """Design §8: ulog ARM present, SM missing → synced True, note 'ulog only'."""
+    exp_dir = tmp_path / "exp"
+    (exp_dir / "derived").mkdir(parents=True)
+
+    per_drone = {
+        "3": {
+            "ulog_arm_us": 987654321,
+            "sm_arm_local_ts": None,
+            "note": "ulog only",
+        },
+    }
+
+    result = write_sync(exp_dir, per_drone)
+
+    assert result["drones"]["3"] == {
+        "ulog_arm_us": 987654321,
+        "sm_arm_local_ts": None,
+        "synced": True,
+        "note": "ulog only",
+    }
+
+
+def test_write_sync_sm_present_without_ulog_arm_synced_false(tmp_path):
+    """synced iff ulog_arm_us is not None — SM alone does not sync."""
+    exp_dir = tmp_path / "exp"
+    (exp_dir / "derived").mkdir(parents=True)
+
+    per_drone = {
+        "2": {
+            "ulog_arm_us": None,
+            "sm_arm_local_ts": 11412.04,
+            "note": "sm only",
+        },
+    }
+
+    result = write_sync(exp_dir, per_drone)
+
+    assert result["drones"]["2"]["synced"] is False
+    assert result["drones"]["2"]["ulog_arm_us"] is None
+    assert result["drones"]["2"]["sm_arm_local_ts"] == 11412.04
