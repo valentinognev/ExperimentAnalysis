@@ -1,5 +1,10 @@
 # Updates
 
+## 0.27.1 - Clickable ground plane for markers
+- `groundPlane.ts`: `groundPlaneExtent`, `groundPlaneTrace` (mesh3d u=0 quad)
+- `groundPlane.test.ts`: extent bbox + mesh3d z=0 unit tests
+- `View3D.tsx`: subtle gray ground plane when `onGroundClick` set so empty-ground clicks reach `groundClickToLla`
+
 ## 0.27.0 - Ground markers and distances
 - `ea/markers.py`: `Marker`, `enu_to_lla`, `distance_m` (haversine horizontal + 3D ENU)
 - `app.py`: PATCH `/api/experiments/{slug}/markers` replaces `ui.markers`

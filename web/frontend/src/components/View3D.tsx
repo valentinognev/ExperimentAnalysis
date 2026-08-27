@@ -1,5 +1,6 @@
 import Plot from "react-plotly.js";
 import type { Data, PlotMouseEvent } from "plotly.js";
+import { groundPlaneExtent, groundPlaneTrace } from "../groundPlane";
 import { triadTraces, type EnuPos } from "../triad";
 import { sceneLayout } from "../view3dLayout";
 import type { Origin } from "../markers";
@@ -52,6 +53,15 @@ export default function View3D({
   onGroundClick,
 }: View3DProps) {
   const traces: Data[] = [];
+
+  if (onGroundClick) {
+    const enuForGround: EnuPos[] = [...markerPositions];
+    for (const drone of drones) {
+      enuForGround.push(drone.pos);
+      if (drone.trail) enuForGround.push(...drone.trail);
+    }
+    traces.push(groundPlaneTrace(groundPlaneExtent(enuForGround)));
+  }
 
   if (markerPositions.length > 0) {
     traces.push({
