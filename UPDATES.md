@@ -1,5 +1,10 @@
 # Updates
 
+## 0.42.0 - Baseball backend E2E
+- `tests/test_e2e_baseball.py`: import/rebuild/pose/series/topics on operator ulogs at `/home/valentin/RL/TESTFLIGHTS/Baseball` (`@pytest.mark.e2e`)
+- `ea/pose.py`: `_lla_from_row` for PX4 `latitude_deg`/`longitude_deg`/`altitude_msl_m` columns (real ulogs)
+- `ea/pose.py`: T=0 ARM slack (0.5s) when first sample is slightly post-ARM
+
 ## 0.41.0 - Baseball operator guide
 - README: import `/home/valentin/RL/TESTFLIGHTS/Baseball`, D2/D4 SSH hosts, D3 ulog-only; ports 6400/6473
 - `test_layout.py`: README operator-guide strings
