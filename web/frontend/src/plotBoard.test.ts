@@ -6,6 +6,7 @@ import {
   setPlotChannels,
   flattenTopics,
   plotsForSlug,
+  plotsOnSlugChange,
   type PlotDef,
 } from "./plotBoard";
 
@@ -46,6 +47,25 @@ describe("setPlotChannels", () => {
     const next = setPlotChannels(plots, id, ["x.y.z.w"]);
     expect(next[0].channels).toEqual(["x.y.z.w"]);
     expect(next[0].id).toBe(id);
+  });
+});
+
+describe("plotsOnSlugChange", () => {
+  it("returns [] when slug changes A→B", () => {
+    expect(plotsOnSlugChange("exp-a", "exp-b")).toEqual([]);
+  });
+
+  it("returns [] when slug changes to null", () => {
+    expect(plotsOnSlugChange("exp-a", null)).toEqual([]);
+  });
+
+  it("returns [] when slug changes from null", () => {
+    expect(plotsOnSlugChange(null, "exp-a")).toEqual([]);
+  });
+
+  it("returns null when slug unchanged", () => {
+    expect(plotsOnSlugChange("exp-a", "exp-a")).toBeNull();
+    expect(plotsOnSlugChange(null, null)).toBeNull();
   });
 });
 

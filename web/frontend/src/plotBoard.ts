@@ -30,13 +30,21 @@ export function setPlotChannels(
   );
 }
 
+/** Returns [] when slug changes; null when unchanged (no plot reset). */
+export function plotsOnSlugChange(
+  prevSlug: string | null,
+  nextSlug: string | null,
+): PlotDef[] | null {
+  return prevSlug !== nextSlug ? [] : null;
+}
+
 export function plotsForSlug(
   prevSlug: string | null,
   nextSlug: string | null,
   plots: PlotDef[],
 ): PlotDef[] {
-  if (prevSlug !== nextSlug) return [];
-  return plots;
+  const cleared = plotsOnSlugChange(prevSlug, nextSlug);
+  return cleared ?? plots;
 }
 
 export function flattenTopics(tree: TopicsTree): string[] {

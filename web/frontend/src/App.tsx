@@ -7,7 +7,7 @@ import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
 import View3D, { type DronePose } from "./components/View3D";
 import { downsampleHz } from "./downsample";
-import type { PlotDef } from "./plotBoard";
+import { plotsOnSlugChange, type PlotDef } from "./plotBoard";
 import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
 import { filterVisible, idsChanged, mergeDroneIds } from "./visibleDrones";
@@ -49,6 +49,8 @@ export default function App() {
   useEffect(() => {
     setTrailHistory({});
     setT(0);
+    const cleared = plotsOnSlugChange(prevSlugRef.current, slug);
+    if (cleared !== null) setPlots(cleared);
   }, [slug]);
 
   useEffect(() => {
