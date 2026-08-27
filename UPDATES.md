@@ -1,5 +1,9 @@
 # Updates
 
+## 0.13.0 - Geo ENU helpers
+- `ea/geo.py`: `WGS84_A_M`, `METERS_PER_DEG_LAT`, `lla_to_enu`, `ned_to_enu`, `mean_origin` (spherical WGS84, matches OB `geo.ts`)
+- `tests/test_geo.py`: 1m north ENU, NED→ENU, mean origin, empty llas `ValueError`
+
 ## 0.12.0 - ARM experiment time mapping
 - `ea/sync.py`: `t_ulog`, `t_sm`, `write_sync` → `derived/sync.json` with `ulog_arm_us`, `sm_arm_local_ts`, `synced`, `note`; `synced` True iff `ulog_arm_us` is not None
 - `tests/test_sync.py`: two-drone ARM T=0, missing ARM uses first sample, SM uses `local_ts`
