@@ -4,15 +4,17 @@ import {
   importPaths,
   listExperiments,
   openExperiment,
+  rebuild,
   type ExperimentSummary,
 } from "../api";
 
 type Props = {
   slug: string | null;
   onSlugChange: (slug: string | null) => void;
+  onImported?: () => void;
 };
 
-export default function ExperimentBar({ slug, onSlugChange }: Props) {
+export default function ExperimentBar({ slug, onSlugChange, onImported }: Props) {
   const [experiments, setExperiments] = useState<ExperimentSummary[]>([]);
   const [newName, setNewName] = useState("");
   const [importPath, setImportPath] = useState("");
@@ -54,8 +56,10 @@ export default function ExperimentBar({ slug, onSlugChange }: Props) {
     try {
       await importPaths(slug, [importPath.trim()]);
       setImportPath("");
+      await rebuild(slug);
       await refresh();
       await openExperiment(slug);
+      onImported?.();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

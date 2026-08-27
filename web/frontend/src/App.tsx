@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listExperiments } from "./api";
 import ChannelPlot from "./components/ChannelPlot";
 import DroneList from "./components/DroneList";
@@ -8,7 +8,7 @@ import View3D, { type DronePose } from "./components/View3D";
 import { downsampleHz } from "./downsample";
 import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
-import { filterVisible } from "./visibleDrones";
+import { filterVisible, mergeDroneIds } from "./visibleDrones";
 
 type TrailPoint = { t: number; pos: EnuPos };
 
@@ -24,6 +24,7 @@ function downsampleTrail(
 
 export default function App() {
   const [slug, setSlug] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const [t, setT] = useState(0);
   const [droneIds, setDroneIds] = useState<string[]>([]);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
@@ -31,27 +32,81 @@ export default function App() {
   const [trailHistory, setTrailHistory] = useState<
     Record<string, TrailPoint[]>
   >({});
+  const prevSlugRef = useRef<string | null>(null);
+
+  const handleImported = useCallback(() => {
+    setRefreshToken((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     setTrailHistory({});
     setT(0);
+  }, [slug]);
+
+  useEffect(() => {
     if (!slug) {
       setDroneIds([]);
       setVisibleIds(new Set());
+      prevSlugRef.current = null;
       return;
     }
+
+    const slugChanged = prevSlugRef.current !== slug;
+    prevSlugRef.current = slug;
+
+    let cancelled = false;
     listExperiments()
       .then((list) => {
+        if (cancelled) return;
         const exp = list.find((e) => e.slug === slug);
-        const ids = (exp?.drone_ids ?? []).map(String);
-        setDroneIds(ids);
-        setVisibleIds(new Set(ids));
+        const listed = (exp?.drone_ids ?? []).map(String);
+        if (slugChanged) {
+          setDroneIds(listed);
+          setVisibleIds(new Set(listed));
+        } else {
+          setDroneIds((prev) => mergeDroneIds(listed, prev));
+          setVisibleIds((prev) => {
+            const next = new Set(prev);
+            let changed = false;
+            for (const id of listed) {
+              if (!prev.has(id)) {
+                next.add(id);
+                changed = true;
+              }
+            }
+            return changed ? next : prev;
+          });
+        }
       })
       .catch(() => {
-        setDroneIds([]);
-        setVisibleIds(new Set());
+        if (cancelled) return;
+        if (slugChanged) {
+          setDroneIds([]);
+          setVisibleIds(new Set());
+        }
       });
-  }, [slug]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, refreshToken]);
+
+  useEffect(() => {
+    if (!pose?.drones) return;
+    const poseIds = Object.keys(pose.drones);
+    setDroneIds((prev) => mergeDroneIds(prev, poseIds));
+    setVisibleIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of poseIds) {
+        if (!prev.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [pose]);
 
   const handleDroneToggle = useCallback((id: string, checked: boolean) => {
     setVisibleIds((prev) => {
@@ -109,7 +164,11 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
       <h1 className="px-4 pt-4 text-xl font-semibold">ExperimentAnalysis</h1>
-      <ExperimentBar slug={slug} onSlugChange={setSlug} />
+      <ExperimentBar
+        slug={slug}
+        onSlugChange={setSlug}
+        onImported={handleImported}
+      />
       <DroneList
         droneIds={droneIds}
         visible={visibleIds}

@@ -1,5 +1,11 @@
 # Updates
 
+## 0.23.1 - Refresh drone visibility after import
+- `visibleDrones.ts`: `mergeDroneIds(listed, poseIds)` — listed-first union with pose keys
+- `ExperimentBar.tsx`: `rebuild(slug)` + `onImported` after successful import
+- `App.tsx`: `refreshToken` reloads drone ids on import; unions `pose.drones` keys; new ids default visible
+- `visibleDrones.test.ts`: mergeDroneIds unit tests
+
 ## 0.23.0 - Default NED plots and drone visibility
 - `web/frontend/src/visibleDrones.ts`: `filterVisible(ids, visible)` — empty visible → none shown
 - `web/frontend/src/api.ts`: `getSeries(slug, channels, t0?, t1?)` — repeatable `channels` query params
