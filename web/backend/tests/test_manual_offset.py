@@ -2,14 +2,21 @@
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from ea.arm import ulog_arm_us
 from ea.extract_ulog import extract_ulog
+from ea.geo import METERS_PER_DEG_LAT
 from ea.manifest import empty_manifest, load_manifest, save_manifest
 from ea.pose import pose_at
 from ea.sync import t_sm, t_ulog, write_sync
 from ea.ulog_min import write_min_ulog
+
+_S4_LOCAL = 11412.04
+_BASE_LAT = 32.08
+_BASE_LON = 34.78
+_BASE_ALT = 50.0
 
 
 def _write_ulog(path: Path, messages: dict) -> None:
@@ -106,3 +113,88 @@ def test_t_sm_offset_adds_to_arm_time():
     first_local = 50.0
     assert t_sm(arm_local, arm_local, first_local, offset_s=1.5) == pytest.approx(1.5)
     assert t_sm(110.0, arm_local, first_local, offset_s=1.5) == pytest.approx(10.0 + 1.5)
+
+
+def _offset_north_lat_deg(base_lat: float, meters: float) -> float:
+    return base_lat + meters / METERS_PER_DEG_LAT
+
+
+def _sm_ned_offset_fixture(tmp_path) -> Path:
+    exp_dir = tmp_path / "exp"
+    exp_dir.mkdir()
+    ulg = tmp_path / "drone2.ulg"
+    base_lat_int = int(round(_BASE_LAT * 1e7))
+    base_lon_int = int(round(_BASE_LON * 1e7))
+    base_alt_int = int(round(_BASE_ALT * 1000))
+    _write_ulog(
+        ulg,
+        {
+            "vehicle_status": [
+                {"timestamp": 1000, "arming_state": 1},
+                {"timestamp": 5000, "arming_state": 2},
+            ],
+            "vehicle_local_position": [
+                {"timestamp": 5000, "x": 0.0, "y": 0.0, "z": 0.0},
+            ],
+            "vehicle_attitude": [
+                {"timestamp": 5000, "q[0]": 1.0, "q[1]": 0.0, "q[2]": 0.0, "q[3]": 0.0},
+            ],
+            "vehicle_gps_position": [
+                {"timestamp": 5000, "lat": base_lat_int, "lon": base_lon_int, "alt": base_alt_int},
+            ],
+        },
+    )
+    derived = _extract_drone(exp_dir, 2, ulg)
+    arm_lla_lat = _offset_north_lat_deg(_BASE_LAT, 10.0)
+    pd.DataFrame(
+        [
+            {
+                "local_ts": _S4_LOCAL - 1.5,
+                "state_machine_state": "S3",
+                "pos_ned/x": 0.0,
+                "pos_ned/y": 0.0,
+                "pos_ned/z": 0.0,
+                "lla/lat_deg": _BASE_LAT,
+                "lla/lon_deg": _BASE_LON,
+                "lla/alt": _BASE_ALT,
+            },
+            {
+                "local_ts": _S4_LOCAL,
+                "state_machine_state": "S4_TAKEOFF",
+                "pos_ned/x": 0.0,
+                "pos_ned/y": 0.0,
+                "pos_ned/z": 0.0,
+                "lla/lat_deg": arm_lla_lat,
+                "lla/lon_deg": _BASE_LON,
+                "lla/alt": _BASE_ALT,
+            },
+        ]
+    ).to_parquet(derived / "sm_system_manager.parquet", index=False)
+    write_sync(
+        exp_dir,
+        {
+            "2": {
+                "ulog_arm_us": ulog_arm_us(derived / "vehicle_status.parquet", None),
+                "sm_arm_local_ts": _S4_LOCAL,
+            },
+        },
+    )
+    _save_manifest_drones(exp_dir, [2])
+    return exp_dir
+
+
+def test_manual_offset_sm_ned_reference_lla_at_arm(tmp_path):
+    exp_dir = _sm_ned_offset_fixture(tmp_path)
+
+    baseline = pose_at(exp_dir, t=0.0)
+    sm_ned_baseline = baseline["drones"]["2"]["avatars"]["sm_ned"]
+    assert sm_ned_baseline["n"] == pytest.approx(10.0, abs=0.05)
+
+    manifest = load_manifest(exp_dir / "manifest.json")
+    manifest["sync"]["manual_offsets_s"] = {"2": 1.5}
+    save_manifest(exp_dir / "manifest.json", manifest)
+
+    offset_at = pose_at(exp_dir, t=1.5)
+    sm_ned_offset = offset_at["drones"]["2"]["avatars"]["sm_ned"]
+    assert sm_ned_offset["n"] == pytest.approx(sm_ned_baseline["n"], abs=0.05)
+    assert sm_ned_offset["n"] != pytest.approx(0.0, abs=0.05)

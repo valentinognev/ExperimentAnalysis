@@ -287,12 +287,11 @@ def _initial_pos_lla_from_sm(df: pd.DataFrame) -> tuple[float, float, float] | N
 def _sm_lla_at_arm(
     sm_df: pd.DataFrame,
     sm_arm_local: float | None,
-    offset_s: float = 0.0,
 ) -> tuple[float, float, float] | None:
     lat_col, lon_col, alt_col = "lla/lat_deg", "lla/lon_deg", "lla/alt"
     if not all(c in sm_df.columns for c in (lat_col, lon_col, alt_col)):
         return None
-    ts = _sm_experiment_times(sm_df, sm_arm_local, offset_s)
+    ts = _sm_experiment_times(sm_df, sm_arm_local)
     for i in sorted(range(len(ts)), key=lambda j: abs(ts[j])):
         row = sm_df.iloc[i]
         try:
@@ -311,12 +310,11 @@ def _sm_ned_reference_lla(
     arm_us: int | None,
     sm_arm_local: float | None,
     sm_df: pd.DataFrame,
-    offset_s: float = 0.0,
 ) -> tuple[float, float, float] | None:
     ref = _initial_pos_lla_from_sm(sm_df)
     if ref is not None:
         return ref
-    ref = _sm_lla_at_arm(sm_df, sm_arm_local, offset_s)
+    ref = _sm_lla_at_arm(sm_df, sm_arm_local)
     if ref is not None:
         return ref
     return _reference_lla(derived, arm_us)
@@ -348,7 +346,7 @@ def _interpolate_sm_ned(
     if x is None or y is None or z is None:
         return None, False, False
 
-    ref_lla = _sm_ned_reference_lla(derived, arm_us, sm_arm_local, sm_df, offset_s)
+    ref_lla = _sm_ned_reference_lla(derived, arm_us, sm_arm_local, sm_df)
     if ref_lla is not None:
         ref_lat, ref_lon, ref_alt = ref_lla
         ref_e, ref_n, ref_u = lla_to_enu(

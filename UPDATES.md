@@ -1,5 +1,9 @@
 # Updates
 
+## 0.39.1 - SM LLA-at-ARM offset fix
+- `ea/pose.py`: `_sm_lla_at_arm` uses unoffset experiment times (spatial ref at raw ARM, like `_gps_lla_at_arm`)
+- `tests/test_manual_offset.py`: offset 1.5 must not shift SM NED reference LLA to pre-ARM sample
+
 ## 0.39.0 - Per-drone manual time offsets
 - `ea/sync.py`: `t_ulog` / `t_sm` accept `offset_s` (default 0); `T_final = T_arm + offset`
 - `ea/pose.py`, `ea/series.py`: read `manifest.sync.manual_offsets_s[str(drone_id)]` per drone
