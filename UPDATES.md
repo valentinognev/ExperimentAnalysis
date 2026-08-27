@@ -1,5 +1,11 @@
 # Updates
 
+## 0.37.0 - needs_id assignment + sim folder import
+- `ea/ingest_files.import_paths`: optional `assignments` maps filename → drone id; copies SM CSVs and HA logs from directories into `raw/drone_<id>/`; manifest `sources.system_manager` / `hardware_adapter` via same filename hints as SSH ingest
+- `POST /api/experiments/{slug}/import` body may include `{assignments}`; unknown names still in `needs_id` when unassigned
+- `ExperimentBar`: prompts for drone ids when import returns `needs_id`, then re-imports with assignments
+- README: local import paths for `system_manager/logs/` and `hardware_adapter/logs/`
+
 ## 0.36.0 - POST pull + host seeds
 - `POST /api/experiments/{slug}/pull` `{drone_id, adapters:["ssh"|"mavlink"]}` → `{ok, drones}`; password redacted from errors
 - `ea/ingest_files._default_drone`: seed D2 `192.168.31.30`, D4 `192.168.31.152`, user `pi`, mavlink tcp 5760; D3 no host

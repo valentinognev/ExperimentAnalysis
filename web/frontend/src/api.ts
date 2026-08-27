@@ -65,11 +65,18 @@ export function patchMarkers(
 export function importPaths(
   slug: string,
   paths: string[],
+  assignments?: Record<string, number>,
 ): Promise<Record<string, unknown>> {
+  const body: { paths: string[]; assignments?: Record<string, number> } = {
+    paths,
+  };
+  if (assignments !== undefined) {
+    body.assignments = assignments;
+  }
   return json(`/api/experiments/${slug}/import`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ paths }),
+    body: JSON.stringify(body),
   });
 }
 

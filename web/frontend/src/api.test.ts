@@ -82,6 +82,25 @@ describe("api", () => {
     expect(result).toEqual(body);
   });
 
+  it("importPaths POSTs {paths, assignments} when provided", async () => {
+    const paths = ["/data/mystery.ulg"];
+    const assignments = { "mystery.ulg": 3 };
+    const body = { ok: true, needs_id: [] };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await importPaths("foo", paths, assignments);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paths, assignments }),
+    });
+    expect(result).toEqual(body);
+  });
+
   it("pullDrone POSTs {drone_id, adapters}", async () => {
     const body = { ok: true, drones: { "2": { ok: true } } };
     vi.mocked(fetch).mockResolvedValue({

@@ -26,6 +26,8 @@ ExperimentAnalysis/
 
 Each experiment lives under `experiments/<name>/` with `raw/` (append-only imports) and `derived/` (parquet + sync metadata). The UI holds a time cursor; playback is client-side. The browser never parses `.ulg` directly.
 
+**Local import paths:** point Import at a directory of SITL `.ulg` files, or at simulation log folders such as `system_manager/logs/` (System Manager CSVs) and `hardware_adapter/logs/` (adapter diag / mavlink logs). Files whose names lack a drone id are listed in `needs_id`; the UI prompts for ids and re-imports with assignments.
+
 ## Reading order for agents
 
 1. Read this `README.md` (mandatory if present).

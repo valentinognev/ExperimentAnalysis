@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ea.drone_id import drone_id_from_filename
-from ea.manifest import load_manifest, save_manifest
+from ea.ingest_ssh import _update_manifest_sources
+from ea.manifest import save_manifest
 from ea.store import open_experiment
 
 
@@ -50,7 +51,20 @@ def _find_drone(manifest: dict, drone_id: int) -> dict | None:
     return None
 
 
-def _collect_ulog_paths(paths: list[str]) -> list[Path]:
+def _is_sm_csv(path: Path) -> bool:
+    return path.suffix.lower() == ".csv" and "system_manager" in path.name.lower()
+
+
+def _is_ha_file(path: Path) -> bool:
+    name = path.name.lower()
+    if "adapter_diag" in name and name.endswith(".log"):
+        return True
+    if "mavlink" in name and name.endswith((".txt", ".log")):
+        return True
+    return False
+
+
+def _collect_import_files(paths: list[str]) -> list[Path]:
     found: list[Path] = []
     for raw in paths:
         p = Path(raw)
@@ -58,35 +72,58 @@ def _collect_ulog_paths(paths: list[str]) -> list[Path]:
             continue
         if p.is_dir():
             for child in sorted(p.iterdir()):
-                if child.is_file() and child.suffix.lower() == ".ulg":
+                if not child.is_file():
+                    continue
+                if (
+                    child.suffix.lower() == ".ulg"
+                    or _is_sm_csv(child)
+                    or _is_ha_file(child)
+                ):
                     found.append(child)
-        elif p.is_file() and p.suffix.lower() == ".ulg":
-            found.append(p)
+        elif p.is_file():
+            if p.suffix.lower() == ".ulg" or _is_sm_csv(p) or _is_ha_file(p):
+                found.append(p)
     return found
 
 
-def import_paths(slug: str, paths: list[str]) -> dict:
+def _resolve_drone_id(
+    filename: str,
+    assignments: dict[str, int],
+) -> int | None:
+    drone_id = drone_id_from_filename(filename)
+    if drone_id is not None:
+        return drone_id
+    return assignments.get(filename)
+
+
+def import_paths(
+    slug: str,
+    paths: list[str],
+    assignments: dict[str, int] | None = None,
+) -> dict:
     result = open_experiment(slug)
     exp_path = result["path"]
     manifest = result["manifest"]
     manifest_path = exp_path / "manifest.json"
 
+    assignments = assignments or {}
     drones_out: dict[str, dict] = {}
     needs_id: list[str] = []
     copied_any = False
+    drones_touched: set[int] = set()
 
-    for ulg_path in _collect_ulog_paths(paths):
-        drone_id = drone_id_from_filename(ulg_path.name)
+    for file_path in _collect_import_files(paths):
+        drone_id = _resolve_drone_id(file_path.name, assignments)
         if drone_id is None:
-            needs_id.append(ulg_path.name)
+            needs_id.append(file_path.name)
             continue
 
         drone_key = str(drone_id)
         dest_dir = exp_path / "raw" / f"drone_{drone_id}"
         try:
             dest_dir.mkdir(parents=True, exist_ok=True)
-            dest = _dest_path(dest_dir, ulg_path.name)
-            shutil.copy2(ulg_path, dest)
+            dest = _dest_path(dest_dir, file_path.name)
+            shutil.copy2(file_path, dest)
             rel = dest.relative_to(exp_path).as_posix()
 
             drone = _find_drone(manifest, drone_id)
@@ -95,13 +132,19 @@ def import_paths(slug: str, paths: list[str]) -> dict:
                 manifest.setdefault("drones", []).append(drone)
 
             sources = drone.setdefault("sources", {})
-            ulg_list = sources.setdefault("ulg", [])
-            ulg_list.append(rel)
+            if file_path.suffix.lower() == ".ulg":
+                ulg_list = sources.setdefault("ulg", [])
+                ulg_list.append(rel)
 
             copied_any = True
+            drones_touched.add(drone_id)
             drones_out[drone_key] = {"ok": True}
         except OSError as e:
             drones_out[drone_key] = {"ok": False, "error": str(e)}
+
+    for drone_id in drones_touched:
+        dest_dir = exp_path / "raw" / f"drone_{drone_id}"
+        _update_manifest_sources(manifest, drone_id, exp_path, dest_dir)
 
     save_manifest(manifest_path, manifest)
 

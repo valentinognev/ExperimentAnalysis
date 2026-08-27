@@ -30,6 +30,7 @@ class CreateExperimentBody(BaseModel):
 
 class ImportBody(BaseModel):
     paths: list[str]
+    assignments: dict[str, int] | None = None
 
 
 class PullBody(BaseModel):
@@ -82,7 +83,7 @@ def get_experiment(slug: str):
 @app.post("/api/experiments/{slug}/import")
 def post_import(slug: str, body: ImportBody):
     try:
-        return import_paths(slug, body.paths)
+        return import_paths(slug, body.paths, body.assignments)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="experiment not found")
 

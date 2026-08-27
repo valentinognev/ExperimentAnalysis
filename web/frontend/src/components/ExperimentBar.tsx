@@ -54,7 +54,26 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
     setBusy(true);
     setError(null);
     try {
-      await importPaths(slug, [importPath.trim()]);
+      const path = importPath.trim();
+      let result = await importPaths(slug, [path]);
+      const needsId = result.needs_id as string[] | undefined;
+      if (needsId?.length) {
+        const assignments: Record<string, number> = {};
+        for (const name of needsId) {
+          const answer = window.prompt(`Drone id for ${name}?`);
+          if (answer === null) {
+            setError("Import cancelled — assign drone ids for unknown files");
+            return;
+          }
+          const id = Number.parseInt(answer, 10);
+          if (Number.isNaN(id)) {
+            setError(`Invalid drone id for ${name}`);
+            return;
+          }
+          assignments[name] = id;
+        }
+        result = await importPaths(slug, [path], assignments);
+      }
       setImportPath("");
       await rebuild(slug);
       await refresh();
@@ -112,7 +131,7 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
         <input
           className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
           type="text"
-          placeholder="path to .ulg"
+          placeholder="path to .ulg or logs dir"
           value={importPath}
           disabled={busy || !slug}
           onChange={(e) => setImportPath(e.target.value)}
