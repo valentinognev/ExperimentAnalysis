@@ -123,38 +123,42 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
         </select>
       </label>
 
-      <label className="flex items-center gap-2 text-sm">
-        <span className="text-zinc-400">New</span>
-        <input
-          className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
-          type="text"
-          placeholder="name"
-          value={newName}
-          disabled={busy}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-        />
+      <div className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2">
+          <span className="text-zinc-400">Name</span>
+          <input
+            className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+            type="text"
+            placeholder="name"
+            value={newName}
+            disabled={busy}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+          />
+        </label>
         <button
           className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
           type="button"
           disabled={busy || !newName.trim()}
           onClick={handleCreate}
         >
-          Create
+          New
         </button>
-      </label>
+      </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <span className="text-zinc-400">Import</span>
-        <input
-          className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
-          type="text"
-          placeholder="path to .ulg or logs dir"
-          value={importPath}
-          disabled={busy || !slug}
-          onChange={(e) => setImportPath(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleImport()}
-        />
+      <div className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2">
+          <span className="text-zinc-400">Import</span>
+          <input
+            className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+            type="text"
+            placeholder="path to .ulg or logs dir"
+            value={importPath}
+            disabled={busy || !slug}
+            onChange={(e) => setImportPath(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleImport()}
+          />
+        </label>
         <button
           className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
           type="button"
@@ -163,7 +167,7 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
         >
           Import
         </button>
-      </label>
+      </div>
 
       {error && <span className="text-sm text-red-400">{error}</span>}
     </div>

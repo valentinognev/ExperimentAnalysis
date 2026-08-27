@@ -1,5 +1,11 @@
 # Updates
 
+## 0.43.0 - Baseball UI E2E
+- `web/frontend/e2e/baseball.spec.ts`: Playwright import/rebuild on `/home/valentin/RL/TESTFLIGHTS/Baseball`; asserts D2/D3/D4, Plotly 3D, time slider
+- `web/frontend/playwright.config.ts`: spawns API `:6400` (`EA_EXPERIMENTS_DIR=/tmp/ea-e2e-experiments`, cleaned each run) and Vite `:6473` (`CHOKIDAR_USEPOLLING` for EMFILE)
+- `ExperimentBar`: accessible labels `Name` + button `New`; Import input/button split for correct `getByLabel`
+- `vite.config.ts`: exclude `e2e/**` from Vitest
+
 ## 0.42.0 - Baseball backend E2E
 - `tests/test_e2e_baseball.py`: import/rebuild/pose/series/topics on operator ulogs at `/home/valentin/RL/TESTFLIGHTS/Baseball` (`@pytest.mark.e2e`)
 - `ea/pose.py`: `_lla_from_row` for PX4 `latitude_deg`/`longitude_deg`/`altitude_msl_m` columns (real ulogs)
