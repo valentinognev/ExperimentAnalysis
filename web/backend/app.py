@@ -1,10 +1,14 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ea.ingest_files import import_paths
 from ea.manifest import merge_manifest, save_manifest
+from ea.pose import pose_at
+from ea.rebuild import rebuild
+from ea.series import series
 from ea.store import create_experiment, list_experiments, open_experiment
+from ea.topics import list_topics
 from ports import FRONTEND_PORT
 
 app = FastAPI()
@@ -73,3 +77,43 @@ def patch_manifest(slug: str, patch: dict):
     merged = merge_manifest(result["manifest"], patch)
     save_manifest(result["path"] / "manifest.json", merged)
     return {"slug": slug, "manifest": merged}
+
+
+@app.post("/api/experiments/{slug}/rebuild")
+def post_rebuild(slug: str):
+    try:
+        return rebuild(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+
+
+@app.get("/api/experiments/{slug}/pose")
+def get_pose(slug: str, t: float = 0.0):
+    try:
+        result = open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return pose_at(result["path"], t)
+
+
+@app.get("/api/experiments/{slug}/series")
+def get_series(
+    slug: str,
+    channels: list[str] = Query(...),
+    t0: float | None = None,
+    t1: float | None = None,
+):
+    try:
+        result = open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return series(result["path"], channels, t0=t0, t1=t1)
+
+
+@app.get("/api/experiments/{slug}/topics")
+def get_topics(slug: str):
+    try:
+        result = open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return list_topics(result["path"])

@@ -1,5 +1,10 @@
 # Updates
 
+## 0.17.0 - Rebuild pipeline and pose/series HTTP API
+- `ea/rebuild.py`: `rebuild(slug)` — extract all `raw/drone_*/*.ulg` to `derived/drone_{id}/` via `extract_ulog` with `extra_topics=("actuator_armed",)`, `ulog_arm_us` per drone, `write_sync` → `derived/sync.json`
+- `app.py`: `POST /api/experiments/{slug}/rebuild`, `GET pose?t=`, `GET series?channels=` (repeatable), `GET topics`; unknown slug → 404 `experiment not found`
+- `tests/test_api_pose.py`: import min ulog `Group3RLcat2_log_1.ulg`, rebuild, pose at T=0 present, series/topics, unknown slug 404
+
 ## 0.16.0 - Channel topics and series
 - `ea/topics.py`: `list_topics(experiment_dir)` — drone → source → topic → fields from derived parquet (ulog/sm/ha when present)
 - `ea/series.py`: `series(experiment_dir, channels, t0, t1)` — experiment-time arrays via `t_ulog`, 20 Hz downsample on pose topics, invalid channels → empty arrays
