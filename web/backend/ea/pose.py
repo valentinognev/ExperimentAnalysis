@@ -134,6 +134,48 @@ def _interpolate_ekf_ned(
     return (x, y, z), True
 
 
+def _interpolate_gps_enu(
+    derived: Path,
+    arm_us: int | None,
+    t: float,
+    origin_lat: float,
+    origin_lon: float,
+    origin_alt: float,
+) -> tuple[tuple[float, float, float] | None, bool]:
+    gps_path = _gps_parquet(derived)
+    if gps_path is None:
+        return None, False
+    df = pd.read_parquet(gps_path)
+    if df.empty:
+        return None, False
+
+    ts = _experiment_times(df, arm_us)
+    if t < ts[0] or t > ts[-1]:
+        return None, False
+
+    lats: list[float] = []
+    lons: list[float] = []
+    alts: list[float] = []
+    for _, row in df.iterrows():
+        lat, lon, alt = _scale_gps(
+            float(row["lat"]),
+            float(row["lon"]),
+            float(row["alt"]),
+        )
+        lats.append(lat)
+        lons.append(lon)
+        alts.append(alt)
+
+    lat = interp_scalar(t, ts, lats)
+    lon = interp_scalar(t, ts, lons)
+    alt = interp_scalar(t, ts, alts)
+    if lat is None or lon is None or alt is None:
+        return None, False
+
+    e, n, u = lla_to_enu(lat, lon, alt, origin_lat, origin_lon, origin_alt)
+    return (e, n, u), True
+
+
 def _interpolate_attitude(
     derived: Path,
     arm_us: int | None,
@@ -218,6 +260,7 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
 
         if present and ekf_ned is not None and attitude is not None:
             x, y, z = ekf_ned
+            avatars: dict = {}
             ref_lla = _reference_lla(derived, arm_us)
             if ref_lla is not None:
                 ref_lat, ref_lon, ref_alt = ref_lla
@@ -225,17 +268,24 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
                     ref_lat, ref_lon, ref_alt, origin_lat, origin_lon, origin_alt
                 )
                 e_off, n_off, u_off = ned_to_enu(x, y, z)
-                drone_dict["avatars"] = {
-                    "ekf_ned": {
-                        "e": ref_e + e_off,
-                        "n": ref_n + n_off,
-                        "u": ref_u + u_off,
-                    },
+                avatars["ekf_ned"] = {
+                    "e": ref_e + e_off,
+                    "n": ref_n + n_off,
+                    "u": ref_u + u_off,
                 }
             else:
                 e, n, u = ned_to_enu(x, y, z)
                 drone_dict["local_frame"] = True
-                drone_dict["avatars"] = {"ekf_ned": {"e": e, "n": n, "u": u}}
+                avatars["ekf_ned"] = {"e": e, "n": n, "u": u}
+
+            gps_enu, gps_ok = _interpolate_gps_enu(
+                derived, arm_us, t, origin_lat, origin_lon, origin_alt
+            )
+            if gps_ok and gps_enu is not None:
+                e_g, n_g, u_g = gps_enu
+                avatars["gps"] = {"e": e_g, "n": n_g, "u": u_g}
+
+            drone_dict["avatars"] = avatars
             drone_dict["attitude_q_xyzw"] = list(attitude)
 
         drones_out[drone_id] = drone_dict

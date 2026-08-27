@@ -1,5 +1,9 @@
 # Updates
 
+## 0.24.0 - GPS avatar beside EKF in pose_at
+- `ea/pose.py`: `_interpolate_gps_enu` — linear lat/lon/alt in experiment time → `lla_to_enu` vs origin; `avatars.gps` alongside `ekf_ned` when GPS parquet exists (`vehicle_gps_position` or `vehicle_global_position`)
+- `tests/test_pose_gps.py`: GPS+EKF avatars, origin ENU ~0 at T=0, 1 m north at later T, no-GPS omits `gps` key
+
 ## 0.23.1 - Refresh drone visibility after import
 - `visibleDrones.ts`: `mergeDroneIds(listed, poseIds)` — listed-first union with pose keys
 - `ExperimentBar.tsx`: `rebuild(slug)` + `onImported` after successful import
