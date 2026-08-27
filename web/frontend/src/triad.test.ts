@@ -1,0 +1,61 @@
+// @vitest-environment node
+import { describe, it, expect } from "vitest";
+import { triadTraces } from "./triad";
+import { sceneLayout } from "./view3dLayout";
+
+type EnuPos = { e: number; n: number; u: number };
+
+function traceByName(
+  traces: ReturnType<typeof triadTraces>,
+  name: string,
+) {
+  const trace = traces.find((t) => t.name === name);
+  if (!trace) throw new Error(`trace ${name} not found`);
+  return trace;
+}
+
+function traceEnd(trace: { x: number[]; y: number[]; z: number[] }) {
+  return [trace.x[1], trace.y[1], trace.z[1]] as const;
+}
+
+describe("triadTraces", () => {
+  const identity: [number, number, number, number] = [0, 0, 0, 1];
+  const origin: EnuPos = { e: 0, n: 0, u: 0 };
+
+  it("identity at origin scale=1: body x→(0,1,0), y→(1,0,0), z→(0,0,-1)", () => {
+    const traces = triadTraces(origin, identity, 1);
+    expect(traces).toHaveLength(3);
+
+    expect(traceEnd(traceByName(traces, "body x"))).toEqual([0, 1, 0]);
+    expect(traceEnd(traceByName(traces, "body y"))).toEqual([1, 0, 0]);
+    expect(traceEnd(traceByName(traces, "body z"))).toEqual([0, 0, -1]);
+  });
+
+  it("pos offset: identity at {e:10,n:20,u:30} shifts all trace ends", () => {
+    const pos: EnuPos = { e: 10, n: 20, u: 30 };
+    const traces = triadTraces(pos, identity, 1);
+
+    expect(traceEnd(traceByName(traces, "body x"))).toEqual([10, 21, 30]);
+    expect(traceEnd(traceByName(traces, "body y"))).toEqual([11, 20, 30]);
+    expect(traceEnd(traceByName(traces, "body z"))).toEqual([10, 20, 29]);
+  });
+});
+
+describe("View3D sceneLayout", () => {
+  it("locks Plotly axes to East / North / Up", () => {
+    const layout = sceneLayout();
+    const xTitle = String(
+      (layout.scene?.xaxis?.title as { text?: string } | undefined)?.text ?? "",
+    );
+    const yTitle = String(
+      (layout.scene?.yaxis?.title as { text?: string } | undefined)?.text ?? "",
+    );
+    const zTitle = String(
+      (layout.scene?.zaxis?.title as { text?: string } | undefined)?.text ?? "",
+    );
+
+    expect(xTitle).toMatch(/East|^E$/i);
+    expect(yTitle).toMatch(/North|^N$/i);
+    expect(zTitle).toMatch(/Up|^U$/i);
+  });
+});

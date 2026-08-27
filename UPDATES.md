@@ -1,5 +1,11 @@
 # Updates
 
+## 0.20.0 - Plotly 3D body-axis triads
+- `web/frontend/src/triad.ts`: `triadTraces(pos, q_xyzw, scale)` — scatter3d line traces RGB body x/y/z; FRD→NED quaternion rotate, `ned_to_enu` mapping
+- `web/frontend/src/components/View3D.tsx`: react-plotly.js Plot; re-exports `sceneLayout` from `view3dLayout.ts` (x=E, y=N, z=U)
+- `src/triad.test.ts`: identity axis ends, pos offset, scene axis titles
+- deps: `react-plotly.js`, `plotly.js`, `@types/plotly.js`
+
 ## 0.19.0 - Experiment switcher API client
 - `web/frontend/src/api.ts`: `listExperiments`, `createExperiment`, `openExperiment`, `importPaths`, `rebuild` — relative `/api/...` fetch + json
 - `web/frontend/src/components/ExperimentBar.tsx`: slug dropdown, New name+Create, Import path+Import
