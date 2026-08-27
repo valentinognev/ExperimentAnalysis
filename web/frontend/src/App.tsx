@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listExperiments } from "./api";
 import ChannelPlot from "./components/ChannelPlot";
+import PlotBoard from "./components/PlotBoard";
 import DroneList from "./components/DroneList";
 import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
@@ -189,6 +190,7 @@ export default function App() {
         </div>
       </div>
       <ChannelPlot slug={slug} visibleDroneIds={visibleDroneIds} t={t} />
+      <PlotBoard slug={slug} t={t} />
       <Timeline t={t} tMax={60} onTChange={setT} />
     </div>
   );

@@ -88,3 +88,12 @@ export function getSeries(
   if (t1 !== undefined) params.set("t1", String(t1));
   return json(`/api/experiments/${slug}/series?${params}`);
 }
+
+export type TopicsTree = Record<
+  string,
+  Record<string, Record<string, string[]>>
+>;
+
+export function getTopics(slug: string): Promise<TopicsTree> {
+  return json(`/api/experiments/${slug}/topics`);
+}

@@ -1,5 +1,12 @@
 # Updates
 
+## 0.25.0 - User-defined Plotly channel panes
+- `web/frontend/src/plotBoard.ts`: `PlotDef`, `addPlot`/`removePlot`/`setPlotChannels`, `flattenTopics`
+- `web/frontend/src/api.ts`: `getTopics(slug)` → GET `/api/experiments/{slug}/topics`
+- `web/frontend/src/components/PlotBoard.tsx`: Add plot → channel picker from topics tree; extra Plotly panes with shared T cursor
+- `App.tsx`: mounts PlotBoard below default NED ChannelPlot (in-memory only; manifest persist Task 28)
+- `plotBoard.test.ts`: reducer + flattenTopics unit tests
+
 ## 0.24.0 - GPS avatar beside EKF in pose_at
 - `ea/pose.py`: `_interpolate_gps_enu` — linear lat/lon/alt in experiment time → `lla_to_enu` vs origin; `avatars.gps` alongside `ekf_ned` when GPS parquet exists (`vehicle_gps_position` or `vehicle_global_position`)
 - `tests/test_pose_gps.py`: GPS+EKF avatars, origin ENU ~0 at T=0, 1 m north at later T, no-GPS omits `gps` key
