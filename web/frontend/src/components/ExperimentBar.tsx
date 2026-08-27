@@ -14,6 +14,24 @@ type Props = {
   onImported?: () => void;
 };
 
+/** Second import: only needs_id files, not the whole directory again. */
+export function assignmentImportPaths(
+  importPath: string,
+  needsId: string[],
+): string[] {
+  const trimmed = importPath.trim();
+  if (needsId.length === 1) {
+    const name = needsId[0];
+    const slash = trimmed.lastIndexOf("/");
+    const base = slash >= 0 ? trimmed.slice(slash + 1) : trimmed;
+    if (base === name) {
+      return [trimmed];
+    }
+  }
+  const dir = trimmed.replace(/\/$/, "");
+  return needsId.map((name) => `${dir}/${name}`);
+}
+
 export default function ExperimentBar({ slug, onSlugChange, onImported }: Props) {
   const [experiments, setExperiments] = useState<ExperimentSummary[]>([]);
   const [newName, setNewName] = useState("");
@@ -72,7 +90,7 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
           }
           assignments[name] = id;
         }
-        result = await importPaths(slug, [path], assignments);
+        result = await importPaths(slug, assignmentImportPaths(path, needsId), assignments);
       }
       setImportPath("");
       await rebuild(slug);

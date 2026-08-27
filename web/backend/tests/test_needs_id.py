@@ -62,3 +62,28 @@ def test_sim_ha_directory(tmp_path, monkeypatch):
     ha_paths = drone2["sources"]["hardware_adapter"]
     assert any("adapter_diag" in p for p in ha_paths)
     assert any("mavlink" in p for p in ha_paths)
+
+
+def test_second_import_does_not_recopy_named_files(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("Mixed")
+    src = tmp_path / "incoming"
+    src.mkdir()
+    (src / "Group3RLcat2_log_1.ulg").write_bytes(b"ULog")
+    mystery = src / "mystery.ulg"
+    mystery.write_bytes(b"ULog")
+
+    first = import_paths("Mixed", [str(src)])
+    assert first["needs_id"] == ["mystery.ulg"]
+    drone2 = tmp_path / "Mixed" / "raw" / "drone_2"
+    assert len(list(drone2.glob("Group3RLcat2_log_1.ulg"))) == 1
+    assert len(list(drone2.glob("*.ulg"))) == 1
+
+    second = import_paths("Mixed", [str(mystery)], assignments={"mystery.ulg": 3})
+    assert second["ok"] is True
+    assert len(list(drone2.glob("*.ulg"))) == 1
+    assert list((tmp_path / "Mixed" / "raw" / "drone_3").glob("mystery.ulg"))
+
+    manifest = load_manifest(tmp_path / "Mixed" / "manifest.json")
+    drone2_entry = next(d for d in manifest["drones"] if d["id"] == 2)
+    assert len(drone2_entry["sources"]["ulg"]) == 1

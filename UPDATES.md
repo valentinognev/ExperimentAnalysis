@@ -1,5 +1,9 @@
 # Updates
 
+## 0.37.1 - Assignment import path fix
+- `ExperimentBar`: second import posts only `needs_id` file paths, not the whole directory (avoids duplicate `_utc` copies of already-imported named files)
+- `tests/test_needs_id.py`: mixed folder second import does not recopy named ulog
+
 ## 0.37.0 - needs_id assignment + sim folder import
 - `ea/ingest_files.import_paths`: optional `assignments` maps filename → drone id; copies SM CSVs and HA logs from directories into `raw/drone_<id>/`; manifest `sources.system_manager` / `hardware_adapter` via same filename hints as SSH ingest
 - `POST /api/experiments/{slug}/import` body may include `{assignments}`; unknown names still in `needs_id` when unassigned
