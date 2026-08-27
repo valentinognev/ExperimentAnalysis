@@ -87,6 +87,7 @@ export type PoseDrone = {
   attitude_q_xyzw?: [number, number, number, number];
   avatars?: {
     ekf_ned: PoseAvatar;
+    gps?: PoseAvatar;
   };
 };
 

@@ -1,5 +1,11 @@
 # Updates
 
+## 0.28.0 - Linked 2D OSM scattermap
+- `map2d.ts` / `map2d.test.ts`: `mapFigure` helper — Plotly `scattermap`, `map.style: "open-street-map"`, lat/lon arrays
+- `Map2D.tsx`: GPS avatar positions (ENU→LLA via origin) + markers at current T; collapsible panel
+- `App.tsx`: Map2D beside 3D; `map_linked` default open when any drone has GPS avatar
+- `api.ts`: `PoseDrone.avatars.gps` optional type
+
 ## 0.27.2 - Dense pickable ground surface
 - `groundPlane.ts`: 21×21 `surface` at u=0, `hoverinfo: "none"` (gl3d picks skip `"skip"`)
 - `groundPlane.test.ts`: assert surface/mesh3d density, z=0, `hoverinfo === "none"`

@@ -6,6 +6,7 @@ import PlotBoard from "./components/PlotBoard";
 import DroneList from "./components/DroneList";
 import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
+import Map2D, { hasGpsAvatar } from "./components/Map2D";
 import View3D, { type DronePose } from "./components/View3D";
 import { downsampleHz } from "./downsample";
 import { llaToEnu, newMarkerId, type Marker } from "./markers";
@@ -45,6 +46,8 @@ export default function App() {
   const prevSlugRef = useRef<string | null>(null);
   const uiHydratedRef = useRef(false);
   const skipSaveRef = useRef(true);
+  const mapLinkedFromManifestRef = useRef(false);
+  const mapDefaultAppliedRef = useRef(false);
 
   const handleImported = useCallback(() => {
     setRefreshToken((n) => n + 1);
@@ -55,6 +58,7 @@ export default function App() {
     setT(0);
     setMarkers([]);
     setSelectedMarkerIds([]);
+    mapDefaultAppliedRef.current = false;
     const cleared = plotsOnSlugChange(prevSlugRef.current, slug);
     if (cleared !== null) setPlots(cleared);
   }, [slug]);
@@ -72,6 +76,8 @@ export default function App() {
       prevSlugRef.current = null;
       uiHydratedRef.current = false;
       skipSaveRef.current = true;
+      mapLinkedFromManifestRef.current = false;
+      mapDefaultAppliedRef.current = false;
       return;
     }
 
@@ -108,8 +114,10 @@ export default function App() {
             ui.avatars && typeof ui.avatars === "object" ? ui.avatars : {},
           );
           setMapLinked(
-            ui.map_linked !== undefined ? Boolean(ui.map_linked) : true,
+            ui.map_linked !== undefined ? Boolean(ui.map_linked) : false,
           );
+          mapLinkedFromManifestRef.current = ui.map_linked !== undefined;
+          mapDefaultAppliedRef.current = ui.map_linked !== undefined;
           setMarkers(Array.isArray(ui.markers) ? ui.markers : []);
           setSelectedMarkerIds([]);
         } else {
@@ -205,6 +213,14 @@ export default function App() {
       }
       return changed ? next : prev;
     });
+  }, [pose]);
+
+  useEffect(() => {
+    if (!pose || mapLinkedFromManifestRef.current || mapDefaultAppliedRef.current) {
+      return;
+    }
+    setMapLinked(hasGpsAvatar(pose));
+    mapDefaultAppliedRef.current = true;
   }, [pose]);
 
   const handleDroneToggle = useCallback((id: string, checked: boolean) => {
@@ -314,6 +330,13 @@ export default function App() {
               onGroundClick={handleGroundClick}
             />
           </div>
+          <Map2D
+            pose={pose}
+            markers={markers}
+            visibleDroneIds={visibleDroneIds}
+            open={mapLinked}
+            onOpenChange={setMapLinked}
+          />
           <div className="w-56 shrink-0">
             <MarkerPanel
               markers={markers}
