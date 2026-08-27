@@ -6,6 +6,17 @@ from pathlib import Path
 
 import pandas as pd
 
+_S4_STATES = {4, "4", "S4_TAKEOFF"}
+
+
+def sm_arm_local_ts(df: pd.DataFrame) -> float | None:
+    if df.empty or "state_machine_state" not in df.columns or "local_ts" not in df.columns:
+        return None
+    armed = df.loc[df["state_machine_state"].isin(_S4_STATES)]
+    if armed.empty:
+        return None
+    return float(armed.iloc[0]["local_ts"])
+
 
 def ulog_arm_us(
     status_parquet: Path | None, actuator_parquet: Path | None
