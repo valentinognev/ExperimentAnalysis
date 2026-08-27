@@ -1,5 +1,9 @@
 # Updates
 
+## 0.10.0 - Extract ulog topics to parquet
+- `ea/extract_ulog.py`: `extract_ulog(ulg_path, dest_dir, extra_topics=())` writes `ALWAYS` topics (+ GPS fallback to `vehicle_global_position`) as `{topic}.parquet` with uint64 `timestamp`
+- `tests/test_extract_ulog.py`: fixture via `write_min_ulog`, parquet round-trip asserts `arming_state` and `x`
+
 ## 0.9.0 - Minimal ULog fixture writer
 - `ea/ulog_min.py`: `write_min_ulog(path, messages)` writes ULog v1 readable by pyulog (vehicle_status, vehicle_local_position, vehicle_attitude, vehicle_gps_position)
 - `tests/test_ulog_min.py`: pyulog round-trip test
