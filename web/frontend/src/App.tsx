@@ -400,7 +400,12 @@ export default function App() {
                     </div>
                   }
                 >
-                  <View3DCesium drones={drones} origin={pose?.origin} />
+                  <View3DCesium
+                    drones={drones}
+                    origin={pose?.origin}
+                    markers={markers}
+                    onGroundClick={handleGroundClick}
+                  />
                 </Suspense>
               ) : (
                 <View3D
