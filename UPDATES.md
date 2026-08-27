@@ -1,5 +1,9 @@
 # Updates
 
+## 0.38.0 - SM pose avatars sm_ned and sm_lla
+- `ea/pose.py`: `sm_ned` / `sm_lla` avatars from `sm_system_manager.parquet` via `t_sm(local_ts)`; NED ref from home/GPS-at-ARM or `initialPos_lla`; `filt_lla/*` fallback
+- `tests/test_pose_sm.py`: SM-only without ulog `present`, beside ekf/gps, column omission, local frame
+
 ## 0.37.1 - Assignment import path fix
 - `ExperimentBar`: second import posts only `needs_id` file paths, not the whole directory (avoids duplicate `_utc` copies of already-imported named files)
 - `tests/test_needs_id.py`: mixed folder second import does not recopy named ulog
