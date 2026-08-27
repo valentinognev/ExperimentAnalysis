@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ea.ingest_files import import_paths
+from ea.ingest_mavlink import mavlink_pull
+from ea.ingest_ssh import _redact_password, ssh_pull
 from ea.manifest import merge_manifest, save_manifest
 from ea.pose import pose_at
 from ea.rebuild import rebuild
@@ -28,6 +30,11 @@ class CreateExperimentBody(BaseModel):
 
 class ImportBody(BaseModel):
     paths: list[str]
+
+
+class PullBody(BaseModel):
+    drone_id: int
+    adapters: list[str]
 
 
 class MarkerBody(BaseModel):
@@ -78,6 +85,48 @@ def post_import(slug: str, body: ImportBody):
         return import_paths(slug, body.paths)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="experiment not found")
+
+
+@app.post("/api/experiments/{slug}/pull")
+def post_pull(slug: str, body: PullBody):
+    try:
+        result = open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+
+    password = None
+    for drone in result["manifest"].get("drones", []):
+        if drone["id"] == body.drone_id:
+            password = drone.get("ssh", {}).get("password")
+            break
+
+    drone_key = str(body.drone_id)
+    any_ok = False
+    last_error = None
+
+    for adapter in body.adapters:
+        if adapter == "ssh":
+            pull_result = ssh_pull(slug, body.drone_id)
+        elif adapter == "mavlink":
+            pull_result = mavlink_pull(slug, body.drone_id)
+        else:
+            last_error = f"unknown adapter: {adapter}"
+            continue
+
+        if pull_result.get("ok"):
+            any_ok = True
+        else:
+            err = pull_result.get("error", "pull failed")
+            last_error = _redact_password(err, password)
+
+    if any_ok:
+        drones_out = {drone_key: {"ok": True}}
+    else:
+        drones_out = {
+            drone_key: {"ok": False, "error": last_error or "pull failed"},
+        }
+
+    return {"ok": any_ok, "drones": drones_out}
 
 
 @app.patch("/api/experiments/{slug}/manifest")

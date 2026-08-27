@@ -346,6 +346,8 @@ export default function App() {
         droneIds={droneIds}
         visible={visibleIds}
         onToggle={handleDroneToggle}
+        slug={slug}
+        onPulled={handleImported}
       />
       {poseError && (
         <p className="px-4 text-sm text-red-400">Pose: {poseError}</p>

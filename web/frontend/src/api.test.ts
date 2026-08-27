@@ -5,6 +5,7 @@ import {
   createExperiment,
   openExperiment,
   importPaths,
+  pullDrone,
   rebuild,
   getPose,
   getSeries,
@@ -77,6 +78,23 @@ describe("api", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paths }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("pullDrone POSTs {drone_id, adapters}", async () => {
+    const body = { ok: true, drones: { "2": { ok: true } } };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await pullDrone("foo", 2, ["ssh", "mavlink"]);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/pull", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ drone_id: 2, adapters: ["ssh", "mavlink"] }),
     });
     expect(result).toEqual(body);
   });

@@ -20,17 +20,27 @@ def _dest_path(dest_dir: Path, filename: str) -> Path:
     return dest_dir / f"{stem}_{_utc_suffix()}{suffix}"
 
 
+_HOST_SEEDS = {
+    2: "192.168.31.30",
+    4: "192.168.31.152",
+}
+
+
 def _default_drone(drone_id: int) -> dict:
-    return {
+    host = _HOST_SEEDS.get(drone_id, "")
+    drone = {
         "id": drone_id,
         "label": f"D{drone_id}",
-        "ssh": {"user": "pi", "host": ""},
+        "ssh": {"user": "pi", "host": host},
         "sources": {
             "ulg": [],
             "system_manager": [],
             "hardware_adapter": [],
         },
     }
+    if host:
+        drone["mavlink"] = {"url": f"tcp:{host}:5760"}
+    return drone
 
 
 def _find_drone(manifest: dict, drone_id: int) -> dict | None:

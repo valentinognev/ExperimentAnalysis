@@ -1,5 +1,11 @@
 # Updates
 
+## 0.36.0 - POST pull + host seeds
+- `POST /api/experiments/{slug}/pull` `{drone_id, adapters:["ssh"|"mavlink"]}` → `{ok, drones}`; password redacted from errors
+- `ea/ingest_files._default_drone`: seed D2 `192.168.31.30`, D4 `192.168.31.152`, user `pi`, mavlink tcp 5760; D3 no host
+- `DroneList.tsx`: per-drone SSH / MAVLink pull buttons; `api.pullDrone`
+- `tests/test_api_pull.py`: mocked ingest, 404, password redaction, host seeds
+
 ## 0.35.1 - MAVLink LOG_REQUEST arg order fix
 - `ea/ingest_mavlink.py`: `log_request_list_send(1, 1, 0, 0xFFFF)` and `log_request_data_send(1, 1, id, ofs, count)` — pymavlink parameter order
 - `tests/test_ingest_mavlink.py`: FakeMav signatures aligned; `test_log_request_list_uses_pymavlink_arg_order`

@@ -73,6 +73,18 @@ export function importPaths(
   });
 }
 
+export function pullDrone(
+  slug: string,
+  droneId: number,
+  adapters: ("ssh" | "mavlink")[],
+): Promise<{ ok: boolean; drones: Record<string, { ok: boolean; error?: string }> }> {
+  return json(`/api/experiments/${slug}/pull`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ drone_id: droneId, adapters }),
+  });
+}
+
 export function rebuild(slug: string): Promise<Record<string, unknown>> {
   return json(`/api/experiments/${slug}/rebuild`, {
     method: "POST",
