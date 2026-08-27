@@ -1,5 +1,10 @@
 # Updates
 
+## 0.25.1 - PlotBoard refresh on slug switch and rebuild
+- `plotBoard.ts`: `plotsForSlug` clears plots when experiment slug changes (A→B)
+- `PlotBoard.tsx` / `ChannelPlot.tsx`: `refreshToken` prop refetches topics/series after import-rebuild
+- `App.tsx`: passes `refreshToken` into PlotBoard and ChannelPlot
+
 ## 0.25.0 - User-defined Plotly channel panes
 - `web/frontend/src/plotBoard.ts`: `PlotDef`, `addPlot`/`removePlot`/`setPlotChannels`, `flattenTopics`
 - `web/frontend/src/api.ts`: `getTopics(slug)` → GET `/api/experiments/{slug}/topics`

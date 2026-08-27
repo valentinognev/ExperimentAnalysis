@@ -5,6 +5,7 @@ import {
   removePlot,
   setPlotChannels,
   flattenTopics,
+  plotsForSlug,
   type PlotDef,
 } from "./plotBoard";
 
@@ -45,6 +46,18 @@ describe("setPlotChannels", () => {
     const next = setPlotChannels(plots, id, ["x.y.z.w"]);
     expect(next[0].channels).toEqual(["x.y.z.w"]);
     expect(next[0].id).toBe(id);
+  });
+});
+
+describe("plotsForSlug", () => {
+  it("returns empty when slug changes", () => {
+    const plots: PlotDef[] = addPlot([], ["a.b.c.d"]);
+    expect(plotsForSlug("exp-a", "exp-b", plots)).toEqual([]);
+  });
+
+  it("keeps plots when slug unchanged", () => {
+    const plots: PlotDef[] = addPlot([], ["a.b.c.d"]);
+    expect(plotsForSlug("exp-a", "exp-a", plots)).toBe(plots);
   });
 });
 

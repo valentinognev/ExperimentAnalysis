@@ -189,8 +189,13 @@ export default function App() {
           <View3D drones={drones} />
         </div>
       </div>
-      <ChannelPlot slug={slug} visibleDroneIds={visibleDroneIds} t={t} />
-      <PlotBoard slug={slug} t={t} />
+      <ChannelPlot
+        slug={slug}
+        visibleDroneIds={visibleDroneIds}
+        t={t}
+        refreshToken={refreshToken}
+      />
+      <PlotBoard slug={slug} t={t} refreshToken={refreshToken} />
       <Timeline t={t} tMax={60} onTChange={setT} />
     </div>
   );

@@ -30,6 +30,15 @@ export function setPlotChannels(
   );
 }
 
+export function plotsForSlug(
+  prevSlug: string | null,
+  nextSlug: string | null,
+  plots: PlotDef[],
+): PlotDef[] {
+  if (prevSlug !== nextSlug) return [];
+  return plots;
+}
+
 export function flattenTopics(tree: TopicsTree): string[] {
   const out: string[] = [];
   for (const [drone, sources] of Object.entries(tree)) {

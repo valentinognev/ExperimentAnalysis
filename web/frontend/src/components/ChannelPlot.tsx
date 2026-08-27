@@ -16,9 +16,15 @@ type Props = {
   slug: string | null;
   visibleDroneIds: string[];
   t: number;
+  refreshToken?: number;
 };
 
-export default function ChannelPlot({ slug, visibleDroneIds, t }: Props) {
+export default function ChannelPlot({
+  slug,
+  visibleDroneIds,
+  t,
+  refreshToken = 0,
+}: Props) {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +56,7 @@ export default function ChannelPlot({ slug, visibleDroneIds, t }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [slug, channels]);
+  }, [slug, channels, refreshToken]);
 
   const traces = useMemo((): Data[] => {
     if (!series) return [];

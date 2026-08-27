@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
 import { getSeries, getTopics, type SeriesResponse } from "../api";
 import {
   addPlot,
   flattenTopics,
+  plotsForSlug,
   removePlot,
   type PlotDef,
 } from "../plotBoard";
@@ -27,10 +28,11 @@ type PlotPaneProps = {
   slug: string;
   plot: PlotDef;
   t: number;
+  refreshToken: number;
   onRemove: (id: string) => void;
 };
 
-function PlotPane({ slug, plot, t, onRemove }: PlotPaneProps) {
+function PlotPane({ slug, plot, t, refreshToken, onRemove }: PlotPaneProps) {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +59,7 @@ function PlotPane({ slug, plot, t, onRemove }: PlotPaneProps) {
     return () => {
       cancelled = true;
     };
-  }, [slug, plot.channels]);
+  }, [slug, plot.channels, refreshToken]);
 
   const traces = useMemo((): Data[] => {
     if (!series) return [];
@@ -122,22 +124,28 @@ function PlotPane({ slug, plot, t, onRemove }: PlotPaneProps) {
 type Props = {
   slug: string | null;
   t: number;
+  refreshToken?: number;
 };
 
-export default function PlotBoard({ slug, t }: Props) {
+export default function PlotBoard({ slug, t, refreshToken = 0 }: Props) {
   const [plots, setPlots] = useState<PlotDef[]>([]);
   const [channelIds, setChannelIds] = useState<string[]>([]);
   const [topicsError, setTopicsError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const prevSlugRef = useRef(slug);
+
+  useEffect(() => {
+    setPlots((prev) => plotsForSlug(prevSlugRef.current, slug, prev));
+    setPickerOpen(false);
+    setSelected(new Set());
+    prevSlugRef.current = slug;
+  }, [slug]);
 
   useEffect(() => {
     if (!slug) {
-      setPlots([]);
       setChannelIds([]);
       setTopicsError(null);
-      setPickerOpen(false);
-      setSelected(new Set());
       return;
     }
 
@@ -158,7 +166,7 @@ export default function PlotBoard({ slug, t }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, refreshToken]);
 
   const toggleChannel = (id: string) => {
     setSelected((prev) => {
@@ -246,6 +254,7 @@ export default function PlotBoard({ slug, t }: Props) {
           slug={slug}
           plot={plot}
           t={t}
+          refreshToken={refreshToken}
           onRemove={handleRemove}
         />
       ))}
