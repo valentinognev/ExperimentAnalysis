@@ -1,5 +1,8 @@
 # Updates
 
+## 0.4.0 - Drone id from filename
+- `ea/drone_id.py`: `drone_id_from_filename()` via `Group3RLcat(?P<id>\d+)_` or `_d(?P<id>\d+)`; `None` → needs_id
+
 ## 0.3.0 - Slug sanitizer
 - `ea/slug.py`: `slugify()` keeps `[A-Za-z0-9_-]`, spaces → `_`, rejects empty (`ValueError`)
 
