@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ea.ingest_files import import_paths
 from ea.manifest import merge_manifest, save_manifest
 from ea.store import create_experiment, list_experiments, open_experiment
 from ports import FRONTEND_PORT
@@ -19,6 +20,10 @@ app.add_middleware(
 
 class CreateExperimentBody(BaseModel):
     name: str
+
+
+class ImportBody(BaseModel):
+    paths: list[str]
 
 
 @app.get("/api/health")
@@ -49,6 +54,14 @@ def get_experiment(slug: str):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="experiment not found")
     return {"slug": result["slug"], "manifest": result["manifest"]}
+
+
+@app.post("/api/experiments/{slug}/import")
+def post_import(slug: str, body: ImportBody):
+    try:
+        return import_paths(slug, body.paths)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
 
 
 @app.patch("/api/experiments/{slug}/manifest")

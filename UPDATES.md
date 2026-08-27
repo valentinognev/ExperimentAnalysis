@@ -1,5 +1,10 @@
 # Updates
 
+## 0.8.0 - Import ulog files into experiment raw/
+- `ea/ingest_files.py`: `import_paths(slug, paths)` copies `.ulg` into `raw/drone_<id>/`, non-recursive directory scan, `needs_id` for unknown filenames, append-only UTC suffix on collision, manifest `sources.ulg` updated
+- `app.py`: `POST /api/experiments/{slug}/import` body `{paths: string[]}`
+- `tests/test_ingest_files.py`: import unit tests + API TestClient test
+
 ## 0.7.0 - FastAPI health and experiment CRUD
 - `web/backend/app.py`: `GET /api/health`, `GET|POST /api/experiments`, `GET /api/experiments/{slug}`, `PATCH /api/experiments/{slug}/manifest`; CORS for frontend port; 404 `{"detail": "experiment not found"}`
 - `web/backend/requirements.txt`: fastapi, uvicorn, pyulog, pyarrow, pandas, pymavlink, pytest, httpx
