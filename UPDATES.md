@@ -1,5 +1,9 @@
 # Updates
 
+## 0.12.0 - ARM experiment time mapping
+- `ea/sync.py`: `t_ulog`, `t_sm`, `write_sync` → `derived/sync.json` with `ulog_arm_us`, `sm_arm_local_ts`, `synced`, `note`; `synced` True iff `ulog_arm_us` is not None
+- `tests/test_sync.py`: two-drone ARM T=0, missing ARM uses first sample, SM uses `local_ts`
+
 ## 0.11.0 - Detect PX4 ARM timestamp
 - `ea/arm.py`: `ulog_arm_us(status_parquet, actuator_parquet)` — first `arming_state == 2`, else first `armed` in actuator parquet; `None` if never armed
 - `tests/test_arm.py`: two-row vehicle_status → 5000; all-disarmed → `None`
