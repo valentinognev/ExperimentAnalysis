@@ -1,5 +1,9 @@
 # Updates
 
+## 0.15.0 - pose_at query builder
+- `ea/pose.py`: `pose_at(experiment_dir, t)` — manifest drones, sync synced flag, EKF NED→ENU (world via GPS/home at ARM or `local_frame`), attitude wxyz→xyzw, origin from mean GPS LLA at T=0
+- `tests/test_pose.py`: single-drone interpolation, partial manifest, GPS int scaling origin, no-GPS local frame
+
 ## 0.14.0 - Pose interpolation
 - `ea/interp.py`: `interp_scalar` (numpy linear, None outside range/empty), `slerp_xyzw` (normalize, flip sign if dot<0, sin blend)
 - `tests/test_interp.py`: midpoint scalar, range/empty None, slerp identity→90° z at midpoint ≈45°, endpoints
