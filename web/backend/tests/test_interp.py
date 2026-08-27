@@ -41,6 +41,21 @@ def test_slerp_identity_to_90deg_z_midpoint():
     assert w == pytest.approx(math.cos(math.pi / 8), abs=1e-6)
 
 
+def test_slerp_negated_quaternion_shortest_path():
+    """Negated q1 has dot < 0; slerp must flip sign (short ~45°, not long ~135°)."""
+    half = math.sin(math.pi / 8)
+    q0 = (0.0, 0.0, 0.0, 1.0)
+    q1_pos = (0.0, 0.0, math.sin(math.pi / 4), math.cos(math.pi / 4))
+    q1 = tuple(-c for c in q1_pos)
+    result = slerp_xyzw(5, [0, 10], [q0, q1])
+    assert result is not None
+    x, y, z, w = result
+    assert x == pytest.approx(0.0, abs=1e-6)
+    assert y == pytest.approx(0.0, abs=1e-6)
+    assert z == pytest.approx(half, abs=1e-6)
+    assert w == pytest.approx(math.cos(math.pi / 8), abs=1e-6)
+
+
 def test_slerp_at_endpoints():
     q0 = (0.0, 0.0, 0.0, 1.0)
     q1 = (0.0, 0.0, math.sin(math.pi / 4), math.cos(math.pi / 4))
