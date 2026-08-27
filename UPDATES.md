@@ -1,5 +1,9 @@
 # Updates
 
+## 0.41.0 - Baseball operator guide
+- README: import `/home/valentin/RL/TESTFLIGHTS/Baseball`, D2/D4 SSH hosts, D3 ulog-only; ports 6400/6473
+- `test_layout.py`: README operator-guide strings
+
 ## 0.40.0 - Cesium lazy 3D engine
 - `engineToggle.ts`: `shouldLoadCesium`; Plotly | Cesium toggle PATCHes `ui.engine3d`
 - `View3DCesium.tsx`: lazy `import("cesium")`, OSM `UrlTemplateImageryProvider`, body triads as polylines

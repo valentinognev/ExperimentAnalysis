@@ -16,3 +16,11 @@ def test_readme_and_updates_exist():
     assert "ExperimentAnalysis" in readme
     assert "UPDATES.md" in readme
     assert "## 0.1.0" in updates
+
+
+def test_readme_operator_guide():
+    readme = (ROOT / "README.md").read_text()
+    assert "6400" in readme
+    assert "6473" in readme
+    assert "TESTFLIGHTS/Baseball" in readme
+    assert "192.168.31.30" in readme

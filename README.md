@@ -28,6 +28,18 @@ Each experiment lives under `experiments/<name>/` with `raw/` (append-only impor
 
 **Local import paths:** point Import at a directory of SITL `.ulg` files, or at simulation log folders such as `system_manager/logs/` (System Manager CSVs) and `hardware_adapter/logs/` (adapter diag / mavlink logs). Files whose names lack a drone id are listed in `needs_id`; the UI prompts for ids and re-imports with assignments.
 
+## Operator guide (Baseball reconstruction)
+
+Golden dataset: import `/home/valentin/RL/TESTFLIGHTS/Baseball` — three `.ulg` files for drones 2, 3, and 4. Rebuild populates pose and default NED plots; toggle Cesium vs Plotly in the 3D view.
+
+| Drone | SSH host | Notes |
+|---|---|---|
+| D2 | `192.168.31.30` | user `pi`; MAVLink `tcp:192.168.31.30:5760` |
+| D3 | — | ulog-only (no SSH host seeded) |
+| D4 | `192.168.31.152` | user `pi`; MAVLink `tcp:192.168.31.152:5760` |
+
+Start backend on `127.0.0.1:6400` and UI on `127.0.0.1:6473` (`start.sh` or manual uvicorn + Vite). Pull SSH/MAVLink from D2/D4 appends SM/HA logs without replacing imported ulogs.
+
 ## Reading order for agents
 
 1. Read this `README.md` (mandatory if present).
