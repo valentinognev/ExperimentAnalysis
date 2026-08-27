@@ -22,6 +22,25 @@ function enuToCartesian(
   return Cesium.Cartesian3.fromDegrees(lla.lon, lla.lat, lla.alt_m);
 }
 
+function frameOrigin(
+  viewer: Viewer,
+  Cesium: CesiumModule,
+  origin: Origin,
+) {
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(
+      origin.lon,
+      origin.lat,
+      origin.alt_m + 500,
+    ),
+    orientation: {
+      heading: 0,
+      pitch: Cesium.Math.toRadians(-45),
+      roll: 0,
+    },
+  });
+}
+
 function updateEntities(
   viewer: Viewer,
   Cesium: CesiumModule,
@@ -88,44 +107,55 @@ export default function View3DCesium({
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const cesiumRef = useRef<CesiumModule | null>(null);
+  const framedOriginRef = useRef<string | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     let cancelled = false;
+    setLoadError(null);
 
-    import("cesium").then((Cesium) => {
-      if (cancelled) return;
+    import("cesium")
+      .then((Cesium) => {
+        if (cancelled) return;
 
-      cesiumRef.current = Cesium;
-      const viewer = new Cesium.Viewer(container, {
-        baseLayer: new Cesium.ImageryLayer(
-          new Cesium.UrlTemplateImageryProvider({
-            url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-          }),
-        ),
-        terrainProvider: new Cesium.EllipsoidTerrainProvider(),
-        baseLayerPicker: false,
-        geocoder: false,
-        homeButton: false,
-        sceneModePicker: false,
-        navigationHelpButton: false,
-        animation: false,
-        timeline: false,
-        fullscreenButton: false,
-        infoBox: false,
-        selectionIndicator: false,
-        creditContainer: document.createElement("div"),
+        cesiumRef.current = Cesium;
+        const viewer = new Cesium.Viewer(container, {
+          baseLayer: new Cesium.ImageryLayer(
+            new Cesium.UrlTemplateImageryProvider({
+              url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            }),
+          ),
+          terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+          baseLayerPicker: false,
+          geocoder: false,
+          homeButton: false,
+          sceneModePicker: false,
+          navigationHelpButton: false,
+          animation: false,
+          timeline: false,
+          fullscreenButton: false,
+          infoBox: false,
+          selectionIndicator: false,
+          creditContainer: document.createElement("div"),
+        });
+        viewerRef.current = viewer;
+        setViewerReady(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error ? err.message : "Failed to load Cesium globe",
+        );
       });
-      viewerRef.current = viewer;
-      setViewerReady(true);
-    });
 
     return () => {
       cancelled = true;
       setViewerReady(false);
+      framedOriginRef.current = null;
       if (viewerRef.current) {
         viewerRef.current.destroy();
         viewerRef.current = null;
@@ -138,13 +168,28 @@ export default function View3DCesium({
     const viewer = viewerRef.current;
     const Cesium = cesiumRef.current;
     if (!viewerReady || !viewer || !Cesium || !origin) return;
+
     updateEntities(viewer, Cesium, drones, origin, scale);
+
+    const originKey = `${origin.lat},${origin.lon},${origin.alt_m}`;
+    if (framedOriginRef.current !== originKey) {
+      frameOrigin(viewer, Cesium, origin);
+      framedOriginRef.current = originKey;
+    }
   }, [viewerReady, drones, origin, scale]);
+
+  if (loadError) {
+    return (
+      <div className="flex h-full items-center justify-center px-4 text-center text-sm text-red-400">
+        {loadError}
+      </div>
+    );
+  }
 
   return (
     <div
       ref={containerRef}
-      className="h-[calc(100%-2rem)] w-full [&_.cesium-viewer]:h-full [&_.cesium-viewer]:w-full"
+      className="h-full w-full min-h-0 [&_.cesium-viewer]:h-full [&_.cesium-viewer]:w-full"
     />
   );
 }

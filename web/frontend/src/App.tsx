@@ -365,8 +365,8 @@ export default function App() {
       )}
       <div className="min-h-0 flex-1 p-4">
         <div className="flex h-[min(70vh,640px)] gap-4">
-          <div className="min-w-0 flex-1 rounded border border-zinc-800">
-            <div className="flex items-center gap-2 border-b border-zinc-800 px-2 py-1">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded border border-zinc-800">
+            <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-2 py-1">
               <span className="text-xs text-zinc-400">3D engine</span>
               <button
                 type="button"
@@ -391,24 +391,26 @@ export default function App() {
                 Cesium
               </button>
             </div>
-            {shouldLoadCesium(engine3d) ? (
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center text-sm text-zinc-400">
-                    Loading globe…
-                  </div>
-                }
-              >
-                <View3DCesium drones={drones} origin={pose?.origin} />
-              </Suspense>
-            ) : (
-              <View3D
-                drones={drones}
-                origin={pose?.origin}
-                markerPositions={markerPositions}
-                onGroundClick={handleGroundClick}
-              />
-            )}
+            <div className="min-h-0 flex-1">
+              {shouldLoadCesium(engine3d) ? (
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center text-sm text-zinc-400">
+                      Loading globe…
+                    </div>
+                  }
+                >
+                  <View3DCesium drones={drones} origin={pose?.origin} />
+                </Suspense>
+              ) : (
+                <View3D
+                  drones={drones}
+                  origin={pose?.origin}
+                  markerPositions={markerPositions}
+                  onGroundClick={handleGroundClick}
+                />
+              )}
+            </div>
           </div>
           <Map2D
             pose={pose}
