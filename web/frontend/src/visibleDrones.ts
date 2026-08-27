@@ -1,3 +1,11 @@
+export function idsChanged(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return true;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return true;
+  }
+  return false;
+}
+
 export function filterVisible(
   ids: string[],
   visible: Set<string> | string[],

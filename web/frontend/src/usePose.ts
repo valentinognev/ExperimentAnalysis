@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getPose, type PoseResponse } from "./api";
 
-export function usePose(slug: string | null, t: number) {
+export function usePose(slug: string | null, t: number, refreshToken = 0) {
   const [pose, setPose] = useState<PoseResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +28,7 @@ export function usePose(slug: string | null, t: number) {
     return () => {
       cancelled = true;
     };
-  }, [slug, t]);
+  }, [slug, t, refreshToken]);
 
   return { pose, error };
 }

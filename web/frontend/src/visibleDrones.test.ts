@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { filterVisible, mergeDroneIds } from "./visibleDrones";
+import { filterVisible, idsChanged, mergeDroneIds } from "./visibleDrones";
 
 describe("filterVisible", () => {
   it("keeps ids that are in the visible set", () => {
@@ -14,6 +14,21 @@ describe("filterVisible", () => {
 
   it("accepts Set for visible", () => {
     expect(filterVisible(["2", "3"], new Set(["3"]))).toEqual(["3"]);
+  });
+});
+
+describe("idsChanged", () => {
+  it("returns false for equal arrays", () => {
+    expect(idsChanged(["1", "2"], ["1", "2"])).toBe(false);
+  });
+
+  it("returns true when length differs", () => {
+    expect(idsChanged(["1"], ["1", "2"])).toBe(true);
+  });
+
+  it("returns true when order or elements differ", () => {
+    expect(idsChanged(["1", "2"], ["2", "1"])).toBe(true);
+    expect(idsChanged(["1", "2"], ["1", "3"])).toBe(true);
   });
 });
 

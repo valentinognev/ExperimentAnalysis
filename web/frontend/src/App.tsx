@@ -8,7 +8,7 @@ import View3D, { type DronePose } from "./components/View3D";
 import { downsampleHz } from "./downsample";
 import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
-import { filterVisible, mergeDroneIds } from "./visibleDrones";
+import { filterVisible, idsChanged, mergeDroneIds } from "./visibleDrones";
 
 type TrailPoint = { t: number; pos: EnuPos };
 
@@ -28,7 +28,7 @@ export default function App() {
   const [t, setT] = useState(0);
   const [droneIds, setDroneIds] = useState<string[]>([]);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
-  const { pose, error: poseError } = usePose(slug, t);
+  const { pose, error: poseError } = usePose(slug, t, refreshToken);
   const [trailHistory, setTrailHistory] = useState<
     Record<string, TrailPoint[]>
   >({});
@@ -64,7 +64,10 @@ export default function App() {
           setDroneIds(listed);
           setVisibleIds(new Set(listed));
         } else {
-          setDroneIds((prev) => mergeDroneIds(listed, prev));
+          setDroneIds((prev) => {
+            const merged = mergeDroneIds(listed, prev);
+            return idsChanged(prev, merged) ? merged : prev;
+          });
           setVisibleIds((prev) => {
             const next = new Set(prev);
             let changed = false;
@@ -94,7 +97,10 @@ export default function App() {
   useEffect(() => {
     if (!pose?.drones) return;
     const poseIds = Object.keys(pose.drones);
-    setDroneIds((prev) => mergeDroneIds(prev, poseIds));
+    setDroneIds((prev) => {
+      const merged = mergeDroneIds(prev, poseIds);
+      return idsChanged(prev, merged) ? merged : prev;
+    });
     setVisibleIds((prev) => {
       const next = new Set(prev);
       let changed = false;
