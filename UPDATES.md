@@ -1,5 +1,9 @@
 # Updates
 
+## 0.56.0 - Channel picker is a searchable tree
+- Analysis Add plot: channels grouped drone → source → topic → field; search filters by substring
+- Apply commits the selection; Edit on a plot pane reopens the picker for that plot
+
 ## 0.55.0 - Sources drone data summary
 - Each Sources drone row lists ULG name, date/time from the PX4 filename, SM/HA log names, and the analysis color
 - Avatar/plot color is keyed by physical drone id so hiding D1 does not recolor D2

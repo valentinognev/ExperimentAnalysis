@@ -4,10 +4,13 @@ import type { Data, Layout } from "plotly.js";
 import { getSeries, getTopics, type SeriesResponse } from "../api";
 import {
   addPlot,
-  flattenTopics,
   removePlot,
+  setPlotChannels,
+  topicsToChannelTree,
   type PlotDef,
+  type TopicsTree,
 } from "../plotBoard";
+import ChannelPicker from "./ChannelPicker";
 
 const TRACE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6", "#4ade80"];
 
@@ -28,10 +31,11 @@ type PlotPaneProps = {
   plot: PlotDef;
   t: number;
   refreshToken: number;
+  onEdit: (plot: PlotDef) => void;
   onRemove: (id: string) => void;
 };
 
-function PlotPane({ slug, plot, t, refreshToken, onRemove }: PlotPaneProps) {
+function PlotPane({ slug, plot, t, refreshToken, onEdit, onRemove }: PlotPaneProps) {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,13 +103,22 @@ function PlotPane({ slug, plot, t, refreshToken, onRemove }: PlotPaneProps) {
         <span className="truncate text-xs text-zinc-400">
           {plot.channels.join(", ") || "(no channels)"}
         </span>
-        <button
-          type="button"
-          className="shrink-0 rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
-          onClick={() => onRemove(plot.id)}
-        >
-          Remove
-        </button>
+        <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+            onClick={() => onEdit(plot)}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+            onClick={() => onRemove(plot.id)}
+          >
+            Remove
+          </button>
+        </div>
       </div>
       {error && <p className="mb-2 text-sm text-red-400">Series: {error}</p>}
       <div className="h-64">
@@ -135,19 +148,27 @@ export default function PlotBoard({
   plots,
   onPlotsChange,
 }: Props) {
-  const [channelIds, setChannelIds] = useState<string[]>([]);
+  const [topics, setTopics] = useState<TopicsTree>({});
   const [topicsError, setTopicsError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const closePicker = () => {
+    setPickerOpen(false);
+    setSelected(new Set());
+    setEditingId(null);
+  };
 
   useEffect(() => {
     setPickerOpen(false);
     setSelected(new Set());
+    setEditingId(null);
   }, [slug]);
 
   useEffect(() => {
     if (!slug) {
-      setChannelIds([]);
+      setTopics({});
       setTopicsError(null);
       return;
     }
@@ -157,12 +178,12 @@ export default function PlotBoard({
 
     getTopics(slug)
       .then((tree) => {
-        if (!cancelled) setChannelIds(flattenTopics(tree));
+        if (!cancelled) setTopics(tree);
       })
       .catch((e: unknown) => {
         if (!cancelled) {
           setTopicsError(e instanceof Error ? e.message : String(e));
-          setChannelIds([]);
+          setTopics({});
         }
       });
 
@@ -171,20 +192,20 @@ export default function PlotBoard({
     };
   }, [slug, refreshToken]);
 
-  const toggleChannel = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const handleApply = () => {
+    const channels = [...selected].sort();
+    if (editingId) {
+      onPlotsChange(setPlotChannels(plots, editingId, channels));
+    } else {
+      onPlotsChange(addPlot(plots, channels));
+    }
+    closePicker();
   };
 
-  const handleAddPlot = () => {
-    if (selected.size === 0) return;
-    onPlotsChange(addPlot(plots, [...selected].sort()));
-    setSelected(new Set());
-    setPickerOpen(false);
+  const handleEdit = (plot: PlotDef) => {
+    setEditingId(plot.id);
+    setSelected(new Set(plot.channels));
+    setPickerOpen(true);
   };
 
   const handleRemove = (id: string) => {
@@ -199,7 +220,11 @@ export default function PlotBoard({
         <button
           type="button"
           className="rounded bg-zinc-800 px-3 py-1.5 text-sm hover:bg-zinc-700"
-          onClick={() => setPickerOpen((open) => !open)}
+          onClick={() => {
+            setPickerOpen((open) => !open);
+            setEditingId(null);
+            setSelected(new Set());
+          }}
         >
           Add plot
         </button>
@@ -209,46 +234,13 @@ export default function PlotBoard({
       </div>
 
       {pickerOpen && (
-        <div className="max-h-48 overflow-y-auto rounded border border-zinc-700 bg-zinc-900 p-2">
-          {channelIds.length === 0 ? (
-            <p className="text-sm text-zinc-500">No channels available</p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {channelIds.map((id) => (
-                <li key={id}>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(id)}
-                      onChange={() => toggleChannel(id)}
-                    />
-                    <span className="font-mono text-xs">{id}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              className="rounded bg-orange-600 px-3 py-1 text-sm hover:bg-orange-500 disabled:opacity-50"
-              disabled={selected.size === 0}
-              onClick={handleAddPlot}
-            >
-              Add ({selected.size})
-            </button>
-            <button
-              type="button"
-              className="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700"
-              onClick={() => {
-                setPickerOpen(false);
-                setSelected(new Set());
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <ChannelPicker
+          nodes={topicsToChannelTree(topics)}
+          selected={selected}
+          onSelectedChange={setSelected}
+          onApply={handleApply}
+          onCancel={closePicker}
+        />
       )}
 
       {plots.map((plot) => (
@@ -258,6 +250,7 @@ export default function PlotBoard({
           plot={plot}
           t={t}
           refreshToken={refreshToken}
+          onEdit={handleEdit}
           onRemove={handleRemove}
         />
       ))}

@@ -87,7 +87,7 @@ Channel ids: `{drone_id}.{source}.{topic}.{field}` with source `ulog` | `sm` | `
 - Center: Plotly 3D (default) or Cesium globe (lazy `import("cesium")`, OSM tiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, **no Ion token**).
 - Linked 2D Plotly `scattermap` (`style: "open-street-map"`). Ground click / globe click → markers (LLA in manifest); two selected markers show haversine + 3D ENU distance.
 - Timeline: slider, play / reverse / pause, speeds 0.25/1/2/4, numeric T. `tMax` comes from `GET .../duration` (`t_max_s` from rebuild), not a 60s placeholder.
-- Default NED channel plots plus extra Plotly panes. `ui` in the manifest restores layout on reopen.
+- Default NED channel plots plus extra Plotly panes from a tree picker with search, Apply, and Edit. `ui` in the manifest restores layout on reopen.
 
 GET experiment JSON **strips** `ssh.password` (file on disk may still hold it). Failed HTTP responses are not treated as success in the UI client.
 
