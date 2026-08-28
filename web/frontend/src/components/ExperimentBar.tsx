@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  browseFolder,
+  addDrone,
   createExperiment,
-  importPaths,
   listExperiments,
-  openExperiment,
   rebuild,
   type ExperimentSummary,
 } from "../api";
@@ -14,40 +12,31 @@ type Props = {
   onSlugChange: (slug: string | null) => void;
   onImported?: () => void;
   onRebuilt?: () => void;
-  /** New / Import / Rebuild. Chrome keeps the experiment switcher. */
+  onDronesChange?: () => void;
+  /** New / Drone # / Add / Rebuild. Chrome keeps the experiment switcher. */
   showSetup?: boolean;
 };
 
-/** Second import: only needs_id files, not the whole directory again. */
-export function assignmentImportPaths(
-  importPath: string,
-  needsId: string[],
-): string[] {
-  const trimmed = importPath.trim();
-  if (needsId.length === 1) {
-    const name = needsId[0];
-    const slash = trimmed.lastIndexOf("/");
-    const base = slash >= 0 ? trimmed.slice(slash + 1) : trimmed;
-    if (base === name) {
-      return [trimmed];
-    }
-  }
-  const dir = trimmed.replace(/\/$/, "");
-  return needsId.map((name) => `${dir}/${name}`);
+function parsePositiveInt(text: string): number | null {
+  const id = Number.parseInt(text, 10);
+  if (Number.isNaN(id) || id < 1) return null;
+  return id;
 }
 
 export default function ExperimentBar({
   slug,
   onSlugChange,
-  onImported,
   onRebuilt,
+  onDronesChange,
   showSetup = true,
 }: Props) {
   const [experiments, setExperiments] = useState<ExperimentSummary[]>([]);
   const [newName, setNewName] = useState("");
-  const [importPath, setImportPath] = useState("");
+  const [droneIdText, setDroneIdText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const droneId = parsePositiveInt(droneIdText);
 
   const refresh = useCallback(async () => {
     const list = await listExperiments();
@@ -77,52 +66,15 @@ export default function ExperimentBar({
     }
   }
 
-  async function handleBrowse() {
-    if (!slug) return;
+  async function handleAdd() {
+    if (!slug || droneId === null) return;
     setBusy(true);
     setError(null);
     try {
-      const { path } = await browseFolder();
-      if (path) {
-        setImportPath(path);
-      }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleImport() {
-    if (!slug || !importPath.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const path = importPath.trim();
-      let result = await importPaths(slug, [path]);
-      const needsId = result.needs_id as string[] | undefined;
-      if (needsId?.length) {
-        const assignments: Record<string, number> = {};
-        for (const name of needsId) {
-          const answer = window.prompt(`Drone id for ${name}?`);
-          if (answer === null) {
-            setError("Import cancelled — assign drone ids for unknown files");
-            return;
-          }
-          const id = Number.parseInt(answer, 10);
-          if (Number.isNaN(id)) {
-            setError(`Invalid drone id for ${name}`);
-            return;
-          }
-          assignments[name] = id;
-        }
-        result = await importPaths(slug, assignmentImportPaths(path, needsId), assignments);
-      }
-      setImportPath("");
-      await rebuild(slug);
+      await addDrone(slug, droneId);
+      setDroneIdText("");
       await refresh();
-      await openExperiment(slug);
-      onImported?.();
+      onDronesChange?.();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -193,32 +145,25 @@ export default function ExperimentBar({
       {showSetup && (
         <div className="flex items-center gap-2 text-sm">
           <label className="flex items-center gap-2">
-            <span className="text-zinc-400">Import</span>
+            <span className="text-zinc-400">Drone #</span>
             <input
-              className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
-              type="text"
-              placeholder="path to .ulg or logs dir"
-              value={importPath}
-              disabled={busy || !slug}
-              onChange={(e) => setImportPath(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleImport()}
+              className="w-20 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+              type="number"
+              min={1}
+              step={1}
+              aria-label="Drone #"
+              value={droneIdText}
+              disabled={busy}
+              onChange={(e) => setDroneIdText(e.target.value)}
             />
           </label>
           <button
             className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
             type="button"
-            disabled={busy || !slug}
-            onClick={handleBrowse}
+            disabled={busy || !slug || droneId === null}
+            onClick={handleAdd}
           >
-            Browse
-          </button>
-          <button
-            className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
-            type="button"
-            disabled={busy || !slug || !importPath.trim()}
-            onClick={handleImport}
-          >
-            Import
+            Add
           </button>
         </div>
       )}

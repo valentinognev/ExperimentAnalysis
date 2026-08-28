@@ -5,6 +5,7 @@ import {
   createExperiment,
   openExperiment,
   importPaths,
+  addDrone,
   pullDrone,
   listSshLogs,
   copySshLogs,
@@ -103,6 +104,41 @@ describe("api", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paths, assignments }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("importPaths POSTs {paths, drone_id} when droneId is set", async () => {
+    const paths = ["/data/log.ulg"];
+    const body = { ok: true };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await importPaths("foo", paths, undefined, 2);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paths, drone_id: 2 }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("addDrone POSTs {id}", async () => {
+    const body = { slug: "foo", manifest: { drones: [{ id: 2 }] } };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await addDrone("foo", 2);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/drones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: 2 }),
     });
     expect(result).toEqual(body);
   });

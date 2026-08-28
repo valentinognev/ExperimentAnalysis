@@ -78,17 +78,33 @@ export function importPaths(
   slug: string,
   paths: string[],
   assignments?: Record<string, number>,
+  droneId?: number,
 ): Promise<Record<string, unknown>> {
-  const body: { paths: string[]; assignments?: Record<string, number> } = {
+  const body: {
+    paths: string[];
+    assignments?: Record<string, number>;
+    drone_id?: number;
+  } = {
     paths,
   };
   if (assignments !== undefined) {
     body.assignments = assignments;
   }
+  if (droneId !== undefined) {
+    body.drone_id = droneId;
+  }
   return json(`/api/experiments/${slug}/import`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+export function addDrone(slug: string, id: number): Promise<ExperimentDetail> {
+  return json(`/api/experiments/${slug}/drones`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
   });
 }
 
