@@ -1,5 +1,11 @@
 # Updates
 
+## 0.52.0 - Per-drone Import and drone add
+- Sources: New, Drone # / Add, Rebuild; per-row Import / SSH / MAVLink (Pi IP)
+- Add POSTs `/experiments/{slug}/drones` `{id}`; Import may send `drone_id` (filename ids pick the matching ulog)
+- Tabs still change only on click
+- E2E: add 2, 3, 4 then Import Baseball on each row; Analysis shows D2/D3/D4, Plotly, slider
+
 ## 0.51.3 - Stream copy/download rebuilds once
 - SSE copy/download no longer rebuild inside the async generator (blocked the event loop)
 - Stream clients rebuild once via POST /rebuild after the picker shows 100% / Rebuilding…

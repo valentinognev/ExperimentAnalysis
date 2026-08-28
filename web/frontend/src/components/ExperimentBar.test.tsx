@@ -100,15 +100,15 @@ describe("ExperimentBar", () => {
     expect(screen.queryByRole("button", { name: "Rebuild" })).not.toBeInTheDocument();
   });
 
-  it("Rebuild notifies onRebuilt, not onImported", async () => {
+  it("Rebuild notifies onRebuilt, not onDronesChange", async () => {
     const user = userEvent.setup();
-    const onImported = vi.fn();
+    const onDronesChange = vi.fn();
     const onRebuilt = vi.fn();
     render(
       <ExperimentBar
         slug="foo"
         onSlugChange={() => {}}
-        onImported={onImported}
+        onDronesChange={onDronesChange}
         onRebuilt={onRebuilt}
       />,
     );
@@ -118,6 +118,6 @@ describe("ExperimentBar", () => {
       expect(rebuild).toHaveBeenCalledWith("foo");
       expect(onRebuilt).toHaveBeenCalled();
     });
-    expect(onImported).not.toHaveBeenCalled();
+    expect(onDronesChange).not.toHaveBeenCalled();
   });
 });

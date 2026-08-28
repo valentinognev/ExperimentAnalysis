@@ -71,10 +71,6 @@ export default function App() {
   const mapLinkedFromManifestRef = useRef(false);
   const mapDefaultAppliedRef = useRef(false);
 
-  const handleImported = useCallback(() => {
-    setRefreshToken((n) => n + 1);
-  }, []);
-
   const handlePulled = useCallback(() => {
     setRefreshToken((n) => n + 1);
   }, []);
@@ -421,7 +417,7 @@ export default function App() {
       <ExperimentBar
         slug={slug}
         onSlugChange={setSlug}
-        onImported={handleImported}
+        onDronesChange={handlePulled}
         onRebuilt={handleRebuilt}
         showSetup={tab === "sources"}
       />

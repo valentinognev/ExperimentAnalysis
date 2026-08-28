@@ -10,7 +10,6 @@ import {
 type Props = {
   slug: string | null;
   onSlugChange: (slug: string | null) => void;
-  onImported?: () => void;
   onRebuilt?: () => void;
   onDronesChange?: () => void;
   /** New / Drone # / Add / Rebuild. Chrome keeps the experiment switcher. */

@@ -83,7 +83,7 @@ Channel ids: `{drone_id}.{source}.{topic}.{field}` with source `ulog` | `sm` | `
 
 ### UI
 
-- Tabs: **Sources** (New, Import path, Browse, Rebuild, per-drone Pi IP, SSH / MAVLink TCP|Serial) and **Analysis** (drone visibility, Plotly/Cesium 3D, 2D OSM map, Plotly plots, timeline). Experiment switcher stays in the chrome. Tabs change only by click. Drone list is a column, one row per drone. SSH is green when SM/HA logs are present; a failed pull shows an error on that row. SSH lists Pi log files for the operator to pick (many dates); copy shows a progress bar at the top of the picker (0% immediately, then SSE updates) and Cancel stops rsync. MAVLink lists vehicle logs for the operator to pick; download shows the same top-of-picker progress and Cancel stops the transfer; replacing an existing `.ulg` needs confirmation. Picker stays open through rebuild.
+- Tabs: **Sources** (New, Drone # / Add, Rebuild, per-drone Pi IP, Import / SSH / MAVLink) and **Analysis** (drone visibility, Plotly/Cesium 3D, 2D OSM map, Plotly plots, timeline). Experiment switcher stays in the chrome. Tabs change only by click. Drone list is a column, one row per drone. Import opens a path/Browse dialog on that row. SSH is green when SM/HA logs are present; a failed pull shows an error on that row. SSH lists Pi log files for the operator to pick (many dates); copy shows a progress bar at the top of the picker (0% immediately, then SSE updates) and Cancel stops rsync. MAVLink lists vehicle logs for the operator to pick; download shows the same top-of-picker progress and Cancel stops the transfer; replacing an existing `.ulg` needs confirmation. Picker stays open through rebuild.
 - Center: Plotly 3D (default) or Cesium globe (lazy `import("cesium")`, OSM tiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, **no Ion token**).
 - Linked 2D Plotly `scattermap` (`style: "open-street-map"`). Ground click / globe click → markers (LLA in manifest); two selected markers show haversine + 3D ENU distance.
 - Timeline: slider, play / reverse / pause, speeds 0.25/1/2/4, numeric T. `tMax` comes from `GET .../duration` (`t_max_s` from rebuild), not a 60s placeholder.
@@ -99,7 +99,8 @@ GET experiment JSON **strips** `ssh.password` (file on disk may still hold it). 
 | GET/POST | `/experiments` | List / create `{name}` |
 | GET | `/experiments/{slug}` | Manifest (password redacted) |
 | PATCH | `/experiments/{slug}/manifest` | Merge ui / drone hosts |
-| POST | `/experiments/{slug}/import` | `{paths, assignments?}` |
+| POST | `/experiments/{slug}/drones` | `{id}` |
+| POST | `/experiments/{slug}/import` | `{paths, assignments?, drone_id?}` |
 | POST | `/browse-folder` | native folder dialog; `{path: string \| null}` or 503 |
 | POST | `/experiments/{slug}/pull` | `{drone_id, adapters: ["ssh"\|"mavlink"]}` then rebuild |
 | POST | `/experiments/{slug}/ssh/logs` | `{drone_id}` → `{ok, logs}` (SM/HA files on the Pi) |
@@ -145,7 +146,7 @@ cd web/frontend && npx playwright test e2e/baseball.spec.ts
 
 ## Operator guide (Baseball reconstruction)
 
-Golden dataset: import `/home/valentin/RL/TESTFLIGHTS/Baseball` — three `.ulg` files:
+New experiment, Add drones 2, 3, 4, then Import `/home/valentin/RL/TESTFLIGHTS/Baseball` on each row (filename ids pick the matching ulog):
 
 - `Group3RLcat2_log_41_2026-8-25-17-05-30.ulg`
 - `Group3RLcat3_log_18_2026-8-25-17-05-26.ulg`
