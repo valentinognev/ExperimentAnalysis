@@ -1,5 +1,68 @@
 # Updates
 
+## 0.51.3 - Stream copy/download rebuilds once
+- SSE copy/download no longer rebuild inside the async generator (blocked the event loop)
+- Stream clients rebuild once via POST /rebuild after the picker shows 100% / Rebuilding…
+- JSON copy/download (no event-stream Accept) still rebuilds once on the server
+
+## 0.51.2 - Analysis slider moves 3D drones
+- `pose_at` no longer scans every attitude/GPS row with pandas `iterrows` (was ~1.6s per T, so scrub appeared frozen)
+- Vectorized LLA/quat columns + searchsorted slerp; Baseball pose ~40ms
+- Plotly 3D keeps camera (`uirevision`) and restyles traces via `datarevision` so avatars move in a stable ENU frame
+
+## 0.51.1 - Transfer progress visible (SSE + optimistic bar)
+- Picker shows 0% + filename immediately on Copy / Download, bar at top with fill
+- Streams `text/event-stream` (`data: <json>`) so browsers flush; Accept event-stream or ndjson
+- Picker stays open at 100% / Rebuilding… until rebuild finishes, then closes
+- Cancel still aborts (AbortController + rsync kill)
+
+## 0.51.0 - Transfer progress and cancel
+- SSH copy and MAVLink download stream NDJSON progress; picker shows percent and file index
+- Cancel aborts the request, kills rsync / stops the ulog transfer, and drops partial files
+- Manifest and rebuild only after a completed transfer
+
+## 0.50.0 - SSH log pick from probed Pi dirs
+- SSH lists remote SM/HA files; operator selects which to copy (same UX as MAVLink)
+- Probe CatSwarm `~/RL/CatSwarm/.../logs/`, then `~/RL/system_manager/logs/`, `~/RL/hardware_adapter/logs/`, and `~/RL/logs/` (Python HA default `../logs` from adapter cwd)
+- Missing dirs skipped; `POST .../ssh/logs` and `POST .../ssh/copy`
+- D2 has SM at `~/RL/system_manager/logs`; `~/RL/hardware_adapter/logs` is often absent
+
+## 0.49.1 - SSH pull survives missing HA logs dir
+- `ssh_pull`: rsync `change_dir` / No such file on `hardware_adapter/logs` (or SM) is skipped; pull still ok if the other source copied
+- Real rsync errors (auth, timeout, code 1) still fail the pull
+
+## 0.49.0 - MAVLink log pick, TCP or serial, one ulg
+- MAVLink menu: TCP (`tcp:{host}:5760`) or Serial (`/dev/ttyUSB0` @ 57600); list onboard logs, operator selects, then download
+- One `.ulg` per drone: existing file replaced only after confirm; failed download keeps the old file
+- `POST .../mavlink/logs` and `POST .../mavlink/download`; `mavlink_list_logs` / `mavlink_download_log`
+
+## 0.48.0 - SSH status on the drone row
+- Tabs change only when the operator clicks them (import/pull/rebuild no longer switch)
+- SSH button green when SM/HA logs are already in `raw/` or a pull succeeds
+- Failed SSH pull shows a red note on that drone row; empty remote with existing SM/HA is success
+
+## 0.47.2 - SSH/MAVLink stay on Sources
+- Pull and Rebuild refresh extracts but do not switch tabs; only Import jumps to Analysis
+- `tabAfterAction("import"|"pull"|"rebuild")`; `ExperimentBar` `onRebuilt` separate from `onImported`
+
+## 0.47.1 - Drone list is a column
+- `DroneList`: stacked `ul`/`li` (one row per drone) instead of a single wrapping row
+
+## 0.47.0 - Sources and Analysis tabs
+- `WorkspaceTabs`: Sources | Analysis; experiment switcher stays in the chrome
+- Sources: New, Import/Browse, Rebuild, per-drone Pi IP, SSH/MAVLink; Analysis: visibility, 3D, map, plots, timeline
+- Successful import, pull, or rebuild switches to Analysis; empty Analysis prompts opening an experiment
+- `ExperimentBar` `showSetup`; `DroneList` `variant`; E2E asserts Analysis after Baseball import
+
+## 0.46.0 - Per-drone Pi host IP after import
+- `DroneList`: `D{id} host` text field (placeholder `Pi IP`) before SSH/MAVLink; Enter/blur PATCHes `ssh.host` and `mavlink.url` `tcp:{host}:5760`
+- `hosts.ts`: `hostsFromManifest` / `hostPatch`; App hydrates hosts from GET experiment after open/import
+- D2/D4 still seed on import; D3 (and others) can be typed in the UI
+
+## 0.45.2 - Browse is a folder dialog, not a file picker
+- `ea/browse.py`: prefer `zenity --file-selection --directory` (kdialog 23.08 `--getexistingdirectory` opens a file selector); kdialog remains fallback
+- `test_browse.py`: zenity wins when both tools exist
+
 ## 0.45.1 - Browse test isolation and README inventory
 - `ExperimentBar.test.tsx`: `vi.clearAllMocks()` in `beforeEach`; cancel case waits for Browse re-enable before asserting path
 - README UI bullet: Browse next to Import path

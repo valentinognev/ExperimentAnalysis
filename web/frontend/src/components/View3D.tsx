@@ -150,10 +150,17 @@ export default function View3D({
     if (lla) onGroundClick(lla);
   };
 
+  const datarevision = drones
+    .map(
+      (d) =>
+        `${d.id}:${d.pos.e}:${d.pos.n}:${d.pos.u}:${(d.attitude_q_xyzw ?? []).join(",")}`,
+    )
+    .join("|");
+
   return (
     <Plot
       data={traces}
-      layout={sceneLayout()}
+      layout={sceneLayout({ datarevision })}
       config={{ responsive: true }}
       style={{ width: "100%", height: "100%" }}
       onClick={handleClick}

@@ -59,6 +59,39 @@ describe("ExperimentBar", () => {
     expect(rebuild).not.toHaveBeenCalled();
   });
 
+  it("hides New, Import, and Rebuild when showSetup is false", () => {
+    render(
+      <ExperimentBar slug="foo" onSlugChange={() => {}} showSetup={false} />,
+    );
+
+    expect(screen.getByLabelText("Experiment")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Browse" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Import" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rebuild" })).not.toBeInTheDocument();
+  });
+
+  it("Rebuild notifies onRebuilt, not onImported", async () => {
+    const user = userEvent.setup();
+    const onImported = vi.fn();
+    const onRebuilt = vi.fn();
+    render(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        onImported={onImported}
+        onRebuilt={onRebuilt}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Rebuild" }));
+    await waitFor(() => {
+      expect(rebuild).toHaveBeenCalledWith("foo");
+      expect(onRebuilt).toHaveBeenCalled();
+    });
+    expect(onImported).not.toHaveBeenCalled();
+  });
+
   it("leaves Import path unchanged when Browse is cancelled", async () => {
     vi.mocked(browseFolder).mockResolvedValue({ path: null });
     const user = userEvent.setup();

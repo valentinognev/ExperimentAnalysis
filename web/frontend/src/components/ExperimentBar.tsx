@@ -13,6 +13,9 @@ type Props = {
   slug: string | null;
   onSlugChange: (slug: string | null) => void;
   onImported?: () => void;
+  onRebuilt?: () => void;
+  /** New / Import / Rebuild. Chrome keeps the experiment switcher. */
+  showSetup?: boolean;
 };
 
 /** Second import: only needs_id files, not the whole directory again. */
@@ -33,7 +36,13 @@ export function assignmentImportPaths(
   return needsId.map((name) => `${dir}/${name}`);
 }
 
-export default function ExperimentBar({ slug, onSlugChange, onImported }: Props) {
+export default function ExperimentBar({
+  slug,
+  onSlugChange,
+  onImported,
+  onRebuilt,
+  showSetup = true,
+}: Props) {
   const [experiments, setExperiments] = useState<ExperimentSummary[]>([]);
   const [newName, setNewName] = useState("");
   const [importPath, setImportPath] = useState("");
@@ -128,7 +137,7 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
     try {
       await rebuild(slug);
       await refresh();
-      onImported?.();
+      onRebuilt?.();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -142,6 +151,7 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
         <span className="text-zinc-400">Experiment</span>
         <select
           className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+          aria-label="Experiment"
           value={slug ?? ""}
           disabled={busy}
           onChange={(e) => onSlugChange(e.target.value || null)}
@@ -155,68 +165,74 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
         </select>
       </label>
 
-      <div className="flex items-center gap-2 text-sm">
-        <label className="flex items-center gap-2">
-          <span className="text-zinc-400">Name</span>
-          <input
-            className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
-            type="text"
-            placeholder="name"
-            value={newName}
-            disabled={busy}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-          />
-        </label>
-        <button
-          className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
-          type="button"
-          disabled={busy || !newName.trim()}
-          onClick={handleCreate}
-        >
-          New
-        </button>
-      </div>
+      {showSetup && (
+        <div className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2">
+            <span className="text-zinc-400">Name</span>
+            <input
+              className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+              type="text"
+              placeholder="name"
+              value={newName}
+              disabled={busy}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+          </label>
+          <button
+            className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
+            type="button"
+            disabled={busy || !newName.trim()}
+            onClick={handleCreate}
+          >
+            New
+          </button>
+        </div>
+      )}
 
-      <div className="flex items-center gap-2 text-sm">
-        <label className="flex items-center gap-2">
-          <span className="text-zinc-400">Import</span>
-          <input
-            className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
-            type="text"
-            placeholder="path to .ulg or logs dir"
-            value={importPath}
+      {showSetup && (
+        <div className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2">
+            <span className="text-zinc-400">Import</span>
+            <input
+              className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+              type="text"
+              placeholder="path to .ulg or logs dir"
+              value={importPath}
+              disabled={busy || !slug}
+              onChange={(e) => setImportPath(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleImport()}
+            />
+          </label>
+          <button
+            className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
+            type="button"
             disabled={busy || !slug}
-            onChange={(e) => setImportPath(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleImport()}
-          />
-        </label>
+            onClick={handleBrowse}
+          >
+            Browse
+          </button>
+          <button
+            className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
+            type="button"
+            disabled={busy || !slug || !importPath.trim()}
+            onClick={handleImport}
+          >
+            Import
+          </button>
+        </div>
+      )}
+
+      {showSetup && (
         <button
-          className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
+          className="rounded bg-zinc-700 px-2 py-1 text-sm hover:bg-zinc-600 disabled:opacity-50"
           type="button"
           disabled={busy || !slug}
-          onClick={handleBrowse}
+          onClick={handleRebuild}
         >
-          Browse
+          Rebuild
         </button>
-        <button
-          className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
-          type="button"
-          disabled={busy || !slug || !importPath.trim()}
-          onClick={handleImport}
-        >
-          Import
-        </button>
-      </div>
-
-      <button
-        className="rounded bg-zinc-700 px-2 py-1 text-sm hover:bg-zinc-600 disabled:opacity-50"
-        type="button"
-        disabled={busy || !slug}
-        onClick={handleRebuild}
-      >
-        Rebuild
-      </button>
+      )}
 
       {error && <span className="text-sm text-red-400">{error}</span>}
     </div>

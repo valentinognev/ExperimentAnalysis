@@ -6,13 +6,14 @@ import json
 import math
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from ea.geo import lla_to_enu, mean_origin, ned_to_enu
 from ea.interp import interp_scalar, slerp_xyzw
 from ea.manifest import load_manifest
 from ea.series import channel_value_at_t
-from ea.sync import t_sm, t_ulog
+from ea.sync import t_sm
 
 _GPS_TOPICS = ("vehicle_gps_position", "vehicle_global_position")
 _ARM_T0_SLACK_S = 0.5
@@ -88,8 +89,10 @@ def _manual_offset_s(manifest: dict, drone_id: str) -> float:
 def _experiment_times(
     df: pd.DataFrame, arm_us: int | None, offset_s: float = 0.0
 ) -> list[float]:
-    first_us = int(df["timestamp"].iloc[0])
-    return [t_ulog(float(ts), arm_us, first_us, offset_s) for ts in df["timestamp"]]
+    ts_us = df["timestamp"].to_numpy(dtype=np.float64, copy=False)
+    first_us = float(ts_us[0])
+    origin = float(arm_us) if arm_us is not None else first_us
+    return ((ts_us - origin) / 1e6 + offset_s).tolist()
 
 
 def _attitude_wxyz_columns(df: pd.DataFrame) -> tuple[str, str, str, str] | None:
@@ -167,6 +170,46 @@ def _interpolate_ekf_ned(
     return (x, y, z), True
 
 
+def _lla_arrays(
+    df: pd.DataFrame,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if "latitude_deg" in df.columns:
+        lat = df["latitude_deg"].to_numpy(dtype=float, copy=False)
+        lon = df["longitude_deg"].to_numpy(dtype=float, copy=False)
+        if "altitude_msl_m" in df.columns:
+            alt = df["altitude_msl_m"].to_numpy(dtype=float, copy=False)
+        elif "altitude_ellipsoid_m" in df.columns:
+            alt = df["altitude_ellipsoid_m"].to_numpy(dtype=float, copy=False)
+        else:
+            alt = np.zeros(len(df), dtype=float)
+        return lat, lon, alt
+
+    lat_col = "lat" if "lat" in df.columns else "latitude"
+    lon_col = "lon" if "lon" in df.columns else "longitude"
+    alt_col = "alt" if "alt" in df.columns else "altitude"
+    lat = (
+        df[lat_col].to_numpy(dtype=float, copy=False)
+        if lat_col in df.columns
+        else np.zeros(len(df), dtype=float)
+    )
+    lon = (
+        df[lon_col].to_numpy(dtype=float, copy=False)
+        if lon_col in df.columns
+        else np.zeros(len(df), dtype=float)
+    )
+    alt = (
+        df[alt_col].to_numpy(dtype=float, copy=False)
+        if alt_col in df.columns
+        else np.zeros(len(df), dtype=float)
+    )
+    scale = np.abs(lat) > 1000
+    if np.any(scale):
+        lat = np.where(scale, lat / 1e7, lat)
+        lon = np.where(scale, lon / 1e7, lon)
+        alt = np.where(scale, alt / 1000.0, alt)
+    return lat, lon, alt
+
+
 def _interpolate_gps_enu(
     derived: Path,
     arm_us: int | None,
@@ -188,18 +231,10 @@ def _interpolate_gps_enu(
         return None, False
     t = _effective_experiment_t(t, ts)
 
-    lats: list[float] = []
-    lons: list[float] = []
-    alts: list[float] = []
-    for _, row in df.iterrows():
-        lat, lon, alt = _lla_from_row(row)
-        lats.append(lat)
-        lons.append(lon)
-        alts.append(alt)
-
-    lat = interp_scalar(t, ts, lats)
-    lon = interp_scalar(t, ts, lons)
-    alt = interp_scalar(t, ts, alts)
+    lats, lons, alts = _lla_arrays(df)
+    lat = interp_scalar(t, ts, lats.tolist())
+    lon = interp_scalar(t, ts, lons.tolist())
+    alt = interp_scalar(t, ts, alts.tolist())
     if lat is None or lon is None or alt is None:
         return None, False
 
@@ -230,16 +265,17 @@ def _interpolate_attitude(
     t = _effective_experiment_t(t, ts)
 
     qw_col, qx_col, qy_col, qz_col = cols
-    quats_xyzw = [
-        _wxyz_to_xyzw(
-            float(row[qw_col]),
-            float(row[qx_col]),
-            float(row[qy_col]),
-            float(row[qz_col]),
-        )
-        for _, row in df.iterrows()
-    ]
-    q = slerp_xyzw(t, ts, quats_xyzw)
+    qx = df[qx_col].to_numpy(dtype=float, copy=False)
+    qy = df[qy_col].to_numpy(dtype=float, copy=False)
+    qz = df[qz_col].to_numpy(dtype=float, copy=False)
+    qw = df[qw_col].to_numpy(dtype=float, copy=False)
+    ts_arr = np.asarray(ts, dtype=float)
+    i = int(np.searchsorted(ts_arr, t, side="right") - 1)
+    i = min(max(i, 0), len(ts_arr) - 1)
+    j = min(i + 1, len(ts_arr) - 1)
+    q0 = _wxyz_to_xyzw(float(qw[i]), float(qx[i]), float(qy[i]), float(qz[i]))
+    q1 = _wxyz_to_xyzw(float(qw[j]), float(qx[j]), float(qy[j]), float(qz[j]))
+    q = slerp_xyzw(t, [float(ts_arr[i]), float(ts_arr[j])], [q0, q1])
     if q is None:
         return None, False
     return q, True

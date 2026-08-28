@@ -42,6 +42,15 @@ describe("triadTraces", () => {
 });
 
 describe("View3D sceneLayout", () => {
+  it("keeps camera while datarevision follows pose T", () => {
+    const at0 = sceneLayout({ datarevision: "t=0" });
+    const at10 = sceneLayout({ datarevision: "t=10" });
+    expect(at0.uirevision).toBe("camera");
+    expect(at10.uirevision).toBe(at0.uirevision);
+    expect(at0.datarevision).toBe("t=0");
+    expect(at10.datarevision).toBe("t=10");
+  });
+
   it("locks Plotly axes to East / North / Up", () => {
     const layout = sceneLayout();
     const xTitle = String(

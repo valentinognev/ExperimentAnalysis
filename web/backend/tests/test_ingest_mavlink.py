@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pymavlink.dialects.v20 import common as mavlink2
 
-from ea.ingest_mavlink import mavlink_pull
+from ea.ingest_mavlink import mavlink_download_log, mavlink_list_logs, mavlink_pull
 from ea.manifest import load_manifest, save_manifest
 from ea.store import create_experiment
 
@@ -94,8 +94,9 @@ class FakeConn:
 def _make_connect(logs):
     conn_holder = {}
 
-    def connect(url):
+    def connect(url, baud=None):
         conn_holder["url"] = url
+        conn_holder["baud"] = baud
         conn = FakeConn(logs)
         conn_holder["conn"] = conn
         return conn
@@ -190,3 +191,124 @@ def test_mavlink_url_from_manifest(tmp_path, monkeypatch):
 
     assert result["ok"] is True
     assert holder["url"] == "tcp:10.0.0.5:5760"
+
+
+def test_list_logs_does_not_write_ulg(tmp_path, monkeypatch):
+    logs = [
+        {"id": 1, "time_utc": 1000, "size": 4, "data": b"old!"},
+        {"id": 2, "time_utc": 2000, "size": 4, "data": b"new!"},
+    ]
+    connect, holder = _make_connect(logs)
+    _setup_experiment(tmp_path, monkeypatch)
+
+    result = mavlink_list_logs("MavTest", 2, transport="tcp", connect=connect)
+
+    assert result["ok"] is True
+    assert [e["id"] for e in result["logs"]] == [1, 2]
+    assert result["logs"][1]["size"] == 4
+    raw_dir = tmp_path / "MavTest" / "raw" / "drone_2"
+    assert list(raw_dir.glob("*.ulg")) == []
+    assert holder["url"] == "tcp:192.168.31.30:5760"
+    assert holder["baud"] is None
+
+
+def test_list_logs_serial_uses_device_and_baud(tmp_path, monkeypatch):
+    logs = [{"id": 1, "time_utc": 1000, "size": 3, "data": b"abc"}]
+    connect, holder = _make_connect(logs)
+    _setup_experiment(tmp_path, monkeypatch)
+
+    result = mavlink_list_logs(
+        "MavTest",
+        2,
+        transport="serial",
+        serial="/dev/ttyACM0",
+        connect=connect,
+    )
+
+    assert result["ok"] is True
+    assert holder["url"] == "/dev/ttyACM0"
+    assert holder["baud"] == 57600
+
+
+def test_download_selected_log_not_latest(tmp_path, monkeypatch):
+    old = b"old log bytes"
+    new = b"newer payload!!"
+    logs = [
+        {"id": 1, "time_utc": 1000, "size": len(old), "data": old},
+        {"id": 2, "time_utc": 2000, "size": len(new), "data": new},
+    ]
+    connect, _holder = _make_connect(logs)
+    _setup_experiment(tmp_path, monkeypatch)
+
+    result = mavlink_download_log(
+        "MavTest", 2, log_id=1, transport="tcp", connect=connect
+    )
+
+    assert result["ok"] is True
+    raw_dir = tmp_path / "MavTest" / "raw" / "drone_2"
+    ulg_files = list(raw_dir.glob("*.ulg"))
+    assert len(ulg_files) == 1
+    assert ulg_files[0].read_bytes() == old
+
+
+def test_download_without_confirm_keeps_existing_ulg(tmp_path, monkeypatch):
+    logs = [{"id": 1, "time_utc": 1000, "size": 4, "data": b"new!"}]
+    connect, _holder = _make_connect(logs)
+    _setup_experiment(tmp_path, monkeypatch)
+    raw_dir = tmp_path / "MavTest" / "raw" / "drone_2"
+    raw_dir.mkdir(parents=True)
+    keeper = raw_dir / "existing.ulg"
+    keeper.write_bytes(b"keep me")
+    manifest_path = tmp_path / "MavTest" / "manifest.json"
+    manifest = load_manifest(manifest_path)
+    manifest["drones"][0]["sources"]["ulg"] = ["raw/drone_2/existing.ulg"]
+    save_manifest(manifest_path, manifest)
+
+    result = mavlink_download_log(
+        "MavTest", 2, log_id=1, transport="tcp", connect=connect
+    )
+
+    assert result["ok"] is False
+    assert result.get("needs_replace") is True
+    assert "existing.ulg" in result.get("existing", "")
+    assert keeper.read_bytes() == b"keep me"
+
+
+def test_download_with_confirm_replaces_single_ulg(tmp_path, monkeypatch):
+    payload = b"replacement ulg"
+    logs = [{"id": 7, "time_utc": 3000, "size": len(payload), "data": payload}]
+    connect, _holder = _make_connect(logs)
+    _setup_experiment(tmp_path, monkeypatch)
+    raw_dir = tmp_path / "MavTest" / "raw" / "drone_2"
+    raw_dir.mkdir(parents=True)
+    old = raw_dir / "old.ulg"
+    old.write_bytes(b"previous")
+    extra = raw_dir / "also.ulg"
+    extra.write_bytes(b"second")
+    manifest_path = tmp_path / "MavTest" / "manifest.json"
+    manifest = load_manifest(manifest_path)
+    manifest["drones"][0]["sources"]["ulg"] = [
+        "raw/drone_2/old.ulg",
+        "raw/drone_2/also.ulg",
+    ]
+    save_manifest(manifest_path, manifest)
+
+    result = mavlink_download_log(
+        "MavTest",
+        2,
+        log_id=7,
+        transport="tcp",
+        confirm_replace=True,
+        connect=connect,
+    )
+
+    assert result["ok"] is True
+    ulg_files = sorted(raw_dir.glob("*.ulg"))
+    assert len(ulg_files) == 1
+    assert ulg_files[0].read_bytes() == payload
+    assert not old.exists()
+    assert not extra.exists()
+    manifest = load_manifest(manifest_path)
+    ulg_sources = manifest["drones"][0]["sources"]["ulg"]
+    assert len(ulg_sources) == 1
+    assert ulg_sources[0].endswith(ulg_files[0].name)

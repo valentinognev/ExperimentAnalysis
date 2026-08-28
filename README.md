@@ -57,8 +57,8 @@ experiments/Baseball/
 | Adapter | What it does |
 |---|---|
 | Files | Directory or file list: `.ulg`, `*system_manager*.csv`, HA `*adapter_diag*.log` / `*mavlink*.{txt,log}`. Id from `Group3RLcat(?P<id>\d+)_` or `_d(?P<id>\d+)`. Unknown names → `needs_id`; UI prompts and a second import with `{assignments: {filename: id}}` copies only those files. |
-| SSH | `rsync` of `~/RL/system_manager/logs/` and `~/RL/hardware_adapter/logs/` as `pi@host` with **publickey** only, 30s timeout. Password on the drone record is never logged or returned. Empty remote / timeout does not delete existing `raw/`. |
-| MAVLink | `LOG_REQUEST_LIST` / `LOG_REQUEST_DATA` into `raw/drone_<id>/`. Default URL `tcp:{ssh.host}:5760`. **No `COMMAND_LONG`.** |
+| SSH | List SM/HA files on the Pi (`rsync --list-only`), operator picks which to copy. Probe `~/RL/CatSwarm/{system_manager,hardware_adapter}/logs/`, then `~/RL/system_manager/logs/`, `~/RL/hardware_adapter/logs/`, `~/RL/logs/` (Python HA `../logs` from adapter cwd). Publickey only, 30s list timeout. Copy streams SSE progress (bar at top of picker from 0%); Cancel kills rsync and drops partials. Missing dir skipped. Password never logged or returned. Empty remote / timeout does not delete existing `raw/`. |
+| MAVLink | List onboard logs via **TCP** (`tcp:{ssh.host}:5760`) or **serial** (`/dev/ttyUSB0`, baud 57600). Operator picks a log; download streams SSE progress (same top-of-picker bar) and writes one `.ulg` per drone. Existing ulog is replaced only after confirm. **No `COMMAND_LONG`.** |
 
 Successful pull triggers rebuild (same as import). Header also has an explicit Rebuild button.
 
@@ -83,8 +83,7 @@ Channel ids: `{drone_id}.{source}.{topic}.{field}` with source `ulog` | `sm` | `
 
 ### UI
 
-- Experiment switcher, New, Import path, Browse, Rebuild, Plotly | Cesium toggle.
-- Drone checkboxes, per-drone SSH / MAVLink pull.
+- Tabs: **Sources** (New, Import path, Browse, Rebuild, per-drone Pi IP, SSH / MAVLink TCP|Serial) and **Analysis** (drone visibility, Plotly/Cesium 3D, 2D OSM map, Plotly plots, timeline). Experiment switcher stays in the chrome. Tabs change only by click. Drone list is a column, one row per drone. SSH is green when SM/HA logs are present; a failed pull shows an error on that row. SSH lists Pi log files for the operator to pick (many dates); copy shows a progress bar at the top of the picker (0% immediately, then SSE updates) and Cancel stops rsync. MAVLink lists vehicle logs for the operator to pick; download shows the same top-of-picker progress and Cancel stops the transfer; replacing an existing `.ulg` needs confirmation. Picker stays open through rebuild.
 - Center: Plotly 3D (default) or Cesium globe (lazy `import("cesium")`, OSM tiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, **no Ion token**).
 - Linked 2D Plotly `scattermap` (`style: "open-street-map"`). Ground click / globe click → markers (LLA in manifest); two selected markers show haversine + 3D ENU distance.
 - Timeline: slider, play / reverse / pause, speeds 0.25/1/2/4, numeric T. `tMax` comes from `GET .../duration` (`t_max_s` from rebuild), not a 60s placeholder.
@@ -103,6 +102,10 @@ GET experiment JSON **strips** `ssh.password` (file on disk may still hold it). 
 | POST | `/experiments/{slug}/import` | `{paths, assignments?}` |
 | POST | `/browse-folder` | native folder dialog; `{path: string \| null}` or 503 |
 | POST | `/experiments/{slug}/pull` | `{drone_id, adapters: ["ssh"\|"mavlink"]}` then rebuild |
+| POST | `/experiments/{slug}/ssh/logs` | `{drone_id}` → `{ok, logs}` (SM/HA files on the Pi) |
+| POST | `/experiments/{slug}/ssh/copy` | `{drone_id, files: [{remote, name}]}` then rebuild |
+| POST | `/experiments/{slug}/mavlink/logs` | `{drone_id, transport: "tcp"\|"serial", serial?}` → `{ok, logs}` |
+| POST | `/experiments/{slug}/mavlink/download` | `{drone_id, log_id, transport, confirm_replace?, serial?}`; one `.ulg` per drone |
 | POST | `/experiments/{slug}/rebuild` | Re-extract + re-sync |
 | GET | `/experiments/{slug}/duration` | `{t_max_s}` |
 | GET | `/experiments/{slug}/pose` | Query `t` — avatars, attitude, vectors |

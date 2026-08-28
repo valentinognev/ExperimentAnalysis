@@ -7,12 +7,12 @@ from app import app
 from ea.browse import pick_directory
 
 
-def test_kdialog_preferred():
+def test_zenity_directory_preferred():
     recorded = []
 
     def fake_which(name):
-        if name == "kdialog":
-            return "/usr/bin/kdialog"
+        if name in ("zenity", "kdialog"):
+            return f"/usr/bin/{name}"
         return None
 
     def fake_runner(cmd, **kwargs):
@@ -24,18 +24,18 @@ def test_kdialog_preferred():
     assert result == "/tmp/logs"
     assert len(recorded) == 1
     cmd, kwargs = recorded[0]
-    assert cmd == ["kdialog", "--getexistingdirectory"]
+    assert cmd == ["zenity", "--file-selection", "--directory"]
     assert kwargs.get("capture_output") is True
     assert kwargs.get("text") is True
     assert "timeout" not in kwargs
 
 
-def test_zenity_fallback():
+def test_kdialog_fallback():
     recorded = []
 
     def fake_which(name):
-        if name == "zenity":
-            return "/usr/bin/zenity"
+        if name == "kdialog":
+            return "/usr/bin/kdialog"
         return None
 
     def fake_runner(cmd, **kwargs):
@@ -45,7 +45,7 @@ def test_zenity_fallback():
     result = pick_directory(runner=fake_runner, which=fake_which)
 
     assert result == "/tmp/logs"
-    assert recorded == [["zenity", "--file-selection", "--directory"]]
+    assert recorded == [["kdialog", "--getexistingdirectory"]]
 
 
 def test_cancel_returns_none():

@@ -1,5 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getDuration, listExperiments, openExperiment, patchManifest, patchMarkers } from "./api";
+import { hostPatch, hostsFromManifest } from "./hosts";
+import { sshReadyFromManifest } from "./sshReady";
 import {
   avatarUsesTriad,
   enabledAvatarKeys,
@@ -13,6 +15,8 @@ import PlotBoard from "./components/PlotBoard";
 import DroneList from "./components/DroneList";
 import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
+import WorkspaceTabs from "./components/WorkspaceTabs";
+import { DEFAULT_TAB, type WorkspaceTab } from "./workspaceTab";
 import Map2D from "./components/Map2D";
 import View3D, { type DronePose } from "./components/View3D";
 import { shouldLoadCesium } from "./engineToggle";
@@ -40,10 +44,13 @@ function downsampleTrail(
 
 export default function App() {
   const [slug, setSlug] = useState<string | null>(null);
+  const [tab, setTab] = useState<WorkspaceTab>(DEFAULT_TAB);
   const [refreshToken, setRefreshToken] = useState(0);
   const [t, setT] = useState(0);
   const [tMax, setTMax] = useState(60);
   const [droneIds, setDroneIds] = useState<string[]>([]);
+  const [hosts, setHosts] = useState<Record<string, string>>({});
+  const [sshReady, setSshReady] = useState<Record<string, boolean>>({});
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const [plots, setPlots] = useState<PlotDef[]>([]);
   const [avatars, setAvatars] = useState<Record<string, unknown>>({});
@@ -68,6 +75,24 @@ export default function App() {
     setRefreshToken((n) => n + 1);
   }, []);
 
+  const handlePulled = useCallback(() => {
+    setRefreshToken((n) => n + 1);
+  }, []);
+
+  const handleRebuilt = useCallback(() => {
+    setRefreshToken((n) => n + 1);
+  }, []);
+
+  const handleHostCommit = useCallback(
+    (id: string, host: string) => {
+      if (!slug) return;
+      const trimmed = host.trim();
+      setHosts((prev) => ({ ...prev, [id]: trimmed }));
+      patchManifest(slug, hostPatch(id, trimmed)).catch(() => {});
+    },
+    [slug],
+  );
+
   useEffect(() => {
     setTrailHistory({});
     setT(0);
@@ -82,6 +107,8 @@ export default function App() {
   useEffect(() => {
     if (!slug) {
       setDroneIds([]);
+      setHosts({});
+      setSshReady({});
       setVisibleIds(new Set());
       setPlots([]);
       setAvatars({});
@@ -119,6 +146,9 @@ export default function App() {
           map_linked?: boolean;
           markers?: Marker[];
         };
+
+        setHosts(hostsFromManifest(detail.manifest.drones));
+        setSshReady(sshReadyFromManifest(detail.manifest.drones));
 
         if (slugChanged) {
           setDroneIds(listed);
@@ -168,6 +198,8 @@ export default function App() {
         if (cancelled) return;
         if (slugChanged) {
           setDroneIds([]);
+          setHosts({});
+          setSshReady({});
           setVisibleIds(new Set());
           setPlots([]);
         }
@@ -385,115 +417,154 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
       <h1 className="px-4 pt-4 text-xl font-semibold">ExperimentAnalysis</h1>
+      <WorkspaceTabs tab={tab} onTabChange={setTab} />
       <ExperimentBar
         slug={slug}
         onSlugChange={setSlug}
         onImported={handleImported}
+        onRebuilt={handleRebuilt}
+        showSetup={tab === "sources"}
       />
-      <DroneList
-        droneIds={droneIds}
-        visible={visibleIds}
-        onToggle={handleDroneToggle}
-        slug={slug}
-        onPulled={handleImported}
-      />
-      {poseError && (
-        <p className="px-4 text-sm text-red-400">Pose: {poseError}</p>
-      )}
-      {unsyncedBanner && (
-        <p
-          className="mx-4 mb-2 rounded border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-sm font-medium text-amber-300"
-          role="status"
+      {tab === "sources" && (
+        <div
+          role="tabpanel"
+          id="workspace-panel-sources"
+          aria-labelledby="workspace-tab-sources"
         >
-          {unsyncedBanner}
-        </p>
-      )}
-      <div className="min-h-0 flex-1 p-4">
-        <div className="flex h-[min(70vh,640px)] gap-4">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded border border-zinc-800">
-            <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-2 py-1">
-              <span className="text-xs text-zinc-400">3D engine</span>
-              <button
-                type="button"
-                className={`rounded px-2 py-0.5 text-xs ${
-                  engine3d === "plotly"
-                    ? "bg-zinc-700 text-zinc-100"
-                    : "text-zinc-400 hover:bg-zinc-900"
-                }`}
-                onClick={() => setEngine3d("plotly")}
-              >
-                Plotly
-              </button>
-              <button
-                type="button"
-                className={`rounded px-2 py-0.5 text-xs ${
-                  engine3d === "cesium"
-                    ? "bg-zinc-700 text-zinc-100"
-                    : "text-zinc-400 hover:bg-zinc-900"
-                }`}
-                onClick={() => setEngine3d("cesium")}
-              >
-                Cesium
-              </button>
-            </div>
-            <div className="min-h-0 flex-1">
-              {shouldLoadCesium(engine3d) ? (
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center text-sm text-zinc-400">
-                      Loading globe…
-                    </div>
-                  }
-                >
-                  <View3DCesium
-                    drones={drones}
-                    origin={pose?.origin}
-                    markers={markers}
-                    onGroundClick={handleGroundClick}
-                  />
-                </Suspense>
-              ) : (
-                <View3D
-                  drones={drones}
-                  origin={pose?.origin}
-                  markerPositions={markerPositions}
-                  onGroundClick={handleGroundClick}
-                />
-              )}
-            </div>
-          </div>
-          <Map2D
-            pose={pose}
-            markers={markers}
-            visibleDroneIds={visibleDroneIds}
-            open={mapLinked}
-            onOpenChange={setMapLinked}
+          <DroneList
+            variant="sources"
+            droneIds={droneIds}
+            visible={visibleIds}
+            onToggle={handleDroneToggle}
+            slug={slug}
+            hosts={hosts}
+            onHostCommit={handleHostCommit}
+            onPulled={handlePulled}
+            sshReady={sshReady}
           />
-          <div className="w-56 shrink-0">
-            <MarkerPanel
-              markers={markers}
-              selectedIds={selectedMarkerIds}
-              onSelect={setSelectedMarkerIds}
-              onLabelChange={handleMarkerLabelChange}
-              onRemove={handleMarkerRemove}
-            />
-          </div>
         </div>
-      </div>
-      <ChannelPlot
-        slug={slug}
-        visibleDroneIds={visibleDroneIds}
-        t={t}
-        refreshToken={refreshToken}
-      />
-      <PlotBoard
-        slug={slug}
-        t={t}
-        refreshToken={refreshToken}
-        plots={plots}
-        onPlotsChange={setPlots}
-      />
-      <Timeline t={t} tMax={tMax} onTChange={setT} />
+      )}
+      {tab === "analysis" && (
+        <div
+          role="tabpanel"
+          id="workspace-panel-analysis"
+          aria-labelledby="workspace-tab-analysis"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          {!slug ? (
+            <p className="px-4 py-8 text-sm text-zinc-400">
+              Open an experiment on the Sources tab to analyze.
+            </p>
+          ) : (
+            <>
+              <DroneList
+                variant="analysis"
+                droneIds={droneIds}
+                visible={visibleIds}
+                onToggle={handleDroneToggle}
+                slug={slug}
+              />
+              {poseError && (
+                <p className="px-4 text-sm text-red-400">Pose: {poseError}</p>
+              )}
+              {unsyncedBanner && (
+                <p
+                  className="mx-4 mb-2 rounded border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-sm font-medium text-amber-300"
+                  role="status"
+                >
+                  {unsyncedBanner}
+                </p>
+              )}
+              <div className="min-h-0 flex-1 p-4">
+                <div className="flex h-[min(70vh,640px)] gap-4">
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded border border-zinc-800">
+                    <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-2 py-1">
+                      <span className="text-xs text-zinc-400">3D engine</span>
+                      <button
+                        type="button"
+                        className={`rounded px-2 py-0.5 text-xs ${
+                          engine3d === "plotly"
+                            ? "bg-zinc-700 text-zinc-100"
+                            : "text-zinc-400 hover:bg-zinc-900"
+                        }`}
+                        onClick={() => setEngine3d("plotly")}
+                      >
+                        Plotly
+                      </button>
+                      <button
+                        type="button"
+                        className={`rounded px-2 py-0.5 text-xs ${
+                          engine3d === "cesium"
+                            ? "bg-zinc-700 text-zinc-100"
+                            : "text-zinc-400 hover:bg-zinc-900"
+                        }`}
+                        onClick={() => setEngine3d("cesium")}
+                      >
+                        Cesium
+                      </button>
+                    </div>
+                    <div className="min-h-0 flex-1">
+                      {shouldLoadCesium(engine3d) ? (
+                        <Suspense
+                          fallback={
+                            <div className="flex h-full items-center justify-center text-sm text-zinc-400">
+                              Loading globe…
+                            </div>
+                          }
+                        >
+                          <View3DCesium
+                            drones={drones}
+                            origin={pose?.origin}
+                            markers={markers}
+                            onGroundClick={handleGroundClick}
+                          />
+                        </Suspense>
+                      ) : (
+                        <View3D
+                          drones={drones}
+                          origin={pose?.origin}
+                          markerPositions={markerPositions}
+                          onGroundClick={handleGroundClick}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <Map2D
+                    pose={pose}
+                    markers={markers}
+                    visibleDroneIds={visibleDroneIds}
+                    open={mapLinked}
+                    onOpenChange={setMapLinked}
+                  />
+                  <div className="w-56 shrink-0">
+                    <MarkerPanel
+                      markers={markers}
+                      selectedIds={selectedMarkerIds}
+                      onSelect={setSelectedMarkerIds}
+                      onLabelChange={handleMarkerLabelChange}
+                      onRemove={handleMarkerRemove}
+                    />
+                  </div>
+                </div>
+              </div>
+              <ChannelPlot
+                slug={slug}
+                visibleDroneIds={visibleDroneIds}
+                t={t}
+                refreshToken={refreshToken}
+              />
+              <PlotBoard
+                slug={slug}
+                t={t}
+                refreshToken={refreshToken}
+                plots={plots}
+                onPlotsChange={setPlots}
+              />
+              <Timeline t={t} tMax={tMax} onTChange={setT} />
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

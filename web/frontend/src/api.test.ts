@@ -6,6 +6,10 @@ import {
   openExperiment,
   importPaths,
   pullDrone,
+  listSshLogs,
+  copySshLogs,
+  listMavlinkLogs,
+  downloadMavlinkLog,
   rebuild,
   browseFolder,
   getPose,
@@ -116,6 +120,142 @@ describe("api", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ drone_id: 2, adapters: ["ssh", "mavlink"] }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("listSshLogs POSTs drone_id", async () => {
+    const body = {
+      ok: true,
+      logs: [
+        {
+          kind: "sm",
+          name: "a.csv",
+          remote: "~/RL/system_manager/logs/a.csv",
+          size: 1,
+          mtime: "2026/08/25 17:05:30",
+        },
+      ],
+    };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await listSshLogs("foo", 2);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/ssh/logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ drone_id: 2 }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("copySshLogs POSTs selected files", async () => {
+    const body = { ok: true };
+    const files = [
+      {
+        remote: "~/RL/system_manager/logs/a.csv",
+        name: "a.csv",
+      },
+    ];
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await copySshLogs("foo", 2, files);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/ssh/copy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({ drone_id: 2, files }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("copySshLogs applies SSE data: lines to onProgress before done", async () => {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            'data: {"event":"progress","name":"a.csv","index":1,"count":1,"bytes":4,"total":10,"pct":40}\n\n' +
+              'data: {"event":"done","ok":true}\n\n',
+          ),
+        );
+        controller.close();
+      },
+    });
+    const onProgress = vi.fn();
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      headers: {
+        get: (key: string) =>
+          key.toLowerCase() === "content-type" ? "text/event-stream" : null,
+      },
+      body,
+    } as Response);
+
+    const result = await copySshLogs(
+      "foo",
+      2,
+      [{ remote: "~/RL/system_manager/logs/a.csv", name: "a.csv" }],
+      { onProgress },
+    );
+
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "progress", name: "a.csv", pct: 40 }),
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("listMavlinkLogs POSTs transport and optional serial", async () => {
+    const body = { ok: true, logs: [{ id: 1, time_utc: 0, size: 10 }] };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await listMavlinkLogs("foo", 2, "serial", "/dev/ttyUSB0");
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/mavlink/logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        drone_id: 2,
+        transport: "serial",
+        serial: "/dev/ttyUSB0",
+      }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("downloadMavlinkLog POSTs log_id and confirm_replace", async () => {
+    const body = { ok: true };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await downloadMavlinkLog("foo", 2, 7, "tcp", true);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/mavlink/download", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({
+        drone_id: 2,
+        log_id: 7,
+        transport: "tcp",
+        confirm_replace: true,
+      }),
     });
     expect(result).toEqual(body);
   });

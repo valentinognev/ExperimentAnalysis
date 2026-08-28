@@ -1,13 +1,19 @@
 import copy
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ea.browse import pick_directory
 from ea.ingest_files import import_paths
-from ea.ingest_mavlink import mavlink_pull
-from ea.ingest_ssh import _redact_password, ssh_pull
+from ea.ingest_mavlink import (
+    mavlink_download_events,
+    mavlink_download_log,
+    mavlink_list_logs,
+    mavlink_pull,
+)
+from ea.ingest_ssh import _redact_password, ssh_copy_events, ssh_copy_logs, ssh_list_logs, ssh_pull
+from ea.transfer_stream import ndjson_stream
 from ea.manifest import merge_manifest, save_manifest
 from ea.pose import pose_at
 from ea.duration import experiment_t_max_s
@@ -49,6 +55,35 @@ class ImportBody(BaseModel):
 class PullBody(BaseModel):
     drone_id: int
     adapters: list[str]
+
+
+class MavlinkListBody(BaseModel):
+    drone_id: int
+    transport: str = "tcp"
+    serial: str | None = None
+
+
+class MavlinkDownloadBody(BaseModel):
+    drone_id: int
+    log_id: int
+    transport: str = "tcp"
+    serial: str | None = None
+    confirm_replace: bool = False
+
+
+class SshListBody(BaseModel):
+    drone_id: int
+
+
+class SshCopyFile(BaseModel):
+    remote: str
+    name: str
+    size: int | None = None
+
+
+class SshCopyBody(BaseModel):
+    drone_id: int
+    files: list[SshCopyFile]
 
 
 class MarkerBody(BaseModel):
@@ -151,6 +186,80 @@ def post_pull(slug: str, body: PullBody):
         }
 
     return {"ok": any_ok, "drones": drones_out}
+
+
+@app.post("/api/experiments/{slug}/mavlink/logs")
+def post_mavlink_logs(slug: str, body: MavlinkListBody):
+    try:
+        open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return mavlink_list_logs(
+        slug, body.drone_id, transport=body.transport, serial=body.serial
+    )
+
+
+@app.post("/api/experiments/{slug}/mavlink/download")
+async def post_mavlink_download(slug: str, body: MavlinkDownloadBody, request: Request):
+    try:
+        open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    accept = (request.headers.get("accept") or "").lower()
+    if "event-stream" in accept or "ndjson" in accept:
+        return ndjson_stream(
+            request,
+            lambda cancel_check: mavlink_download_events(
+                slug,
+                body.drone_id,
+                body.log_id,
+                transport=body.transport,
+                serial=body.serial,
+                confirm_replace=body.confirm_replace,
+                cancel_check=cancel_check,
+            ),
+        )
+    result = mavlink_download_log(
+        slug,
+        body.drone_id,
+        body.log_id,
+        transport=body.transport,
+        serial=body.serial,
+        confirm_replace=body.confirm_replace,
+    )
+    if result.get("ok"):
+        rebuild(slug)
+    return result
+
+
+@app.post("/api/experiments/{slug}/ssh/logs")
+def post_ssh_logs(slug: str, body: SshListBody):
+    try:
+        open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return ssh_list_logs(slug, body.drone_id)
+
+
+@app.post("/api/experiments/{slug}/ssh/copy")
+async def post_ssh_copy(slug: str, body: SshCopyBody, request: Request):
+    try:
+        open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    files = [f.model_dump() for f in body.files]
+    accept = (request.headers.get("accept") or "").lower()
+    if "event-stream" in accept or "ndjson" in accept:
+        return ndjson_stream(
+            request,
+            lambda cancel_check: ssh_copy_events(
+                slug, body.drone_id, files, cancel_check=cancel_check
+            ),
+        )
+    result = ssh_copy_logs(slug, body.drone_id, files)
+    if result.get("ok"):
+        rebuild(slug)
+    return result
 
 
 @app.patch("/api/experiments/{slug}/manifest")
