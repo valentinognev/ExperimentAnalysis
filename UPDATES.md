@@ -1,5 +1,8 @@
 # Updates
 
+## 0.44.0 - Full README product description
+- `README.md`: purpose, non-goals, data flow, ingest/sync/ENU/avatars, API table, run/test, Baseball operator guide; still names `UPDATES.md`
+
 ## 0.43.1 - Review fix-wave (duration, SM, avatars)
 - `ea/duration.py`, `GET .../duration`, `sync.json` `t_max_s`; `App.tsx` dynamic Timeline `tMax`
 - SM topics/series from `derived/drone_*/sm_system_manager.parquet`; `local_ts`+`t_sm`; HA first-sample time; exclude `sm_*` from ulog topics
