@@ -76,6 +76,55 @@ function sortKeys(keys: string[]): string[] {
   });
 }
 
+const INSTANCE_SUFFIX = /^(.+)\.(\d{2})$/;
+
+function fieldLeaves(prefix: string, fields: string[]): ChannelNode[] {
+  return [...fields].sort().map((field) => ({
+    id: `${prefix}.${field}`,
+    label: field,
+  }));
+}
+
+function topicChildren(
+  drone: string,
+  source: string,
+  topics: Record<string, string[]>,
+): ChannelNode[] {
+  const grouped = new Map<string, { inst: string; fields: string[] }[]>();
+  const plain: string[] = [];
+  for (const topic of Object.keys(topics)) {
+    const match = topic.match(INSTANCE_SUFFIX);
+    if (match) {
+      const parent = match[1];
+      const list = grouped.get(parent) ?? [];
+      list.push({ inst: match[2], fields: topics[topic] });
+      grouped.set(parent, list);
+    } else {
+      plain.push(topic);
+    }
+  }
+
+  const nodes: ChannelNode[] = plain.map((topic) => ({
+    id: `${drone}.${source}.${topic}`,
+    label: topic,
+    children: fieldLeaves(`${drone}.${source}.${topic}`, topics[topic]),
+  }));
+  for (const [parent, insts] of grouped) {
+    nodes.push({
+      id: `${drone}.${source}.${parent}`,
+      label: parent,
+      children: insts
+        .sort((a, b) => a.inst.localeCompare(b.inst))
+        .map(({ inst, fields }) => ({
+          id: `${drone}.${source}.${parent}.${inst}`,
+          label: inst,
+          children: fieldLeaves(`${drone}.${source}.${parent}.${inst}`, fields),
+        })),
+    });
+  }
+  return nodes.sort((a, b) => a.label.localeCompare(b.label));
+}
+
 export function topicsToChannelTree(tree: TopicsTree): ChannelNode[] {
   return sortKeys(Object.keys(tree)).map((drone) => ({
     id: drone,
@@ -83,14 +132,7 @@ export function topicsToChannelTree(tree: TopicsTree): ChannelNode[] {
     children: sortKeys(Object.keys(tree[drone])).map((source) => ({
       id: `${drone}.${source}`,
       label: source,
-      children: sortKeys(Object.keys(tree[drone][source])).map((topic) => ({
-        id: `${drone}.${source}.${topic}`,
-        label: topic,
-        children: [...tree[drone][source][topic]].sort().map((field) => ({
-          id: `${drone}.${source}.${topic}.${field}`,
-          label: field,
-        })),
-      })),
+      children: topicChildren(drone, source, tree[drone][source]),
     })),
   }));
 }

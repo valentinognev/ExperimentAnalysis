@@ -6,6 +6,14 @@ export function sceneLayout(opts?: {
   return {
     uirevision: "camera",
     datarevision: opts?.datarevision,
+    legend: {
+      x: 0.01,
+      y: 0.99,
+      xanchor: "left",
+      yanchor: "top",
+      bgcolor: "rgba(9,9,11,0.7)",
+      font: { size: 11, color: "#e4e4e7" },
+    },
     scene: {
       xaxis: { title: { text: "East" } },
       yaxis: { title: { text: "North" } },

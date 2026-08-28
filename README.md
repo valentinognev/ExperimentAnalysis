@@ -2,7 +2,7 @@
 
 ## Idea
 
-ExperimentAnalysis reconstructs a **completed** CatSwarm flight or simulation from logs so an operator can scrub, play, and compare pose sources after the fact. Inputs are PX4 `.ulg` files (one per drone), System Manager CSVs, and Hardware Adapter logs. The UI shows a time-aligned 3D reconstruction (body-axis triads, extra pose avatars, optional velocity arrows), a linked 2D OSM map, Plotly channel plots, ground markers, and distance measurements.
+ExperimentAnalysis reconstructs a **completed** CatSwarm flight or simulation from logs so an operator can scrub, play, and compare pose sources after the fact. Inputs are PX4 `.ulg` files (one per drone), System Manager CSVs, and Hardware Adapter logs. The UI shows a time-aligned 3D reconstruction (body-axis triads with a drone-colored center; EKF has a black ring, GPS/SM do not; legend lists one body per avatar, e.g. `D2 ekf` / `D2 gps`), a linked 2D OSM map, Plotly channel plots, ground markers, and distance measurements.
 
 Each experiment is a reopenable folder: import or pull more files later without replacing what is already in `raw/`. Sparse physical drone ids (2, 3, 4, …) stay as-is; a missing airframe or missing Pi logs is valid.
 
@@ -33,9 +33,9 @@ Tmux session: `experiment_analysis` (windows `backend` / `frontend`). `killall.s
 
 1. Create or open `experiments/<slug>/` (`slug` = name sanitized to `[a-zA-Z0-9_-]+`).
 2. Import local files and/or pull SSH (Pi logs) / MAVLink (ulog) into **append-only** `raw/drone_<id>/`.
-3. Rebuild extracts `raw/` → `derived/` parquet + `sync.json` (`t_max_s`, per-drone ARM).
+3. Rebuild extracts `raw/` → `derived/` parquet + `sync.json` (`t_max_s`, per-drone ARM). Every logged ulog dataset is written (multi-instance topics as `name.00` / `name.01`).
 4. The browser holds a time cursor `T` (seconds, experiment time). Playback is client-side (`requestAnimationFrame`).
-5. UI queries `/api/.../pose?t=` and `/api/.../series`. The browser never parses `.ulg`.
+5. UI queries `/api/.../pose?t=`, `/api/.../trajectory`, and `/api/.../series`. The browser never parses `.ulg`.
 
 Simulation uses the same pipeline; only the ingest source differs (local `system_manager/logs/` / `hardware_adapter/logs/` instead of SSH).
 
@@ -56,11 +56,11 @@ experiments/Baseball/
 
 | Adapter | What it does |
 |---|---|
-| Files | Directory or file list: `.ulg`, `*system_manager*.csv`, HA `*adapter_diag*.log` / `*mavlink*.{txt,log}`. Id from `Group3RLcat(?P<id>\d+)_` or `_d(?P<id>\d+)`. Unknown names → `needs_id`; UI prompts and a second import with `{assignments: {filename: id}}` copies only those files. |
-| SSH | List SM/HA files on the Pi (`rsync --list-only`), operator picks which to copy. Probe `~/RL/CatSwarm/{system_manager,hardware_adapter}/logs/`, then `~/RL/system_manager/logs/`, `~/RL/hardware_adapter/logs/`, `~/RL/logs/` (Python HA `../logs` from adapter cwd). Publickey only, 30s list timeout. Copy streams SSE progress (bar at top of picker from 0%); Cancel kills rsync and drops partials. Missing dir skipped. Password never logged or returned. Empty remote / timeout does not delete existing `raw/`. |
+| Files | Directory or file list: `.ulg`, `*system_manager*.csv`, HA `*adapter_diag*.log` / `*mavlink*.{txt,log}`. Id from `Group3RLcat(?P<id>\d+)_` or `_d(?P<id>\d+)`. Unknown names → `needs_id`; UI prompts and a second import with `{assignments: {filename: id}}` copies only those files. A directory with more than one SM CSV (or more than two HA files) does not copy them; the response includes `needs_pick` and the UI lists them (closest to the ULG filename stamp pre-checked, within 24h). Copying the pick replaces `sources.system_manager` / `hardware_adapter` with those files (older CSVs stay in `raw/`). Last imported `.ulg` source path is stored as `sources.ulg_origin`. |
+| SSH | List SM/HA files on the Pi (`rsync --list-only`), operator picks which to copy. Probe `~/RL/CatSwarm/{system_manager,hardware_adapter}/logs/`, then `~/RL/system_manager/logs/`, `~/RL/hardware_adapter/logs/`, `~/RL/logs/` (Python HA `../logs` from adapter cwd). Publickey only, 30s list timeout. Copy streams SSE progress (bar at top of picker from 0%); Cancel kills rsync and drops partials. Missing dir skipped. Password never logged or returned. Empty remote / timeout does not delete existing `raw/`. Manifest SM/HA sources become the copied selection, not every CSV already in `raw/`. |
 | MAVLink | List onboard logs via **TCP** (`tcp:{ssh.host}:5760`) or **serial** (`/dev/ttyUSB0`, baud 57600). Operator picks a log; download streams SSE progress (same top-of-picker bar) and writes one `.ulg` per drone. Existing ulog is replaced only after confirm. **No `COMMAND_LONG`.** |
 
-Successful pull triggers rebuild (same as import). Header **Update** writes `manifest.name` and persists D1..DN from Drone #; it does not re-extract.
+Successful pull triggers rebuild (same as import). Header **Update** writes `manifest.name` and sets drone count to Drone # (add D1..DN, drop higher ids and their `raw/`/`derived/`); it does not re-extract. **New** with a Drone # already chosen also sets that count so it is not wiped when the empty experiment opens.
 
 Seeded hosts when drones 2 and 4 are first created: D2 `192.168.31.30`, D4 `192.168.31.152`, user `pi`, MAVLink tcp 5760. D3 has no host until the operator adds one.
 
@@ -77,17 +77,17 @@ PX4 time starts at FC boot; Pi `local_ts` starts with the companion process. Dro
 
 3D is **ENU metres**, Z up. Origin = mean GPS LLA at `T = 0` (ARM). NED→ENU: `e = ned.y`, `n = ned.x`, `u = -ned.z`. WGS84 `A = 6378137`.
 
-Avatars (several at once per drone): `ekf_ned`, `gps`, `sm_ned`, `sm_lla`. Attitude is a FRD body triad (RGB = body x/y/z) from `vehicle_attitude`. SM-only drones (no ulog `present`) still draw SM points. Map uses `gps` or `sm_lla`. Trails downsample at 20 Hz.
+Avatars (several at once per drone): `ekf_ned`, `gps`, `sm_ned`, `sm_lla`. Analysis drone rows have a checkbox per source that exists in pose (default all on; saved in `ui.avatars`). Attitude is a FRD body triad (RGB = body x/y/z) from `vehicle_attitude`. Each pose source has a unique marker: EKF circle with a black ring (2D and 3D), GPS filled square, SM NED hollow square, SM LLA x. Drone color still matches Observation Board. Ground markers stay white diamonds. SM-only drones (no ulog `present`) still draw SM points. 3D and 2D trails are the logged path at ≤20 Hz (`GET .../trajectory`), sliced to `t ≤ T` (reverse/jump cannot leave future geometry). 2D keeps OSM tiles/camera via `uirevision`; the sliced track and current-T markers change with the slider.
 
-Channel ids: `{drone_id}.{source}.{topic}.{field}` with source `ulog` | `sm` | `ha`. SM series uses `local_ts` + `t_sm`. HA series is first-sample-relative (not PX4 ARM microseconds).
+Channel ids: `{drone_id}.{source}.{topic}.{field}` with source `ulog` | `sm` | `ha`. Ulog `topic` is the PX4 name, plus `.00` / `.01` when the log has multiple instances (e.g. `sensor_accel.00`). SM series uses `local_ts` + `t_sm`. HA series is first-sample-relative (not PX4 ARM microseconds).
 
 ### UI
 
-- Tabs: **Sources** (New, Drone # as a single 1–9 count matching the number of D1..DN rows, Update persists those ids and the Name field, per-drone Pi IP, Import / SSH / MAVLink; each drone row includes a summary of ULG filename, date/time, SM/HA log names, and analysis color) and **Analysis** (drone visibility, Plotly/Cesium 3D, 2D OSM map, Plotly plots, timeline). Experiment switcher stays in the chrome. Tabs change only by click. Drone list is a column, one row per drone (sparse saved ids fill D1..Dmax so the count and the list match). Import opens a path/Browse dialog on that row. SSH is green when SM/HA logs are present; a failed pull shows an error on that row. SSH lists Pi log files for the operator to pick (many dates); copy shows a progress bar at the top of the picker (0% immediately, then SSE updates) and Cancel stops rsync. MAVLink lists vehicle logs for the operator to pick; download shows the same top-of-picker progress and Cancel stops the transfer; replacing an existing `.ulg` needs confirmation. Picker stays open through rebuild.
-- Center: Plotly 3D (default) or Cesium globe (lazy `import("cesium")`, OSM tiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, **no Ion token**).
-- Linked 2D Plotly `scattermap` (`style: "open-street-map"`). Ground click / globe click → markers (LLA in manifest); two selected markers show haversine + 3D ENU distance.
-- Timeline: slider, play / reverse / pause, speeds 0.25/1/2/4, numeric T. `tMax` comes from `GET .../duration` (`t_max_s` from rebuild), not a 60s placeholder.
-- Default NED channel plots plus extra Plotly panes from a tree picker with search, Apply, and Edit. `ui` in the manifest restores layout on reopen.
+- Tabs: **Sources** (New, Drone # as a single 1–9 count matching the number of D1..DN rows, Update sets that count — growing adds ids, lowering drops drones from the end including their logs, and writes the Name field, per-drone Pi IP, Import / SSH / MAVLink; each drone row includes a summary of ULG filename, date/time from the PX4 stamp even when a UTC collision suffix is on the file, SM/HA log names one per line, and analysis color matching Observation Board) and **Analysis** (drone visibility, per-drone pose-source checkboxes, Plotly/Cesium 3D with the play bar under the plot, 2D OSM map, Plotly plots). Experiment switcher stays in the chrome. Tabs change only by click. Drone list is a column, one row per drone (sparse saved ids fill D1..Dmax so the count and the list match). Import / SSH / MAVLink pickers open on that drone row, not below the list. Import: **Browse** (native file dialog) to the left of the path field; the field prefills the last imported ulg path when one exists, and Browse starts in that file's folder. SSH is green when SM/HA logs are present; a failed pull shows an error on that row. SSH lists Pi log files for the operator to pick (many dates), sorted by closeness to the ULG stamp with the closest SM and HA pre-checked if within 24 hours; Copy records that selection as the active SM/HA (Sources shows those names, rebuild extracts them); older files stay in `raw/`. Copy shows a progress bar at the top of the picker (0% immediately, then SSE updates) and Cancel stops rsync. MAVLink lists vehicle logs for the operator to pick; download shows the same top-of-picker progress and Cancel stops the transfer; replacing an existing `.ulg` needs confirmation. Picker stays open through rebuild. Empty SM CSVs are skipped on rebuild (do not 500).
+- Center: Plotly 3D (default) or Cesium globe (lazy `import("cesium")`, OSM tiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, **no Ion token**). Plotly 3D legend sits inside the scene (top-left overlay); the 2D map legend sits in the map’s top margin. Both panels clip overflow so neither legend can paint over the other.
+- Linked 2D Plotly `scattermap` (`style: "open-street-map"`): logged tracks sliced to `t ≤ T` plus current-T markers for each enabled source. Map `uirevision` keeps tiles/camera across T. Ground / globe **double-click** → markers (LLA in manifest); **right-click** a marker to remove; two selected markers show haversine + 3D ENU distance.
+- Timeline: under the 3D plot on Analysis — slider, play / reverse (each toggles to pause in place; the other direction is disabled), speeds 0.25/1/2/4, numeric T. `tMax` comes from `GET .../duration` (`t_max_s` from rebuild), not a 60s placeholder.
+- Default NED channel plots plus extra Plotly panes from a tree picker with search (empty query shows collapsed drone roots; ▸ expands), Apply, and Edit. Multi-instance ulog topics nest `.00` / `.01` under the shared name (channel ids unchanged). All panes share x-axis `[0, tMax]` (experiment duration) so ulog and SM ticks line up; y is independent. NED x/y/z share the drone color; solid/thick, dashed, and dotted/thin distinguish components. `ui` in the manifest restores layout on reopen.
 
 GET experiment JSON **strips** `ssh.password` (file on disk may still hold it). Failed HTTP responses are not treated as success in the UI client.
 
@@ -100,8 +100,9 @@ GET experiment JSON **strips** `ssh.password` (file on disk may still hold it). 
 | GET | `/experiments/{slug}` | Manifest (password redacted) |
 | PATCH | `/experiments/{slug}/manifest` | Merge ui / drone hosts |
 | POST | `/experiments/{slug}/drones` | `{id}` |
-| POST | `/experiments/{slug}/import` | `{paths, assignments?, drone_id?}` |
-| POST | `/browse-folder` | native folder dialog; `{path: string \| null}` or 503 |
+| PUT | `/experiments/{slug}/drones` | `{count}` 1–9; keep D1..DN, drop higher ids and their `raw/`/`derived/` |
+| POST | `/experiments/{slug}/import` | `{paths, assignments?, drone_id?}`; may return `needs_pick` |
+| POST | `/browse-file` | native file dialog; optional `{start}` (current path); `{path: string \| null}` or 503 |
 | POST | `/experiments/{slug}/pull` | `{drone_id, adapters: ["ssh"\|"mavlink"]}` then rebuild |
 | POST | `/experiments/{slug}/ssh/logs` | `{drone_id}` → `{ok, logs}` (SM/HA files on the Pi) |
 | POST | `/experiments/{slug}/ssh/copy` | `{drone_id, files: [{remote, name}]}` then rebuild |
@@ -110,6 +111,7 @@ GET experiment JSON **strips** `ssh.password` (file on disk may still hold it). 
 | POST | `/experiments/{slug}/rebuild` | Re-extract + re-sync |
 | GET | `/experiments/{slug}/duration` | `{t_max_s}` |
 | GET | `/experiments/{slug}/pose` | Query `t` — avatars, attitude, vectors |
+| GET | `/experiments/{slug}/trajectory` | 20 Hz ENU paths per drone per avatar |
 | GET | `/experiments/{slug}/series` | Query `channels` (repeatable), optional `t0`,`t1` |
 | GET | `/experiments/{slug}/topics` | drone → source → topic → fields |
 | PATCH | `/experiments/{slug}/markers` | Replace marker list |
@@ -146,7 +148,7 @@ cd web/frontend && npx playwright test e2e/baseball.spec.ts
 
 ## Operator guide (Baseball reconstruction)
 
-New experiment, set Drone # to **4** (four rows D1–D4 appear; Update persists them), then Import `/home/valentin/RL/TESTFLIGHTS/Baseball` on D2, D3, and D4 (filename ids pick the matching ulog):
+New experiment, set Drone # to **4** (four rows D1–D4 appear; New or Update persists them), then Import `/home/valentin/RL/TESTFLIGHTS/Baseball` on D2, D3, and D4 (filename ids pick the matching ulog):
 
 - `Group3RLcat2_log_41_2026-8-25-17-05-30.ulg`
 - `Group3RLcat3_log_18_2026-8-25-17-05-26.ulg`

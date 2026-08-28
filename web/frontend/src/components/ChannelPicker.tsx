@@ -94,7 +94,7 @@ function NodeList({
   onSelectedChange: (next: Set<string>) => void;
 }) {
   return (
-    <ul className={indent ? "space-y-1 pl-3 text-sm" : "space-y-1 text-sm"}>
+    <ul className={indent ? "space-y-1 pl-4 text-sm" : "space-y-1 text-sm"}>
       {nodes.map((node) => (
         <TreeNode
           key={node.id}
@@ -140,7 +140,7 @@ function TreeNode({
             className="font-mono text-xs text-zinc-200"
             onClick={() => onToggleExpand(node.id)}
           >
-            {node.label}
+            {isExpanded ? "▾" : "▸"} {node.label}
           </button>
         )}
         <label className="flex cursor-pointer items-center gap-2">

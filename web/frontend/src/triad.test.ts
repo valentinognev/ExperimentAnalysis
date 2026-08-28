@@ -51,6 +51,13 @@ describe("View3D sceneLayout", () => {
     expect(at10.datarevision).toBe("t=10");
   });
 
+  it("keeps the legend inside the plot so it cannot cover the 2D map", () => {
+    const layout = sceneLayout();
+    expect(layout.legend?.x).toBeLessThanOrEqual(1);
+    expect(layout.legend?.y).toBeLessThanOrEqual(1);
+    expect(layout.legend?.xanchor).toBe("left");
+  });
+
   it("locks Plotly axes to East / North / Up", () => {
     const layout = sceneLayout();
     const xTitle = String(

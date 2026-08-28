@@ -1,5 +1,6 @@
 export type DroneSummary = {
   ulg: string;
+  ulgOrigin: string;
   date: string;
   time: string;
   sm: string[];
@@ -12,7 +13,8 @@ export function basename(path: string): string {
   return parts[parts.length - 1] ?? "";
 }
 
-const ULG_STAMP = /_(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})\.ulg$/i;
+const ULG_STAMP =
+  /_(\d{4})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})-(\d{1,2})(?:_[^.]*)?\.ulg$/i;
 
 export function parseUlgStamp(filename: string): { date: string; time: string } | null {
   const m = basename(filename).match(ULG_STAMP);
@@ -36,14 +38,21 @@ export function summariesFromManifest(drones: unknown): Record<string, DroneSumm
     if (!raw || typeof raw !== "object") continue;
     const drone = raw as {
       id?: unknown;
-      sources?: { ulg?: unknown; system_manager?: unknown; hardware_adapter?: unknown };
+      sources?: {
+        ulg?: unknown;
+        ulg_origin?: unknown;
+        system_manager?: unknown;
+        hardware_adapter?: unknown;
+      };
     };
     if (drone.id === undefined || drone.id === null) continue;
     const ulgPaths = stringBasenames(drone.sources?.ulg);
     const ulg = ulgPaths.length > 0 ? ulgPaths[ulgPaths.length - 1]! : "—";
     const stamp = ulg === "—" ? null : parseUlgStamp(ulg);
+    const origin = drone.sources?.ulg_origin;
     out[String(drone.id)] = {
       ulg,
+      ulgOrigin: typeof origin === "string" ? origin : "",
       date: stamp?.date ?? "—",
       time: stamp?.time ?? "—",
       sm: stringBasenames(drone.sources?.system_manager),

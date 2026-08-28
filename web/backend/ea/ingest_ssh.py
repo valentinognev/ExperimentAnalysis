@@ -163,6 +163,7 @@ def _update_manifest_sources(
     drone_id: int,
     exp_path: Path,
     dest_dir: Path,
+    copied_paths: list[Path] | None = None,
 ) -> None:
     drone = None
     for entry in manifest.get("drones", []):
@@ -173,6 +174,24 @@ def _update_manifest_sources(
         return
 
     sources = drone.setdefault("sources", {})
+
+    if copied_paths is not None:
+        sm_copied = [
+            p for p in copied_paths if p.is_file() and _file_kind(p.name) == "sm"
+        ]
+        ha_copied = [
+            p for p in copied_paths if p.is_file() and _file_kind(p.name) == "ha"
+        ]
+        if sm_copied:
+            sources["system_manager"] = [
+                p.relative_to(exp_path).as_posix() for p in sm_copied
+            ]
+        if ha_copied:
+            sources["hardware_adapter"] = [
+                p.relative_to(exp_path).as_posix() for p in ha_copied
+            ]
+        return
+
     sm_list = sources.setdefault("system_manager", [])
     ha_list = sources.setdefault("hardware_adapter", [])
 
@@ -322,6 +341,7 @@ def ssh_copy_events(
     use_popen = runner is subprocess.run
     count = len(files)
     copied = 0
+    copied_paths: list[Path] = []
 
     for index, item in enumerate(files, 1):
         if cancel_check and cancel_check():
@@ -396,12 +416,15 @@ def ssh_copy_events(
             "pct": 100,
         }
         copied += 1
+        copied_paths.append(dest_path)
 
     if copied == 0:
         yield {"event": "error", "ok": False, "error": "no files selected"}
         return
 
-    _update_manifest_sources(opened["manifest"], drone_id, exp_path, dest_dir)
+    _update_manifest_sources(
+        opened["manifest"], drone_id, exp_path, dest_dir, copied_paths=copied_paths
+    )
     save_manifest(exp_path / "manifest.json", opened["manifest"])
     yield {"event": "done", "ok": True}
 

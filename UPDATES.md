@@ -1,8 +1,141 @@
 # Updates
 
-## 0.56.0 - Channel picker is a searchable tree
+## 0.71.2 - SM NED and EKF match on 2D and 3D
+- SM NED is a hollow square on both plots (`square-open` / Maki `square-stroked`); OSM has no plus icon
+- EKF keeps the black ring on the 2D map (larger black circle behind the fill), same as 3D
+
+## 0.71.1 - 2D/3D pose markers match; plus/x no longer dwarf the body
+- SM LLA uses the same X on the OSM map (Maki `cross`) as in 3D (`x`); EKF/GPS stay circle/square on both
+- Plotly 3D plus/x size 4 (was 10) so they sit with the size-8 circle instead of covering the trail
+
+## 0.71.0 - Multi-instance topics nest in the channel picker
+- Analysis tree groups `name.00` / `name.01` under `name` (instance folders, then fields)
+- Channel ids stay `{drone}.{source}.{topic}.{field}` with `topic` still including `.00` / `.01`
+
+## 0.70.5 - 2D map keeps 3D column height
+- Dropped the Plotly `height: 280` pin so a pose/trail update cannot shrink the OSM map under the 3D figure
+- Map layout uses `autosize` and fills the same `min(70vh, 640px)` column as the 3D view
+
+## 0.70.4 - 2D map trail follows T
+- 2D OSM tracks slice to `t ≤ T` like 3D (`sliceTrail`); reverse/jump no longer shows the future path
+- Map still uses `uirevision` / `datarevision` so OSM tiles and camera do not reset with the slider
+
+## 0.70.3 - 3D/2D legends stay in their panels
+- Plotly 3D legend is inside the scene (top-left), not to the right of the plot where it covered the 2D map
+- 2D map legend sits in the top margin (`y ≤ 1`); both plot hosts clip overflow
+
+## 0.70.2 - Unique marker per pose source
+- 3D: EKF circle + black ring, GPS square, SM NED cross, SM LLA x (not the white ground diamond)
+- 2D map: same distinction via circle / square / triangle / star; Cesium uses matching billboard shapes
+
+## 0.70.1 - 2D map keeps up with the slider
+- 2D OSM tracks are the full logged path, converted to LLA once; only current-T markers change with the slider
+- Map layout uses `uirevision` / `datarevision` so tiles and camera do not rebuild after each T (3D already did this)
+
+## 0.70.0 - Logged-path trails and pose-source picker
+- 3D/2D trails are the logged ENU path (`GET .../trajectory`, ≤20 Hz) sliced to current T; reverse/jump no longer leaves a future chord to the drone
+- 2D map draws that path for every enabled source (EKF, GPS, SM NED, SM LLA), not only the current GPS/SM LLA point
+- Analysis drone row: checkbox per pose source present in the log; choice saved in `ui.avatars`
+
+## 0.69.3 - Channel plots share experiment time axis
+- Default NED plot and extra panes pin x to `[0, tMax]` (`autorange` off) so ulog vs SM ticks line up when series lengths differ
+
+## 0.69.2 - SSH SM pick is the active log
+- Copying a selected SM/HA file (SSH or local pick) replaces `sources.system_manager` / `hardware_adapter` with that selection; Sources no longer lists every CSV already in `raw/`
+- Rebuild extracts the manifest-listed SM/HA files when present; older CSVs stay on disk
+- ULG date/time still parse when a UTC collision suffix is on the filename
+
+## 0.69.1 - SSH and MAVLink pickers on the drone row
+- SSH / MAVLink (and local SM/HA pick) dialogs open under that drone, same as Import, not below the whole list
+
+## 0.69.0 - Pick SM/HA by ULG date/time
+- SSH and local-folder import: log list sorted by closeness to the ULG filename stamp; closest SM and HA within 24h are pre-checked
+- Directory with many SM CSVs (or >2 HA files) returns `needs_pick` instead of copying every file; operator Copy imports the selection
+- Sources row lists SM/HA one filename per line (scroll), not a comma wall
+
+## 0.68.3 - Browse opens in the current file's folder
+- Import Browse: if the path field is not empty, the native dialog starts in that file's folder (`zenity --filename=` / `kdialog --getopenfilename`)
+- `POST /api/browse-file` optional `{start}`; empty/unknown path falls back to the default location
+
+## 0.68.2 - Import Browse left; empty SM CSV no longer 500s
+- Import panel: **Browse** is left of the path field; field prefills `sources.ulg_origin` (last imported ulg path) when present
+- Import stores that origin on the drone; typed/browsed path is kept if the panel is reopened
+- Rebuild skips empty/unparseable `*system_manager*.csv` (`EmptyDataError`) instead of 500 Internal Server Error after Import
+
+## 0.68.1 - Ground markers are white, not drone-yellow
+- Plotly 3D / Cesium / 2D map markers use `#FFFFFF` with a black outline (Plotly: black diamond halo; `scatter3d` line does not draw)
+- Color is far from every Observation Board drone hue (yellow `#facc15` looked like D4)
+
+## 0.68.0 - Per-drone Import is a file picker on that row
+- Sources Import Browse uses a native file dialog (`zenity --file-selection` / `kdialog --getopenfilename`), not a folder picker
+- Import panel sits under that drone row; path field is full width
+- `POST /api/browse-file`; `api.browseFile()`; typed folder paths still import
+
+## 0.67.1 - NED x/y/z traces are distinguishable
+- Default NED plot: same drone color, but x solid/thick, y dashed, z dotted/thin so components do not overlap visually
+
+## 0.67.0 - Rebuild extracts every ulog topic
+- `extract_ulog` writes all logged datasets, not only pose/`actuator_armed`; Analysis picker lists them after Rebuild
+- Multi-instance topics use `.00` / `.01` in the channel id (e.g. `2.ulog.sensor_accel.00.x`)
+
+## 0.66.0 - Channel tree starts collapsed
+- Analysis picker: empty search shows drone roots only (▸); click to expand source → topic → field
+- Search still filters and expands matches
+
+## 0.65.0 - Empty channel search shows the full tree
+- Analysis picker: empty search expands every drone → source → topic → field so channels can be browsed without typing
+- Folders show ▾/▸ and can be collapsed; search still filters and expands matches
+
+## 0.64.0 - Empty channel search shows first drone
+- Analysis picker: empty search expands the first drone so sources (`ulog` / `sm` / `ha`) are visible without typing
+- Other drones stay collapsed; search still filters and expands matches
+
+## 0.63.0 - Channel picker is a searchable tree
 - Analysis Add plot: channels grouped drone → source → topic → field; search filters by substring
 - Apply commits the selection; Edit on a plot pane reopens the picker for that plot
+
+## 0.62.1 - Cesium to Plotly switch no longer crashes
+- Analysis 3D engine: switching Cesium → Plotly no longer throws `viewer.scene` after `destroy()` (React tree went blank)
+- Pointer-event cleanup skips a destroyed Cesium viewer; `destroy()` is guarded
+
+## 0.62.0 - Play and Reverse toggle with Pause
+- Analysis transport: idle is Play | Reverse; Play becomes Pause (Reverse disabled); Reverse becomes Pause (Play disabled)
+- No separate Pause button
+
+## 0.61.1 - Drones move while play is running
+- Pose fetch no longer cancels on every T tick (play is ~60 Hz, pose ~80 ms, so avatars stayed frozen until pause)
+- One in-flight GET /pose; apply that result, then catch up to the latest T
+- Plotly 3D skips restyle when pose has not changed
+
+## 0.61.0 - EKF body has a black ring
+- Plotly 3D / Cesium: `ekf_ned` center is outlined in black; GPS and SM centers are fill-only
+- Plotly uses a larger black marker behind the body (scatter3d `marker.line` does not draw in the scene)
+
+## 0.60.0 - Play bar under the 3D plot
+- Analysis: timeline (play / reverse / pause, speeds, scrubber) sits in the 3D card footer, not below the channel plots
+
+## 0.59.0 - Drone colors match Observation Board
+- `droneColor` uses OB `droneColors.ts` (D1 red, D2 azure, D3 green, D4 yellow, … wrap at 9)
+- 3D body/trail, map, Sources swatch, and NED plots share that palette
+
+## 0.58.0 - 3D triad legend is one body per avatar
+- Plotly 3D: each triad is a drone-colored center point plus RGB axes; legend shows `D2 ekf`, `D2 gps`, … not three axis rows
+- Clicking that legend entry hides/shows the whole avatar (point + axes); trails stay separate
+- Cesium draws the same center point on triad avatars
+
+## 0.57.0 - Update trims drones from the end
+- Lowering Drone # and **Update** keeps D1..DN and removes higher ids from the manifest, Sources list, and `raw/`/`derived/`
+- Selecting a lower count previews fewer rows; growing is still add-missing 1..N
+- `PUT /experiments/{slug}/drones` `{count}`
+
+## 0.55.1 - Drone # survives New then Update
+- Choosing Drone # before **New** is kept and persisted (D1..DN); Update after New no longer only writes the name
+- Empty new experiment no longer clears a pending Drone # selection
+
+## 0.56.0 - Plot markers: double-click add, right-click remove
+- Plotly 3D: double-click ground to place a marker; right-click a marker diamond to delete it
+- Cesium globe uses the same gestures (double-click / right-click); Plotly camera double-click reset is off
+- Marker panel copy matches; × still removes from the list
 
 ## 0.55.0 - Sources drone data summary
 - Each Sources drone row lists ULG name, date/time from the PX4 filename, SM/HA log names, and the analysis color

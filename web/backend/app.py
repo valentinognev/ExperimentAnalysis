@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from ea.browse import pick_directory
+from ea.browse import pick_file
 from ea.ingest_files import import_paths
 from ea.ingest_mavlink import (
     mavlink_download_events,
@@ -16,11 +16,18 @@ from ea.ingest_ssh import _redact_password, ssh_copy_events, ssh_copy_logs, ssh_
 from ea.transfer_stream import ndjson_stream
 from ea.manifest import merge_manifest, save_manifest
 from ea.pose import pose_at
+from ea.trajectory import trajectory
 from ea.duration import experiment_t_max_s
 from ea.rebuild import rebuild
 from ea.series import series
 from ea.topics import list_topics
-from ea.store import add_drone, create_experiment, list_experiments, open_experiment
+from ea.store import (
+    add_drone,
+    create_experiment,
+    list_experiments,
+    open_experiment,
+    set_drone_count,
+)
 from ports import FRONTEND_PORT
 
 
@@ -53,8 +60,16 @@ class ImportBody(BaseModel):
     drone_id: int | None = None
 
 
+class BrowseFileBody(BaseModel):
+    start: str | None = None
+
+
 class AddDroneBody(BaseModel):
     id: int
+
+
+class SetDroneCountBody(BaseModel):
+    count: int
 
 
 class PullBody(BaseModel):
@@ -108,10 +123,11 @@ def health():
     return {"ok": True}
 
 
-@app.post("/api/browse-folder")
-def post_browse_folder():
+@app.post("/api/browse-file")
+def post_browse_file(body: BrowseFileBody | None = None):
+    start = body.start if body is not None else None
     try:
-        result = pick_directory()
+        result = pick_file(start=start)
     except FileNotFoundError as e:
         raise HTTPException(status_code=503, detail=str(e))
     return {"path": result}
@@ -154,6 +170,17 @@ def post_import(slug: str, body: ImportBody):
 def post_add_drone(slug: str, body: AddDroneBody):
     try:
         result = add_drone(slug, body.id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"slug": result["slug"], "manifest": _manifest_for_api(result["manifest"])}
+
+
+@app.put("/api/experiments/{slug}/drones")
+def put_drone_count(slug: str, body: SetDroneCountBody):
+    try:
+        result = set_drone_count(slug, body.count)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="experiment not found")
     except ValueError as e:
@@ -325,6 +352,15 @@ def get_pose(slug: str, t: float = 0.0):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="experiment not found")
     return pose_at(result["path"], t)
+
+
+@app.get("/api/experiments/{slug}/trajectory")
+def get_trajectory(slug: str):
+    try:
+        result = open_experiment(slug)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return trajectory(result["path"])
 
 
 @app.get("/api/experiments/{slug}/series")

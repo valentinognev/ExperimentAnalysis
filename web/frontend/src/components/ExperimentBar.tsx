@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  addDrone,
   createExperiment,
   listExperiments,
   patchManifest,
+  setDroneCount,
   type ExperimentSummary,
 } from "../api";
 import { droneCountFromIds } from "../visibleDrones";
@@ -50,8 +50,15 @@ export default function ExperimentBar({
   const [droneIdText, setDroneIdText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pendingCountRef = useRef("");
+  const prevSlugRef = useRef(slug);
 
   const droneId = parseDroneId(droneIdText);
+
+  async function persistDrones(targetSlug: string, count: number) {
+    await setDroneCount(targetSlug, count);
+    onDroneCountChange?.(count);
+  }
 
   const refresh = useCallback(async () => {
     const list = await listExperiments();
@@ -66,8 +73,30 @@ export default function ExperimentBar({
   }, [refresh]);
 
   useEffect(() => {
-    setDroneIdText(slug ? countLabel(droneIds) : "");
-  }, [slug, droneIds]);
+    const openedFromNone = prevSlugRef.current == null;
+    prevSlugRef.current = slug;
+
+    if (!slug) {
+      setDroneIdText("");
+      return;
+    }
+    const fromIds = countLabel(droneIds);
+    if (fromIds) {
+      setDroneIdText(fromIds);
+      pendingCountRef.current = fromIds;
+      return;
+    }
+    if (openedFromNone) {
+      const pending = pendingCountRef.current;
+      const n = parseDroneId(pending);
+      if (n !== null) {
+        setDroneIdText(pending);
+        onDroneCountChange?.(n);
+        return;
+      }
+    }
+    setDroneIdText("");
+  }, [slug, droneIds, onDroneCountChange]);
 
   useEffect(() => {
     setNewName(slug ? experimentName : "");
@@ -75,10 +104,14 @@ export default function ExperimentBar({
 
   async function handleCreate() {
     if (!newName.trim()) return;
+    const count = droneId;
     setBusy(true);
     setError(null);
     try {
       const result = await createExperiment(newName.trim());
+      if (count !== null) {
+        await persistDrones(result.slug, count);
+      }
       await refresh();
       onSlugChange(result.slug);
     } catch (e: unknown) {
@@ -91,17 +124,16 @@ export default function ExperimentBar({
   async function handleUpdate() {
     if (!slug) return;
     const name = newName.trim();
-    if (droneId === null && !name) return;
+    const count = droneId;
+    if (count === null && !name) return;
     setBusy(true);
     setError(null);
     try {
       if (name) {
         await patchManifest(slug, { name });
       }
-      if (droneId !== null) {
-        for (let id = 1; id <= droneId; id++) {
-          await addDrone(slug, id);
-        }
+      if (count !== null) {
+        await persistDrones(slug, count);
       }
       await refresh();
       onDronesChange?.();
@@ -169,6 +201,7 @@ export default function ExperimentBar({
               onChange={(e) => {
                 const v = e.target.value;
                 setDroneIdText(v);
+                pendingCountRef.current = v;
                 const n = parseDroneId(v);
                 if (slug && n !== null) onDroneCountChange?.(n);
               }}

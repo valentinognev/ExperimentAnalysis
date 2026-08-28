@@ -10,6 +10,7 @@ import {
   type PlotDef,
   type TopicsTree,
 } from "../plotBoard";
+import { experimentTimeAxis } from "../channelPlotAxis";
 import ChannelPicker from "./ChannelPicker";
 
 const TRACE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6", "#4ade80"];
@@ -30,12 +31,13 @@ type PlotPaneProps = {
   slug: string;
   plot: PlotDef;
   t: number;
+  tMax: number;
   refreshToken: number;
   onEdit: (plot: PlotDef) => void;
   onRemove: (id: string) => void;
 };
 
-function PlotPane({ slug, plot, t, refreshToken, onEdit, onRemove }: PlotPaneProps) {
+function PlotPane({ slug, plot, t, tMax, refreshToken, onEdit, onRemove }: PlotPaneProps) {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,13 +90,13 @@ function PlotPane({ slug, plot, t, refreshToken, onEdit, onRemove }: PlotPanePro
       plot_bgcolor: "#18181b",
       font: { color: "#e4e4e7" },
       margin: { l: 48, r: 16, t: 24, b: 40 },
-      xaxis: { title: { text: "t (s)" }, gridcolor: "#3f3f46" },
+      xaxis: experimentTimeAxis(tMax),
       yaxis: { gridcolor: "#3f3f46" },
       showlegend: true,
       legend: { orientation: "h", y: 1.1 },
       shapes: [tCursorShape(t)],
     }),
-    [t],
+    [t, tMax],
   );
 
   return (
@@ -136,6 +138,7 @@ function PlotPane({ slug, plot, t, refreshToken, onEdit, onRemove }: PlotPanePro
 type Props = {
   slug: string | null;
   t: number;
+  tMax: number;
   refreshToken?: number;
   plots: PlotDef[];
   onPlotsChange: (plots: PlotDef[]) => void;
@@ -144,6 +147,7 @@ type Props = {
 export default function PlotBoard({
   slug,
   t,
+  tMax,
   refreshToken = 0,
   plots,
   onPlotsChange,
@@ -250,6 +254,7 @@ export default function PlotBoard({
           slug={slug}
           plot={plot}
           t={t}
+          tMax={tMax}
           refreshToken={refreshToken}
           onEdit={handleEdit}
           onRemove={handleRemove}

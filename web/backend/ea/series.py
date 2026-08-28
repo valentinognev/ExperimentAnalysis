@@ -44,13 +44,14 @@ def _read_sync(experiment_dir: Path) -> dict:
 
 
 def _parse_channel(channel: str) -> tuple[str, str, str, str] | None:
-    parts = channel.split(".", maxsplit=3)
-    if len(parts) < 4:
+    parts = channel.split(".", maxsplit=2)
+    if len(parts) < 3:
         return None
-    drone_id, source, topic, field = parts[0], parts[1], parts[2], parts[3]
-    if not drone_id or not source or not topic or not field:
+    drone_id, source, rest = parts
+    if not drone_id or source not in _SOURCE_PARQUET_DIRS:
         return None
-    if source not in _SOURCE_PARQUET_DIRS:
+    topic, sep, field = rest.rpartition(".")
+    if not sep or not topic or not field:
         return None
     return drone_id, source, topic, field
 

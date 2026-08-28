@@ -68,9 +68,16 @@ export function patchMarkers(
   });
 }
 
-export function browseFolder(): Promise<{ path: string | null }> {
-  return json("/api/browse-folder", {
+export function browseFile(start?: string): Promise<{ path: string | null }> {
+  const trimmed = start?.trim() ?? "";
+  return json("/api/browse-file", {
     method: "POST",
+    ...(trimmed
+      ? {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start: trimmed }),
+        }
+      : {}),
   });
 }
 
@@ -105,6 +112,17 @@ export function addDrone(slug: string, id: number): Promise<ExperimentDetail> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id }),
+  });
+}
+
+export function setDroneCount(
+  slug: string,
+  count: number,
+): Promise<ExperimentDetail> {
+  return json(`/api/experiments/${slug}/drones`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ count }),
   });
 }
 
@@ -366,6 +384,22 @@ export function getDuration(slug: string): Promise<{ t_max_s: number }> {
 
 export function getPose(slug: string, t: number): Promise<PoseResponse> {
   return json(`/api/experiments/${slug}/pose?t=${t}`);
+}
+
+export type TrajectorySource = {
+  t: number[];
+  e: number[];
+  n: number[];
+  u: number[];
+};
+
+export type TrajectoryResponse = {
+  origin: { lat: number; lon: number; alt_m: number };
+  drones: Record<string, Record<string, TrajectorySource>>;
+};
+
+export function getTrajectory(slug: string): Promise<TrajectoryResponse> {
+  return json(`/api/experiments/${slug}/trajectory`);
 }
 
 export type SeriesChannel = { t: number[]; y: number[] };

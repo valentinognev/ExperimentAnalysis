@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  browseFolder,
+  browseFile,
   copySshLogs,
   downloadMavlinkLog,
   importPaths,
@@ -14,12 +14,15 @@ import { sshLogLabel, type SshLogEntry } from "../sshLogs";
 import { transferProgressLabel, type TransferProgress } from "../transferProgress";
 import { droneColor } from "../droneColor";
 import { type DroneSummary } from "../droneSummary";
+import { preselectKeys, rankByUlg, stampMs } from "../logStamp";
+import { avatarShortLabel, type AvatarKey } from "../avatars";
 
 const EMPTY_HOSTS: Record<string, string> = {};
 const EMPTY_READY: Record<string, boolean> = {};
 const EMPTY_SUMMARIES: Record<string, DroneSummary> = {};
 const EMPTY_SUMMARY: DroneSummary = {
   ulg: "—",
+  ulgOrigin: "",
   date: "—",
   time: "—",
   sm: [],
@@ -59,10 +62,35 @@ function TransferBar({
   );
 }
 
+function FileStack({
+  label,
+  files,
+  ariaLabel,
+}: {
+  label: string;
+  files: string[];
+  ariaLabel: string;
+}) {
+  if (files.length === 0) {
+    return <div>{label} —</div>;
+  }
+  return (
+    <div>
+      <div>{label}</div>
+      <ul aria-label={ariaLabel} className="m-0 max-h-24 list-none overflow-auto p-0">
+        {files.map((name) => (
+          <li key={name}>{name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 type SshPicker = {
   droneId: string;
   logs: SshLogEntry[];
   selected: string[];
+  mode: "ssh" | "local";
 };
 
 type Picker = {
@@ -78,6 +106,25 @@ type ImportPanel = {
   path: string;
 };
 
+function parseNeedsPick(raw: unknown): SshLogEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SshLogEntry[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    if (typeof o.path !== "string" || typeof o.name !== "string") continue;
+    if (o.kind !== "sm" && o.kind !== "ha") continue;
+    out.push({
+      kind: o.kind,
+      name: o.name,
+      remote: o.path,
+      size: typeof o.size === "number" ? o.size : 0,
+      mtime: "",
+    });
+  }
+  return out;
+}
+
 type Props = {
   droneIds: string[];
   visible: Set<string>;
@@ -89,6 +136,9 @@ type Props = {
   variant?: "sources" | "analysis";
   sshReady?: Record<string, boolean>;
   summaries?: Record<string, DroneSummary>;
+  availableAvatars?: Record<string, AvatarKey[]>;
+  enabledAvatars?: Record<string, AvatarKey[]>;
+  onAvatarToggle?: (id: string, key: AvatarKey, checked: boolean) => void;
 };
 
 export default function DroneList({
@@ -102,6 +152,9 @@ export default function DroneList({
   variant = "sources",
   sshReady = EMPTY_READY,
   summaries = EMPTY_SUMMARIES,
+  availableAvatars,
+  enabledAvatars,
+  onAvatarToggle,
 }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>(hosts);
   const [pulledOk, setPulledOk] = useState<Record<string, boolean>>({});
@@ -114,6 +167,7 @@ export default function DroneList({
   const [progress, setProgress] = useState<TransferProgress | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const lastImportPath = useRef<Record<string, string>>({});
 
   useEffect(() => {
     setDraft(hosts);
@@ -127,6 +181,21 @@ export default function DroneList({
       delete next[droneId];
       return next;
     });
+  }
+
+  function rankedPicker(
+    droneId: string,
+    logs: SshLogEntry[],
+    mode: "ssh" | "local",
+  ): SshPicker {
+    const stamp = summaries[droneId];
+    const ulgMs = stampMs(stamp?.date ?? "—", stamp?.time ?? "—");
+    const ranked = rankByUlg(logs, ulgMs);
+    const selected = preselectKeys(
+      ranked.map((log) => ({ kind: log.kind, name: log.name, key: log.remote })),
+      ulgMs,
+    );
+    return { droneId, logs: ranked, selected, mode };
   }
 
   async function handleSsh(droneId: string) {
@@ -144,7 +213,7 @@ export default function DroneList({
         }));
         return;
       }
-      setSshPicker({ droneId, logs: result.logs, selected: [] });
+      setSshPicker(rankedPicker(droneId, result.logs, "ssh"));
     } catch (e: unknown) {
       setRowError((prev) => ({
         ...prev,
@@ -157,7 +226,29 @@ export default function DroneList({
 
   async function handleSshCopy() {
     if (!slug || !sshPicker) return;
-    const { droneId, logs, selected } = sshPicker;
+    const { droneId, logs, selected, mode } = sshPicker;
+    if (mode === "local") {
+      const paths = logs
+        .filter((log) => selected.includes(log.remote))
+        .map((log) => log.remote);
+      if (paths.length === 0) return;
+      setBusyId(droneId);
+      clearError(droneId);
+      try {
+        await importPaths(slug, paths, undefined, Number(droneId));
+        await rebuild(slug);
+        onPulled?.();
+        setSshPicker(null);
+      } catch (e: unknown) {
+        setRowError((prev) => ({
+          ...prev,
+          [droneId]: e instanceof Error ? e.message : String(e),
+        }));
+      } finally {
+        setBusyId(null);
+      }
+      return;
+    }
     const files = logs
       .filter((log) => selected.includes(log.remote))
       .map((log) => ({ remote: log.remote, name: log.name, size: log.size }));
@@ -373,14 +464,17 @@ export default function DroneList({
     setPicker(null);
     setSshPicker(null);
     setMenuId(null);
-    setImportPanel({ droneId, path: "" });
+    const path =
+      lastImportPath.current[droneId] || summaries[droneId]?.ulgOrigin || "";
+    setImportPanel({ droneId, path });
   }
 
   async function handleBrowse() {
     if (!importPanel) return;
     try {
-      const { path } = await browseFolder();
+      const { path } = await browseFile(importPanel.path.trim() || undefined);
       if (path) {
+        lastImportPath.current[importPanel.droneId] = path;
         setImportPanel((prev) => (prev ? { ...prev, path } : prev));
       }
     } catch (e: unknown) {
@@ -400,7 +494,14 @@ export default function DroneList({
     setBusyId(droneId);
     clearError(droneId);
     try {
-      await importPaths(slug, [path], undefined, Number(droneId));
+      const result = await importPaths(slug, [path], undefined, Number(droneId));
+      const pick = parseNeedsPick(result.needs_pick);
+      if (pick.length > 0) {
+        setImportPanel(null);
+        setPicker(null);
+        setSshPicker(rankedPicker(droneId, pick, "local"));
+        return;
+      }
       await rebuild(slug);
       onPulled?.();
       setImportPanel(null);
@@ -444,6 +545,27 @@ export default function DroneList({
                 ) : (
                   <span className="w-8 shrink-0">D{id}</span>
                 )}
+                {variant === "analysis" &&
+                  (availableAvatars?.[id] ?? []).map((key) => {
+                    const label = `D${id} ${avatarShortLabel(key)}`;
+                    const checked = Boolean(enabledAvatars?.[id]?.includes(key));
+                    return (
+                      <label
+                        key={key}
+                        className="flex items-center gap-1 text-xs text-zinc-400"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          aria-label={label}
+                          onChange={(e) =>
+                            onAvatarToggle?.(id, key, e.target.checked)
+                          }
+                        />
+                        <span>{avatarShortLabel(key)}</span>
+                      </label>
+                    );
+                  })}
                 {variant === "sources" && (
                   <>
                     <input
@@ -535,172 +657,175 @@ export default function DroneList({
                   <div>ULG {summary.ulg}</div>
                   <div>Date {summary.date}</div>
                   <div>Time {summary.time}</div>
-                  <div>SM {summary.sm.length ? summary.sm.join(", ") : "—"}</div>
-                  <div>HA {summary.ha.length ? summary.ha.join(", ") : "—"}</div>
+                  <FileStack label="SM" files={summary.sm} ariaLabel={`D${id} SM files`} />
+                  <FileStack label="HA" files={summary.ha} ariaLabel={`D${id} HA files`} />
                 </section>
+              )}
+              {importPanel?.droneId === id && (
+                <div
+                  role="dialog"
+                  aria-label="Import files"
+                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-900 p-3"
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      className={`${BTN} shrink-0`}
+                      disabled={busyId === importPanel.droneId}
+                      onClick={() => handleBrowse()}
+                    >
+                      Browse
+                    </button>
+                    <input
+                      className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs"
+                      type="text"
+                      placeholder="path to .ulg or log file"
+                      value={importPanel.path}
+                      disabled={busyId === importPanel.droneId}
+                      onChange={(e) => {
+                        const path = e.target.value;
+                        lastImportPath.current[importPanel.droneId] = path;
+                        setImportPanel((prev) =>
+                          prev ? { ...prev, path } : prev,
+                        );
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className={BTN}
+                      disabled={
+                        busyId === importPanel.droneId || !importPanel.path.trim()
+                      }
+                      onClick={() => handleImportFiles()}
+                    >
+                      Import
+                    </button>
+                    <button
+                      type="button"
+                      className={BTN}
+                      onClick={() => setImportPanel(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {sshPicker?.droneId === id && (
+                <div
+                  role="dialog"
+                  aria-label={sshPicker.mode === "local" ? "Import logs" : "SSH logs"}
+                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-900 p-3"
+                >
+                  {progress ? (
+                    <TransferBar progress={progress} rebuilding={rebuilding} />
+                  ) : null}
+                  <p className="mb-2 text-xs text-zinc-400">
+                    D{sshPicker.droneId}{" "}
+                    {sshPicker.mode === "local" ? "local logs" : "Pi logs"} — select the
+                    files for this flight
+                  </p>
+                  <ul className="m-0 mb-2 max-h-64 list-none overflow-auto p-0">
+                    {sshPicker.logs.map((log) => (
+                      <li key={log.remote}>
+                        <label className="flex items-center gap-2 py-0.5 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={sshPicker.selected.includes(log.remote)}
+                            disabled={busyId === sshPicker.droneId}
+                            onChange={(e) => {
+                              const on = e.target.checked;
+                              setSshPicker((prev) => {
+                                if (!prev) return prev;
+                                const next = on
+                                  ? [...prev.selected, log.remote]
+                                  : prev.selected.filter((r) => r !== log.remote);
+                                return { ...prev, selected: next };
+                              });
+                            }}
+                          />
+                          {sshLogLabel(log)}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className={BTN}
+                      disabled={
+                        busyId === sshPicker.droneId || sshPicker.selected.length === 0
+                      }
+                      onClick={() => handleSshCopy()}
+                    >
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      className={BTN}
+                      onClick={() => cancelSshPicker()}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {picker?.droneId === id && (
+                <div
+                  role="dialog"
+                  aria-label="MAVLink logs"
+                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-900 p-3"
+                >
+                  {progress ? (
+                    <TransferBar progress={progress} rebuilding={rebuilding} />
+                  ) : null}
+                  <p className="mb-2 text-xs text-zinc-400">
+                    D{picker.droneId} via {picker.transport}
+                    {picker.serial ? ` (${picker.serial})` : ""} — select a log
+                  </p>
+                  <ul className="m-0 mb-2 max-h-40 list-none overflow-auto p-0">
+                    {picker.logs.map((log) => (
+                      <li key={log.id}>
+                        <label className="flex items-center gap-2 py-0.5 text-xs">
+                          <input
+                            type="radio"
+                            name="mavlink-log"
+                            checked={picker.selected === log.id}
+                            onChange={() =>
+                              setPicker((prev) =>
+                                prev ? { ...prev, selected: log.id } : prev,
+                              )
+                            }
+                          />
+                          {mavlinkLogLabel(log)}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className={BTN}
+                      disabled={busyId === picker.droneId}
+                      onClick={() => handleMavlinkDownload()}
+                    >
+                      Download
+                    </button>
+                    <button
+                      type="button"
+                      className={BTN}
+                      onClick={() => cancelMavlinkPicker()}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
             </li>
           );
         })}
       </ul>
-      {importPanel && (
-        <div
-          role="dialog"
-          aria-label="Import files"
-          className="mt-2 rounded border border-zinc-700 bg-zinc-900 p-3"
-        >
-          <p className="mb-2 text-xs text-zinc-400">D{importPanel.droneId}</p>
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <input
-              className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs"
-              type="text"
-              placeholder="path to .ulg or logs dir"
-              value={importPanel.path}
-              disabled={busyId === importPanel.droneId}
-              onChange={(e) =>
-                setImportPanel((prev) =>
-                  prev ? { ...prev, path: e.target.value } : prev,
-                )
-              }
-            />
-            <button
-              type="button"
-              className={BTN}
-              disabled={busyId === importPanel.droneId}
-              onClick={() => handleBrowse()}
-            >
-              Browse
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={BTN}
-              disabled={
-                busyId === importPanel.droneId || !importPanel.path.trim()
-              }
-              onClick={() => handleImportFiles()}
-            >
-              Import
-            </button>
-            <button
-              type="button"
-              className={BTN}
-              onClick={() => setImportPanel(null)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-      {sshPicker && (
-        <div
-          role="dialog"
-          aria-label="SSH logs"
-          className="mt-2 rounded border border-zinc-700 bg-zinc-900 p-3"
-        >
-          {progress ? (
-            <TransferBar progress={progress} rebuilding={rebuilding} />
-          ) : null}
-          <p className="mb-2 text-xs text-zinc-400">
-            D{sshPicker.droneId} Pi logs — select the files for this flight
-          </p>
-          <ul className="m-0 mb-2 max-h-64 list-none overflow-auto p-0">
-            {sshPicker.logs.map((log) => (
-              <li key={log.remote}>
-                <label className="flex items-center gap-2 py-0.5 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={sshPicker.selected.includes(log.remote)}
-                    disabled={busyId === sshPicker.droneId}
-                    onChange={(e) => {
-                      const on = e.target.checked;
-                      setSshPicker((prev) => {
-                        if (!prev) return prev;
-                        const next = on
-                          ? [...prev.selected, log.remote]
-                          : prev.selected.filter((r) => r !== log.remote);
-                        return { ...prev, selected: next };
-                      });
-                    }}
-                  />
-                  {sshLogLabel(log)}
-                </label>
-              </li>
-            ))}
-          </ul>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={BTN}
-              disabled={
-                busyId === sshPicker.droneId || sshPicker.selected.length === 0
-              }
-              onClick={() => handleSshCopy()}
-            >
-              Copy
-            </button>
-            <button
-              type="button"
-              className={BTN}
-              onClick={() => cancelSshPicker()}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-      {picker && (
-        <div
-          role="dialog"
-          aria-label="MAVLink logs"
-          className="mt-2 rounded border border-zinc-700 bg-zinc-900 p-3"
-        >
-          {progress ? (
-            <TransferBar progress={progress} rebuilding={rebuilding} />
-          ) : null}
-          <p className="mb-2 text-xs text-zinc-400">
-            D{picker.droneId} via {picker.transport}
-            {picker.serial ? ` (${picker.serial})` : ""} — select a log
-          </p>
-          <ul className="m-0 mb-2 max-h-40 list-none overflow-auto p-0">
-            {picker.logs.map((log) => (
-              <li key={log.id}>
-                <label className="flex items-center gap-2 py-0.5 text-xs">
-                  <input
-                    type="radio"
-                    name="mavlink-log"
-                    checked={picker.selected === log.id}
-                    onChange={() =>
-                      setPicker((prev) =>
-                        prev ? { ...prev, selected: log.id } : prev,
-                      )
-                    }
-                  />
-                  {mavlinkLogLabel(log)}
-                </label>
-              </li>
-            ))}
-          </ul>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={BTN}
-              disabled={busyId === picker.droneId}
-              onClick={() => handleMavlinkDownload()}
-            >
-              Download
-            </button>
-            <button
-              type="button"
-              className={BTN}
-              onClick={() => cancelMavlinkPicker()}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ vi.mock("../api", () => ({
   listExperiments: vi.fn(),
   createExperiment: vi.fn(),
   addDrone: vi.fn(),
+  setDroneCount: vi.fn(),
   patchManifest: vi.fn(),
 }));
 
@@ -16,6 +17,7 @@ import {
   listExperiments,
   createExperiment,
   addDrone,
+  setDroneCount,
   patchManifest,
 } from "../api";
 
@@ -25,6 +27,7 @@ describe("ExperimentBar", () => {
     vi.mocked(listExperiments).mockResolvedValue([]);
     vi.mocked(createExperiment).mockResolvedValue({ slug: "foo", manifest: {} });
     vi.mocked(addDrone).mockResolvedValue({ slug: "foo", manifest: {} });
+    vi.mocked(setDroneCount).mockResolvedValue({ slug: "foo", manifest: {} });
     vi.mocked(patchManifest).mockResolvedValue({ slug: "foo", manifest: {} });
   });
 
@@ -164,10 +167,11 @@ describe("ExperimentBar", () => {
 
     expect(onDroneCountChange).toHaveBeenCalledWith(4);
     expect(addDrone).not.toHaveBeenCalled();
+    expect(setDroneCount).not.toHaveBeenCalled();
     expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("4");
   });
 
-  it("click Update with 4 creates drones 1 through 4", async () => {
+  it("click Update with 4 sets drone count to 4", async () => {
     const user = userEvent.setup();
     const onDronesChange = vi.fn();
     render(
@@ -182,17 +186,37 @@ describe("ExperimentBar", () => {
     await user.click(screen.getByRole("button", { name: "Update" }));
 
     await waitFor(() => {
-      expect(addDrone).toHaveBeenCalledTimes(4);
-      expect(addDrone).toHaveBeenNthCalledWith(1, "foo", 1);
-      expect(addDrone).toHaveBeenNthCalledWith(2, "foo", 2);
-      expect(addDrone).toHaveBeenNthCalledWith(3, "foo", 3);
-      expect(addDrone).toHaveBeenNthCalledWith(4, "foo", 4);
+      expect(setDroneCount).toHaveBeenCalledTimes(1);
+      expect(setDroneCount).toHaveBeenCalledWith("foo", 4);
       expect(onDronesChange).toHaveBeenCalled();
     });
-    expect(vi.mocked(addDrone).mock.invocationCallOrder[0]).toBeLessThan(
+    expect(addDrone).not.toHaveBeenCalled();
+    expect(vi.mocked(setDroneCount).mock.invocationCallOrder[0]).toBeLessThan(
       onDronesChange.mock.invocationCallOrder[0],
     );
     expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("4");
+  });
+
+  it("click Update with 2 trims the count from the end", async () => {
+    const user = userEvent.setup();
+    const onDronesChange = vi.fn();
+    render(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        droneIds={["1", "2", "3", "4"]}
+        onDronesChange={onDronesChange}
+      />,
+    );
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Drone #" }), "2");
+    await user.click(screen.getByRole("button", { name: "Update" }));
+
+    await waitFor(() => {
+      expect(setDroneCount).toHaveBeenCalledWith("foo", 2);
+      expect(onDronesChange).toHaveBeenCalled();
+    });
+    expect(addDrone).not.toHaveBeenCalled();
   });
 
   it("click Update writes the Name field to the experiment", async () => {
@@ -214,6 +238,69 @@ describe("ExperimentBar", () => {
 
     await waitFor(() => {
       expect(patchManifest).toHaveBeenCalledWith("foo", { name: "Practice" });
+      expect(onDronesChange).toHaveBeenCalled();
+    });
+    expect(addDrone).not.toHaveBeenCalled();
+    expect(setDroneCount).not.toHaveBeenCalled();
+  });
+
+  it("click New with 4 selected sets drone count to 4", async () => {
+    const user = userEvent.setup();
+    const onSlugChange = vi.fn();
+    const onDroneCountChange = vi.fn();
+    render(
+      <ExperimentBar
+        slug={null}
+        onSlugChange={onSlugChange}
+        onDroneCountChange={onDroneCountChange}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Name"), "Practice");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Drone #" }), "4");
+    await user.click(screen.getByRole("button", { name: "New" }));
+
+    await waitFor(() => {
+      expect(createExperiment).toHaveBeenCalledWith("Practice");
+      expect(setDroneCount).toHaveBeenCalledTimes(1);
+      expect(setDroneCount).toHaveBeenCalledWith("foo", 4);
+      expect(onSlugChange).toHaveBeenCalledWith("foo");
+    });
+    expect(addDrone).not.toHaveBeenCalled();
+    expect(vi.mocked(createExperiment).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(setDroneCount).mock.invocationCallOrder[0],
+    );
+  });
+
+  it("keeps pending Drone # after a new empty experiment opens so Update can persist it", async () => {
+    const user = userEvent.setup();
+    const onDronesChange = vi.fn();
+    const onDroneCountChange = vi.fn();
+    const { rerender } = render(
+      <ExperimentBar
+        slug={null}
+        onSlugChange={() => {}}
+        onDronesChange={onDronesChange}
+        onDroneCountChange={onDroneCountChange}
+      />,
+    );
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Drone #" }), "4");
+    rerender(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        droneIds={[]}
+        onDronesChange={onDronesChange}
+        onDroneCountChange={onDroneCountChange}
+      />,
+    );
+
+    expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("4");
+    await user.click(screen.getByRole("button", { name: "Update" }));
+
+    await waitFor(() => {
+      expect(setDroneCount).toHaveBeenCalledWith("foo", 4);
       expect(onDronesChange).toHaveBeenCalled();
     });
     expect(addDrone).not.toHaveBeenCalled();

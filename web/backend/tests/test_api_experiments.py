@@ -56,6 +56,26 @@ def test_post_add_drone_id_zero_400(tmp_path, monkeypatch):
     assert r.status_code == 400
 
 
+def test_put_drone_count_trims_from_end(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    c = TestClient(app)
+    c.post("/api/experiments", json={"name": "CountTrim"})
+    r = c.put("/api/experiments/CountTrim/drones", json={"count": 4})
+    assert r.status_code == 200
+    assert sorted(d["id"] for d in r.json()["manifest"]["drones"]) == [1, 2, 3, 4]
+    r = c.put("/api/experiments/CountTrim/drones", json={"count": 2})
+    assert r.status_code == 200
+    assert sorted(d["id"] for d in r.json()["manifest"]["drones"]) == [1, 2]
+
+
+def test_put_drone_count_zero_400(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    c = TestClient(app)
+    c.post("/api/experiments", json={"name": "CountZero"})
+    r = c.put("/api/experiments/CountZero/drones", json={"count": 0})
+    assert r.status_code == 400
+
+
 def test_post_import_with_drone_id_only_that_drone(tmp_path, monkeypatch):
     monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
     c = TestClient(app)

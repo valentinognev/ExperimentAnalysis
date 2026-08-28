@@ -1,7 +1,13 @@
 import pytest
 
 from ea.manifest import load_manifest, save_manifest
-from ea.store import add_drone, create_experiment, list_experiments, open_experiment
+from ea.store import (
+    add_drone,
+    create_experiment,
+    list_experiments,
+    open_experiment,
+    set_drone_count,
+)
 
 
 def test_create_and_list(tmp_path, monkeypatch):
@@ -89,3 +95,43 @@ def test_add_drone_id_less_than_one_raises(tmp_path, monkeypatch):
     create_experiment("Bad")
     with pytest.raises(ValueError):
         add_drone("Bad", 0)
+
+
+def test_set_drone_count_grows_then_trims_from_the_end(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("Trim")
+    set_drone_count("Trim", 4)
+    root = tmp_path / "Trim"
+    (root / "raw" / "drone_4").mkdir(parents=True)
+    (root / "raw" / "drone_4" / "keep.ulg").write_bytes(b"ULog")
+    (root / "derived" / "drone_4").mkdir(parents=True)
+    (root / "derived" / "drone_4" / "x.parquet").write_bytes(b"p")
+    (root / "derived" / "ha" / "drone_4").mkdir(parents=True)
+    (root / "raw" / "drone_2").mkdir(parents=True)
+    (root / "raw" / "drone_2" / "a.ulg").write_bytes(b"ULog")
+    manifest = load_manifest(root / "manifest.json")
+    manifest["ui"]["visible_drone_ids"] = [1, 2, 3, 4]
+    save_manifest(root / "manifest.json", manifest)
+
+    trimmed = set_drone_count("Trim", 2)
+    ids = [d["id"] for d in trimmed["manifest"]["drones"]]
+    assert sorted(ids) == [1, 2]
+    assert 3 not in ids
+    assert 4 not in ids
+    assert trimmed["manifest"]["ui"]["visible_drone_ids"] == [1, 2]
+    assert not (root / "raw" / "drone_4").exists()
+    assert not (root / "derived" / "drone_4").exists()
+    assert not (root / "derived" / "ha" / "drone_4").exists()
+    assert (root / "raw" / "drone_2" / "a.ulg").is_file()
+
+    grown = set_drone_count("Trim", 4)
+    assert sorted(d["id"] for d in grown["manifest"]["drones"]) == [1, 2, 3, 4]
+
+
+def test_set_drone_count_out_of_range_raises(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("Range")
+    with pytest.raises(ValueError):
+        set_drone_count("Range", 0)
+    with pytest.raises(ValueError):
+        set_drone_count("Range", 10)

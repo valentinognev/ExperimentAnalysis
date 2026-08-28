@@ -128,6 +128,41 @@ it("topicsToChannelTree groups drone → source → topic → field", () => {
   expect(topic.children![0].children).toBeFalsy();
 });
 
+it("topicsToChannelTree nests multi-instance .00/.01 under the shared topic", () => {
+  const tree = topicsToChannelTree({
+    "2": {
+      ulog: {
+        "estimator_aid_src_gnss_pos.00": ["timestamp", "innovation[0]"],
+        "estimator_aid_src_gnss_pos.01": ["timestamp"],
+        vehicle_local_position: ["x"],
+      },
+    },
+  });
+  const ulog = tree[0].children!.find((n) => n.label === "ulog")!;
+  expect(ulog.children!.map((n) => n.label)).toEqual([
+    "estimator_aid_src_gnss_pos",
+    "vehicle_local_position",
+  ]);
+  const parent = ulog.children!.find((n) => n.label === "estimator_aid_src_gnss_pos")!;
+  expect(parent.id).toBe("2.ulog.estimator_aid_src_gnss_pos");
+  expect(parent.children!.map((n) => n.label)).toEqual(["00", "01"]);
+  expect(parent.children!.map((n) => n.id)).toEqual([
+    "2.ulog.estimator_aid_src_gnss_pos.00",
+    "2.ulog.estimator_aid_src_gnss_pos.01",
+  ]);
+  expect(parent.children![0].children!.map((n) => n.id)).toEqual([
+    "2.ulog.estimator_aid_src_gnss_pos.00.innovation[0]",
+    "2.ulog.estimator_aid_src_gnss_pos.00.timestamp",
+  ]);
+  expect(parent.children![0].children![0].label).toBe("innovation[0]");
+  expect(parent.children![0].children![0].children).toBeFalsy();
+  expect(parent.children![1].children!.map((n) => n.id)).toEqual([
+    "2.ulog.estimator_aid_src_gnss_pos.01.timestamp",
+  ]);
+  const plain = ulog.children!.find((n) => n.label === "vehicle_local_position")!;
+  expect(plain.children!.map((n) => n.id)).toEqual(["2.ulog.vehicle_local_position.x"]);
+});
+
 it("filterChannelTree keeps only matching leaves and their ancestors", () => {
   const tree = topicsToChannelTree(topics);
   const filtered = filterChannelTree(tree, "local_pos");

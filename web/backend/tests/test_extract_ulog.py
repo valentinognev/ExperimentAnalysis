@@ -82,3 +82,32 @@ def test_extract_ulog_gps_fallback_to_global_position(tmp_path):
     assert "vehicle_gps_position" not in written
     assert (dest / "vehicle_global_position.parquet").is_file()
     assert not (dest / "vehicle_gps_position.parquet").exists()
+
+
+def test_extract_ulog_includes_topics_outside_always(tmp_path):
+    ulg = tmp_path / "full.ulg"
+    dest = tmp_path / "out"
+    write_min_ulog(
+        ulg,
+        {
+            "vehicle_status": [
+                {"timestamp": 1000, "arming_state": 1},
+            ],
+            "vehicle_local_position": [
+                {"timestamp": 1000, "x": 0.0, "y": 0.0, "z": 0.0},
+            ],
+            "vehicle_attitude": [
+                {"timestamp": 1000, "q[0]": 1.0, "q[1]": 0.0, "q[2]": 0.0, "q[3]": 0.0},
+            ],
+            "estimator_status": [
+                {"timestamp": 1000, "x": 0.5},
+            ],
+        },
+    )
+
+    written = extract_ulog(ulg, dest)
+
+    assert "estimator_status" in written
+    assert (dest / "estimator_status.parquet").is_file()
+    table = pq.read_table(dest / "estimator_status.parquet")
+    assert list(table.column("x").to_pylist()) == [0.5]

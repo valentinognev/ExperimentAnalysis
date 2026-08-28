@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
-import Timeline, { nextDirection } from "./Timeline";
+import Timeline, { nextDirection, transportButtons } from "./Timeline";
 
 describe("nextDirection", () => {
   it("play sets direction +1", () => {
@@ -16,6 +16,29 @@ describe("nextDirection", () => {
 
   it("pause sets direction 0", () => {
     expect(nextDirection("pause")).toBe(0);
+  });
+});
+
+describe("transportButtons", () => {
+  it("idle is Play then Reverse, both enabled", () => {
+    expect(transportButtons(0)).toEqual([
+      { action: "play", label: "Play", disabled: false },
+      { action: "reverse", label: "Reverse", disabled: false },
+    ]);
+  });
+
+  it("playing replaces Play with Pause and disables Reverse", () => {
+    expect(transportButtons(1)).toEqual([
+      { action: "pause", label: "Pause", disabled: false },
+      { action: "reverse", label: "Reverse", disabled: true },
+    ]);
+  });
+
+  it("reversing replaces Reverse with Pause and disables Play", () => {
+    expect(transportButtons(-1)).toEqual([
+      { action: "play", label: "Play", disabled: true },
+      { action: "pause", label: "Pause", disabled: false },
+    ]);
   });
 });
 
@@ -83,5 +106,28 @@ describe("Timeline", () => {
     await new Promise((r) => setTimeout(r, 50));
     rerender(<Timeline t={t} tMax={60} onTChange={onTChange} />);
     expect(t).toBeLessThan(10);
+  });
+
+  it("idle has no Pause; Play toggles to Pause and disables Reverse", async () => {
+    const user = userEvent.setup();
+    render(<Timeline t={5} tMax={60} onTChange={() => {}} />);
+
+    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Play" }));
+
+    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reverse" })).toBeDisabled();
+  });
+
+  it("Reverse toggles to Pause and disables Play", async () => {
+    const user = userEvent.setup();
+    render(<Timeline t={5} tMax={60} onTChange={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Reverse" }));
+
+    expect(screen.queryByRole("button", { name: "Reverse" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled();
   });
 });

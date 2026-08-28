@@ -1,13 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getDuration, listExperiments, openExperiment, patchManifest, patchMarkers } from "./api";
+import { getDuration, getTrajectory, listExperiments, openExperiment, patchManifest, patchMarkers, type TrajectoryResponse } from "./api";
 import { hostPatch, hostsFromManifest } from "./hosts";
 import { sshReadyFromManifest } from "./sshReady";
 import { summariesFromManifest, type DroneSummary } from "./droneSummary";
 import {
+  availableAvatarKeys,
   avatarUsesTriad,
   enabledAvatarKeys,
   hasAnyMapAvatar,
-  primaryAvatarPos,
+  toggleAvatarKeys,
   type AvatarKey,
 } from "./avatars";
 import ChannelPlot from "./components/ChannelPlot";
@@ -21,10 +22,9 @@ import { DEFAULT_TAB, type WorkspaceTab } from "./workspaceTab";
 import Map2D from "./components/Map2D";
 import View3D, { type DronePose } from "./components/View3D";
 import { shouldLoadCesium } from "./engineToggle";
-import { downsampleHz } from "./downsample";
 import { llaToEnu, newMarkerId, type Marker } from "./markers";
 import { plotsOnSlugChange, type PlotDef } from "./plotBoard";
-import type { EnuPos } from "./triad";
+import { sliceTrail } from "./trail";
 import { usePose } from "./usePose";
 import { bannerText } from "./unsynced";
 import {
@@ -37,18 +37,6 @@ import {
 } from "./visibleDrones";
 
 const View3DCesium = lazy(() => import("./components/View3DCesium"));
-
-type TrailPoint = { t: number; pos: EnuPos };
-
-function downsampleTrail(
-  points: TrailPoint[],
-  maxHz = 20,
-): EnuPos[] {
-  if (points.length === 0) return [];
-  const ts = points.map((p) => p.t);
-  const keep = downsampleHz(ts, maxHz);
-  return points.filter((_, i) => keep[i]).map((p) => p.pos);
-}
 
 export default function App() {
   const [slug, setSlug] = useState<string | null>(null);
@@ -72,9 +60,7 @@ export default function App() {
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [selectedMarkerIds, setSelectedMarkerIds] = useState<string[]>([]);
   const { pose, error: poseError } = usePose(slug, t, refreshToken);
-  const [trailHistory, setTrailHistory] = useState<
-    Record<string, TrailPoint[]>
-  >({});
+  const [trajectory, setTrajectory] = useState<TrajectoryResponse | null>(null);
   const prevSlugRef = useRef<string | null>(null);
   const uiHydratedRef = useRef(false);
   const skipSaveRef = useRef(true);
@@ -96,7 +82,6 @@ export default function App() {
   );
 
   useEffect(() => {
-    setTrailHistory({});
     setT(0);
     setTMax(60);
     setMarkers([]);
@@ -184,6 +169,12 @@ export default function App() {
           setSelectedMarkerIds([]);
         } else {
           setDroneIds((prev) => {
+            const listedRows = droneRowsFromIds(listed);
+            const listedMax = droneCountFromIds(listed);
+            const prevMax = droneCountFromIds(prev);
+            if (listedMax > 0 && listedMax < prevMax) {
+              return idsChanged(prev, listedRows) ? listedRows : prev;
+            }
             const merged = droneRowsFromIds(mergeDroneIds(listed, prev));
             return idsChanged(prev, merged) ? merged : prev;
           });
@@ -243,6 +234,24 @@ export default function App() {
     };
   }, [slug, refreshToken]);
 
+  useEffect(() => {
+    if (!slug) {
+      setTrajectory(null);
+      return;
+    }
+    let cancelled = false;
+    getTrajectory(slug)
+      .then((data) => {
+        if (!cancelled) setTrajectory(data);
+      })
+      .catch(() => {
+        if (!cancelled) setTrajectory(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, refreshToken]);
+
   const visibleIdsKey = useMemo(
     () => [...visibleIds].sort().join(","),
     [visibleIds],
@@ -285,13 +294,24 @@ export default function App() {
     if (!pose?.drones) return;
     const poseIds = Object.keys(pose.drones);
     setDroneIds((prev) => {
-      const merged = droneRowsFromIds(mergeDroneIds(prev, poseIds));
+      const cap = droneCountFromIds(prev);
+      const allowed =
+        cap < 1
+          ? poseIds
+          : poseIds.filter((id) => {
+              const n = Number(id);
+              return Number.isInteger(n) && n >= 1 && n <= cap;
+            });
+      const merged = droneRowsFromIds(mergeDroneIds(prev, allowed));
       return idsChanged(prev, merged) ? merged : prev;
     });
     setVisibleIds((prev) => {
       const next = new Set(prev);
       let changed = false;
+      const cap = droneCountFromIds([...prev]);
       for (const id of poseIds) {
+        const n = Number(id);
+        if (cap >= 1 && Number.isInteger(n) && n > cap) continue;
         if (!prev.has(id)) {
           next.add(id);
           changed = true;
@@ -318,21 +338,40 @@ export default function App() {
     });
   }, []);
 
+  const handleAvatarToggle = useCallback(
+    (id: string, key: AvatarKey, checked: boolean) => {
+      const available = availableAvatarKeys(pose?.drones?.[id]?.avatars);
+      setAvatars((prev) => ({
+        ...prev,
+        [id]: toggleAvatarKeys(prev[id], available, key, checked),
+      }));
+    },
+    [pose],
+  );
+
   const handleDroneCountChange = useCallback((n: number) => {
-    setDroneIds((prev) => {
-      const want = droneRowsForCount(Math.max(n, droneCountFromIds(prev)));
-      return idsChanged(prev, want) ? want : prev;
-    });
+    const want = droneRowsForCount(n);
+    setDroneIds((prev) => (idsChanged(prev, want) ? want : prev));
     setVisibleIds((prev) => {
-      const next = new Set(prev);
-      let changed = false;
-      for (const id of droneRowsForCount(n)) {
-        if (!next.has(id)) {
-          next.add(id);
-          changed = true;
-        }
+      const keep = new Set(want);
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (keep.has(id)) next.add(id);
       }
-      return changed ? next : prev;
+      for (const id of want) {
+        if (!next.has(id)) next.add(id);
+      }
+      if (next.size === prev.size) {
+        let same = true;
+        for (const id of next) {
+          if (!prev.has(id)) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return prev;
+      }
+      return next;
     });
   }, []);
 
@@ -346,25 +385,22 @@ export default function App() {
     [pose?.drones],
   );
 
-  useEffect(() => {
-    if (!pose) return;
+  const availableAvatars = useMemo(() => {
+    const out: Record<string, AvatarKey[]> = {};
+    if (!pose) return out;
+    for (const [id, d] of Object.entries(pose.drones)) {
+      out[id] = availableAvatarKeys(d.avatars);
+    }
+    return out;
+  }, [pose]);
 
-    setTrailHistory((prev) => {
-      const next = { ...prev };
-      for (const [id, drone] of Object.entries(pose.drones)) {
-        const enabled = enabledAvatarKeys(id, drone.avatars, avatars);
-        const pos = primaryAvatarPos(drone.avatars, enabled);
-        if (!pos) continue;
-        const pts = [...(next[id] ?? [])];
-        if (pts.length > 0 && pts[pts.length - 1].t === pose.t) {
-          pts[pts.length - 1] = { t: pose.t, pos };
-        } else {
-          pts.push({ t: pose.t, pos });
-        }
-        next[id] = pts;
-      }
-      return next;
-    });
+  const enabledAvatars = useMemo(() => {
+    const out: Record<string, AvatarKey[]> = {};
+    if (!pose) return out;
+    for (const [id, d] of Object.entries(pose.drones)) {
+      out[id] = enabledAvatarKeys(id, d.avatars, avatars);
+    }
+    return out;
   }, [pose, avatars]);
 
   const drones = useMemo((): DronePose[] => {
@@ -381,7 +417,7 @@ export default function App() {
       const cfg = vectorConfigs[id];
       const vectorAvatar = (cfg?.avatar ?? "ekf_ned") as AvatarKey;
 
-      enabled.forEach((key, index) => {
+      enabled.forEach((key) => {
         const pos = d.avatars![key];
         if (!pos) return;
         const useTriad = avatarUsesTriad(key, d);
@@ -389,6 +425,8 @@ export default function App() {
           vectorAvatar === "gps" && d.avatars!.gps
             ? d.avatars!.gps
             : d.avatars!.ekf_ned ?? pos;
+        const series = trajectory?.drones?.[id]?.[key];
+        const trail = series ? sliceTrail(series, pose.t) : undefined;
 
         out.push({
           id,
@@ -396,10 +434,7 @@ export default function App() {
           pos,
           attitude_q_xyzw: useTriad ? d.attitude_q_xyzw : identity,
           style: useTriad ? "triad" : "point",
-          trail:
-            index === 0
-              ? downsampleTrail(trailHistory[id] ?? [])
-              : undefined,
+          trail,
           vectors:
             useTriad &&
             key === vectorAvatar &&
@@ -415,12 +450,15 @@ export default function App() {
       });
     }
     return out;
-  }, [pose, trailHistory, visibleDroneIds, vectorConfigs, avatars]);
+  }, [pose, trajectory, visibleDroneIds, vectorConfigs, avatars]);
 
   const markerPositions = useMemo(() => {
     if (!pose?.origin) return [];
     const { lat, lon, alt_m } = pose.origin;
-    return markers.map((m) => llaToEnu(m.lat, m.lon, m.alt_m, lat, lon, alt_m));
+    return markers.map((m) => ({
+      id: m.id,
+      ...llaToEnu(m.lat, m.lon, m.alt_m, lat, lon, alt_m),
+    }));
   }, [markers, pose?.origin]);
 
   const handleGroundClick = useCallback(
@@ -497,6 +535,9 @@ export default function App() {
                 visible={visibleIds}
                 onToggle={handleDroneToggle}
                 slug={slug}
+                availableAvatars={availableAvatars}
+                enabledAvatars={enabledAvatars}
+                onAvatarToggle={handleAvatarToggle}
               />
               {poseError && (
                 <p className="px-4 text-sm text-red-400">Pose: {poseError}</p>
@@ -510,66 +551,75 @@ export default function App() {
                 </p>
               )}
               <div className="min-h-0 flex-1 p-4">
-                <div className="flex h-[min(70vh,640px)] gap-4">
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded border border-zinc-800">
-                    <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-2 py-1">
-                      <span className="text-xs text-zinc-400">3D engine</span>
-                      <button
-                        type="button"
-                        className={`rounded px-2 py-0.5 text-xs ${
-                          engine3d === "plotly"
-                            ? "bg-zinc-700 text-zinc-100"
-                            : "text-zinc-400 hover:bg-zinc-900"
-                        }`}
-                        onClick={() => setEngine3d("plotly")}
-                      >
-                        Plotly
-                      </button>
-                      <button
-                        type="button"
-                        className={`rounded px-2 py-0.5 text-xs ${
-                          engine3d === "cesium"
-                            ? "bg-zinc-700 text-zinc-100"
-                            : "text-zinc-400 hover:bg-zinc-900"
-                        }`}
-                        onClick={() => setEngine3d("cesium")}
-                      >
-                        Cesium
-                      </button>
-                    </div>
-                    <div className="min-h-0 flex-1">
-                      {shouldLoadCesium(engine3d) ? (
-                        <Suspense
-                          fallback={
-                            <div className="flex h-full items-center justify-center text-sm text-zinc-400">
-                              Loading globe…
-                            </div>
-                          }
+                <div className="flex items-start gap-4">
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded border border-zinc-800">
+                    <div className="flex h-[min(70vh,640px)] min-h-0 flex-col">
+                      <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-2 py-1">
+                        <span className="text-xs text-zinc-400">3D engine</span>
+                        <button
+                          type="button"
+                          className={`rounded px-2 py-0.5 text-xs ${
+                            engine3d === "plotly"
+                              ? "bg-zinc-700 text-zinc-100"
+                              : "text-zinc-400 hover:bg-zinc-900"
+                          }`}
+                          onClick={() => setEngine3d("plotly")}
                         >
-                          <View3DCesium
+                          Plotly
+                        </button>
+                        <button
+                          type="button"
+                          className={`rounded px-2 py-0.5 text-xs ${
+                            engine3d === "cesium"
+                              ? "bg-zinc-700 text-zinc-100"
+                              : "text-zinc-400 hover:bg-zinc-900"
+                          }`}
+                          onClick={() => setEngine3d("cesium")}
+                        >
+                          Cesium
+                        </button>
+                      </div>
+                      <div className="relative z-0 min-h-0 flex-1 overflow-hidden">
+                        {shouldLoadCesium(engine3d) ? (
+                          <Suspense
+                            fallback={
+                              <div className="flex h-full items-center justify-center text-sm text-zinc-400">
+                                Loading globe…
+                              </div>
+                            }
+                          >
+                            <View3DCesium
+                              drones={drones}
+                              origin={pose?.origin}
+                              markers={markers}
+                              onGroundClick={handleGroundClick}
+                              onMarkerRemove={handleMarkerRemove}
+                            />
+                          </Suspense>
+                        ) : (
+                          <View3D
                             drones={drones}
                             origin={pose?.origin}
-                            markers={markers}
+                            markerPositions={markerPositions}
                             onGroundClick={handleGroundClick}
+                            onMarkerRemove={handleMarkerRemove}
                           />
-                        </Suspense>
-                      ) : (
-                        <View3D
-                          drones={drones}
-                          origin={pose?.origin}
-                          markerPositions={markerPositions}
-                          onGroundClick={handleGroundClick}
-                        />
-                      )}
+                        )}
+                      </div>
                     </div>
+                    <Timeline t={t} tMax={tMax} onTChange={setT} />
                   </div>
-                  <Map2D
-                    pose={pose}
-                    markers={markers}
-                    visibleDroneIds={visibleDroneIds}
-                    open={mapLinked}
-                    onOpenChange={setMapLinked}
-                  />
+                  <div className="flex h-[min(70vh,640px)] min-h-0">
+                    <Map2D
+                      pose={pose}
+                      trajectory={trajectory}
+                      uiAvatars={avatars}
+                      markers={markers}
+                      visibleDroneIds={visibleDroneIds}
+                      open={mapLinked}
+                      onOpenChange={setMapLinked}
+                    />
+                  </div>
                   <div className="w-56 shrink-0">
                     <MarkerPanel
                       markers={markers}
@@ -585,16 +635,17 @@ export default function App() {
                 slug={slug}
                 visibleDroneIds={visibleDroneIds}
                 t={t}
+                tMax={tMax}
                 refreshToken={refreshToken}
               />
               <PlotBoard
                 slug={slug}
                 t={t}
+                tMax={tMax}
                 refreshToken={refreshToken}
                 plots={plots}
                 onPlotsChange={setPlots}
               />
-              <Timeline t={t} tMax={tMax} onTChange={setT} />
             </>
           )}
         </div>

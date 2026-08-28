@@ -18,7 +18,7 @@ async function importBaseballOnRow(page: Page, id: string) {
   await row.getByRole("button", { name: "Import" }).click();
   const dialog = page.getByRole("dialog", { name: "Import files" });
   await expect(dialog).toBeVisible();
-  await dialog.getByPlaceholder("path to .ulg or logs dir").fill(BASEBALL);
+  await dialog.getByPlaceholder("path to .ulg or log file").fill(BASEBALL);
   await dialog.getByRole("button", { name: "Import" }).click();
   await expect(dialog).toBeHidden({ timeout: 240_000 });
 }

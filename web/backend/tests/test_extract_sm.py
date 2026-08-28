@@ -14,6 +14,17 @@ def _write_sm_csv(path: Path, rows: list[dict]) -> None:
     pd.DataFrame(rows).to_csv(path, index=False)
 
 
+def test_extract_sm_empty_file_returns_skipped(tmp_path):
+    csv = tmp_path / "2026-07-19_22-33-25_system_manager.csv"
+    csv.write_text("")
+    dest = tmp_path / "derived" / "drone_2"
+
+    out = extract_sm(csv, dest)
+
+    assert out == "skipped"
+    assert not (dest / "sm_system_manager.parquet").exists()
+
+
 def test_extract_sm_s4_takeoff_parquet_and_arm(tmp_path):
     csv = tmp_path / "20260814_system_manager_d2.csv"
     dest = tmp_path / "derived" / "drone_2"

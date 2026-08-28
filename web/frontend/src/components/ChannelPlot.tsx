@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import Plot from "react-plotly.js";
-import type { Data, Layout } from "plotly.js";
+import type { Dash, Data, Layout } from "plotly.js";
 import { getSeries, type SeriesResponse } from "../api";
+import { experimentTimeAxis } from "../channelPlotAxis";
 import { droneColor } from "../droneColor";
+
 const COMPONENTS = ["x", "y", "z"] as const;
+
+const NED_LINE: Record<(typeof COMPONENTS)[number], { width: number; dash: Dash }> = {
+  x: { width: 2.5, dash: "solid" },
+  y: { width: 1.5, dash: "dash" },
+  z: { width: 1, dash: "dot" },
+};
 
 function nedChannels(droneId: string): string[] {
   return COMPONENTS.map(
@@ -15,6 +23,7 @@ type Props = {
   slug: string | null;
   visibleDroneIds: string[];
   t: number;
+  tMax: number;
   refreshToken?: number;
 };
 
@@ -22,6 +31,7 @@ export default function ChannelPlot({
   slug,
   visibleDroneIds,
   t,
+  tMax,
   refreshToken = 0,
 }: Props) {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
@@ -73,7 +83,7 @@ export default function ChannelPlot({
           name: `D${id} ${comp}`,
           x: data.t,
           y: data.y,
-          line: { color, width: 1.5 },
+          line: { color, ...NED_LINE[comp] },
         });
       }
     });
@@ -87,7 +97,7 @@ export default function ChannelPlot({
       plot_bgcolor: "#18181b",
       font: { color: "#e4e4e7" },
       margin: { l: 48, r: 16, t: 24, b: 40 },
-      xaxis: { title: { text: "t (s)" }, gridcolor: "#3f3f46" },
+      xaxis: experimentTimeAxis(tMax),
       yaxis: { title: { text: "NED (m)" }, gridcolor: "#3f3f46" },
       showlegend: true,
       legend: { orientation: "h", y: 1.1 },
@@ -103,7 +113,7 @@ export default function ChannelPlot({
         },
       ],
     }),
-    [t],
+    [t, tMax],
   );
 
   if (!slug) return null;

@@ -1,4 +1,15 @@
-export const DRONE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6"] as const;
+/** Keep in sync with ObservationBoard `web/frontend/src/utils/droneColors.ts`. */
+export const DRONE_COLORS = [
+  "#FF2D00",
+  "#008CFF",
+  "#00D615",
+  "#FFD200",
+  "#BE00FF",
+  "#FF00D9",
+  "#00E0E0",
+  "#FF8800",
+  "#8FDF00",
+] as const;
 
 export function droneColor(id: string | number): string {
   const n = typeof id === "number" ? id : Number(id);

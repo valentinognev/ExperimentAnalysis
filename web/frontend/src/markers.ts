@@ -76,10 +76,43 @@ export function distanceM(
   return { horizontal_m, enu_3d_m };
 }
 
+export const MARKERS_TRACE_NAME = "Markers";
+export const PLOT_DOUBLE_CLICK_MS = 400;
+
+/** Fill for ground markers; chosen to sit far from every Observation Board drone hue. */
+export const MARKER_COLOR = "#FFFFFF";
+export const MARKER_OUTLINE_COLOR = "#000000";
+
 /** Plotly scene click with x/y as E/N; projects to ground plane u=0. */
 export type PlotlyGroundClick = {
-  points?: Array<{ x?: number | null; y?: number | null }>;
+  points?: Array<{
+    x?: number | null;
+    y?: number | null;
+    data?: { name?: string };
+    customdata?: unknown;
+  }>;
 };
+
+export function isPlotDoubleClick(
+  event: { detail?: number } | undefined,
+  nowMs: number,
+  lastClickMs: number | null,
+  windowMs = PLOT_DOUBLE_CLICK_MS,
+): boolean {
+  if (event?.detail === 2) return true;
+  return lastClickMs != null && nowMs - lastClickMs < windowMs;
+}
+
+export function markerIdFromPlotPick(
+  pick: PlotlyGroundClick,
+): string | null {
+  const pt = pick.points?.[0];
+  if (!pt || pt.data?.name !== MARKERS_TRACE_NAME) return null;
+  const data = pt.customdata;
+  if (typeof data === "string") return data;
+  if (Array.isArray(data) && typeof data[0] === "string") return data[0];
+  return null;
+}
 
 export function groundClickToLla(
   plotlyClick: PlotlyGroundClick,

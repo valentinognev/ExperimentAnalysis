@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import "cesium/Build/Cesium/Widgets/widgets.css";
-import type { Viewer } from "cesium";
-import { globePickToLla, markerEntity } from "../cesiumMarkers";
+import type { Cartesian2, Viewer } from "cesium";
+import {
+  globePickToLla,
+  markerEntity,
+  markerEntityId,
+  markerEntityStyle,
+  markerIdFromEntityId,
+} from "../cesiumMarkers";
+import { destroyCesiumViewer, unbindCesiumPointerEvents } from "../cesiumViewer";
 import { enuToLla, type Marker, type Origin } from "../markers";
 import { triadSegments, type EnuPos } from "../triad";
-import type { DronePose } from "./View3D";
+import { avatarLegendName, type DronePose } from "./View3D";
 import { droneColor } from "../droneColor";
+import { avatarMarkerStyle, avatarSymbolDataUri } from "../avatarMarker";
 
 type View3DCesiumProps = {
   drones: DronePose[];
@@ -13,6 +21,7 @@ type View3DCesiumProps = {
   origin?: Origin;
   markers?: Marker[];
   onGroundClick?: (lla: { lat: number; lon: number; alt_m: number }) => void;
+  onMarkerRemove?: (id: string) => void;
 };
 
 type CesiumModule = typeof import("cesium");
@@ -57,12 +66,14 @@ function updateEntities(
 
   for (const marker of markers) {
     const { lon, lat, alt_m } = markerEntity(marker);
+    const style = markerEntityStyle();
     viewer.entities.add({
+      id: markerEntityId(marker.id),
       position: Cesium.Cartesian3.fromDegrees(lon, lat, alt_m),
       point: {
         pixelSize: 10,
-        color: Cesium.Color.fromCssColorString("#facc15"),
-        outlineColor: Cesium.Color.BLACK,
+        color: Cesium.Color.fromCssColorString(style.color),
+        outlineColor: Cesium.Color.fromCssColorString(style.outlineColor),
         outlineWidth: 1,
       },
       label: {
@@ -79,27 +90,31 @@ function updateEntities(
   }
 
   for (const drone of drones) {
-    if (drone.style === "point" || !drone.attitude_q_xyzw) {
-      viewer.entities.add({
-        position: enuToCartesian(drone.pos, origin, Cesium),
-        point: {
-          pixelSize: 10,
-          color: Cesium.Color.fromCssColorString(droneColor(drone.id)),
-          outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 1,
-        },
-        label: {
-          text: drone.label ? `D${drone.id} ${drone.label}` : `D${drone.id}`,
-          font: "11px sans-serif",
-          fillColor: Cesium.Color.WHITE,
-          outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
-          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          pixelOffset: new Cesium.Cartesian2(0, -10),
-        },
-      });
-    } else {
+    const style = avatarMarkerStyle(drone.label);
+    const fill = droneColor(drone.id);
+    viewer.entities.add({
+      position: enuToCartesian(drone.pos, origin, Cesium),
+      billboard: {
+        image: avatarSymbolDataUri(
+          style.symbol,
+          fill,
+          Boolean(style.outline),
+        ),
+        width: 16,
+        height: 16,
+      },
+      label: {
+        text: avatarLegendName(drone.id, drone.label),
+        font: "11px sans-serif",
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -10),
+      },
+    });
+    if (drone.style !== "point" && drone.attitude_q_xyzw) {
       for (const segment of triadSegments(
         drone.pos,
         drone.attitude_q_xyzw,
@@ -155,6 +170,7 @@ export default function View3DCesium({
   origin,
   markers = [],
   onGroundClick,
+  onMarkerRemove,
 }: View3DCesiumProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -206,12 +222,9 @@ export default function View3DCesium({
 
     return () => {
       cancelled = true;
-      setViewerReady(false);
       framedOriginRef.current = null;
-      if (viewerRef.current) {
-        viewerRef.current.destroy();
-        viewerRef.current = null;
-      }
+      destroyCesiumViewer(viewerRef.current);
+      viewerRef.current = null;
       cesiumRef.current = null;
     };
   }, []);
@@ -233,34 +246,63 @@ export default function View3DCesium({
   useEffect(() => {
     const viewer = viewerRef.current;
     const Cesium = cesiumRef.current;
-    if (!viewerReady || !viewer || !Cesium || !origin || !onGroundClick) return;
+    if (!viewerReady || !viewer || !Cesium || !origin) return;
+    if (!onGroundClick && !onMarkerRemove) return;
 
-    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-    handler.setInputAction((click) => {
-      const ray = viewer.camera.getPickRay(click.position);
-      const cartesian =
-        ray
-          ? viewer.scene.globe.pick(ray, viewer.scene)
-          : viewer.camera.pickEllipsoid(
-              click.position,
-              viewer.scene.globe.ellipsoid,
-            );
-      if (!cartesian) return;
+    const handler = viewer.screenSpaceEventHandler;
+    const preventMenu = (e: Event) => e.preventDefault();
+    viewer.scene.canvas.addEventListener("contextmenu", preventMenu);
 
-      const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-      onGroundClick(
-        globePickToLla(
-          Cesium.Math.toDegrees(cartographic.latitude),
-          Cesium.Math.toDegrees(cartographic.longitude),
-          origin,
-        ),
-      );
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    const pickedMarkerId = (position: Cartesian2): string | null => {
+      const picked = viewer.scene.pick(position) as { id?: { id?: string } } | undefined;
+      if (!Cesium.defined(picked) || picked?.id?.id == null) return null;
+      return markerIdFromEntityId(String(picked.id.id));
+    };
+
+    handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+    handler.removeInputAction(Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+
+    if (onGroundClick) {
+      handler.setInputAction((click: { position: Cartesian2 }) => {
+        if (pickedMarkerId(click.position)) return;
+        const ray = viewer.camera.getPickRay(click.position);
+        const cartesian =
+          ray
+            ? viewer.scene.globe.pick(ray, viewer.scene)
+            : viewer.camera.pickEllipsoid(
+                click.position,
+                viewer.scene.globe.ellipsoid,
+              );
+        if (!cartesian) return;
+
+        const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+        onGroundClick(
+          globePickToLla(
+            Cesium.Math.toDegrees(cartographic.latitude),
+            Cesium.Math.toDegrees(cartographic.longitude),
+            origin,
+          ),
+        );
+      }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+    }
+
+    if (onMarkerRemove) {
+      handler.setInputAction((click: { position: Cartesian2 }) => {
+        const id = pickedMarkerId(click.position);
+        if (id) onMarkerRemove(id);
+      }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+    }
 
     return () => {
-      handler.destroy();
+      unbindCesiumPointerEvents(
+        viewer,
+        handler,
+        Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK,
+        Cesium.ScreenSpaceEventType.RIGHT_CLICK,
+        preventMenu,
+      );
     };
-  }, [viewerReady, origin, onGroundClick]);
+  }, [viewerReady, origin, onGroundClick, onMarkerRemove]);
 
   if (loadError) {
     return (

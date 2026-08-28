@@ -18,6 +18,31 @@ export function nextDirection(action: PlaybackAction): Direction {
   }
 }
 
+export type TransportButton = {
+  action: PlaybackAction;
+  label: string;
+  disabled: boolean;
+};
+
+export function transportButtons(direction: Direction): [TransportButton, TransportButton] {
+  if (direction === 1) {
+    return [
+      { action: "pause", label: "Pause", disabled: false },
+      { action: "reverse", label: "Reverse", disabled: true },
+    ];
+  }
+  if (direction === -1) {
+    return [
+      { action: "play", label: "Play", disabled: true },
+      { action: "pause", label: "Pause", disabled: false },
+    ];
+  }
+  return [
+    { action: "play", label: "Play", disabled: false },
+    { action: "reverse", label: "Reverse", disabled: false },
+  ];
+}
+
 const SPEEDS: Speed[] = [0.25, 1, 2, 4];
 
 type Props = {
@@ -89,30 +114,18 @@ export default function Timeline({ t, tMax, onTChange }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-3 border-t border-zinc-800 bg-zinc-900 px-4 py-3">
       <div className="flex gap-1">
-        <button
-          type="button"
-          aria-label="Play"
-          onClick={() => handleAction("play")}
-          className="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700"
-        >
-          Play
-        </button>
-        <button
-          type="button"
-          aria-label="Reverse"
-          onClick={() => handleAction("reverse")}
-          className="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700"
-        >
-          Reverse
-        </button>
-        <button
-          type="button"
-          aria-label="Pause"
-          onClick={() => handleAction("pause")}
-          className="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700"
-        >
-          Pause
-        </button>
+        {transportButtons(direction).map((btn, slot) => (
+          <button
+            key={slot}
+            type="button"
+            aria-label={btn.label}
+            disabled={btn.disabled}
+            onClick={() => handleAction(btn.action)}
+            className="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-zinc-800"
+          >
+            {btn.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-1">

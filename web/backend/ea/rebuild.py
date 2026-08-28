@@ -26,6 +26,19 @@ def _sm_csv_paths(drone_dir: Path) -> list[Path]:
     return paths
 
 
+def _listed_source_files(exp_path: Path, rels: object, pred) -> list[Path]:
+    if not isinstance(rels, list) or not rels:
+        return []
+    out: list[Path] = []
+    for rel in rels:
+        if not isinstance(rel, str):
+            continue
+        path = exp_path / rel
+        if path.is_file() and pred(path):
+            out.append(path)
+    return out
+
+
 def _ha_log_paths(drone_dir: Path) -> list[Path]:
     paths: list[Path] = []
     for path in sorted(drone_dir.iterdir()):
@@ -40,9 +53,12 @@ def _ha_log_paths(drone_dir: Path) -> list[Path]:
 
 
 def rebuild(slug: str) -> dict:
-    result = open_experiment(slug)
-    exp_path = result["path"]
+    opened = open_experiment(slug)
+    exp_path = opened["path"]
     raw_dir = exp_path / "raw"
+    drones_by_id = {
+        str(d.get("id")): d for d in opened["manifest"].get("drones", [])
+    }
 
     per_drone: dict = {}
     drones_out: dict = {}
@@ -53,6 +69,7 @@ def rebuild(slug: str) -> dict:
                 continue
             drone_id = drone_dir.name.split("_", 1)[1]
             derived = exp_path / "derived" / f"drone_{drone_id}"
+            sources = (drones_by_id.get(drone_id) or {}).get("sources") or {}
 
             extract_notes: list[dict] = []
             for ulg in sorted(drone_dir.glob("*.ulg")):
@@ -61,20 +78,39 @@ def rebuild(slug: str) -> dict:
 
             sm_notes: list[dict] = []
             sm_arm: float | None = None
-            for csv in _sm_csv_paths(drone_dir):
-                parquet = extract_sm(csv, derived)
-                sm_notes.append({"file": csv.name, "parquet": parquet.name})
+            sm_csvs = _listed_source_files(
+                exp_path,
+                sources.get("system_manager"),
+                lambda p: "system_manager" in p.name.lower() and p.suffix.lower() == ".csv",
+            ) or _sm_csv_paths(drone_dir)
+            for csv in sm_csvs:
+                sm_out = extract_sm(csv, derived)
+                if sm_out == "skipped":
+                    sm_notes.append({"file": csv.name, "status": "skipped"})
+                    continue
+                sm_notes.append({"file": csv.name, "parquet": sm_out.name})
                 if "system_manager" in csv.name.lower():
-                    sm_arm = sm_arm_local_ts(pd.read_parquet(parquet))
+                    sm_arm = sm_arm_local_ts(pd.read_parquet(sm_out))
 
             ha_derived = exp_path / "derived" / "ha" / f"drone_{drone_id}"
             ha_notes: list[dict] = []
-            for log_path in _ha_log_paths(drone_dir):
-                result = extract_ha(log_path, ha_derived)
-                if result == "skipped":
+            ha_logs = _listed_source_files(
+                exp_path,
+                sources.get("hardware_adapter"),
+                lambda p: (
+                    ("adapter_diag" in p.name.lower() and p.suffix.lower() == ".log")
+                    or (
+                        "mavlink" in p.name.lower()
+                        and p.suffix.lower() in (".txt", ".log")
+                    )
+                ),
+            ) or _ha_log_paths(drone_dir)
+            for log_path in ha_logs:
+                ha_result = extract_ha(log_path, ha_derived)
+                if ha_result == "skipped":
                     ha_notes.append({"file": log_path.name, "status": "skipped"})
                 else:
-                    ha_notes.append({"file": log_path.name, "parquet": result.name})
+                    ha_notes.append({"file": log_path.name, "parquet": ha_result.name})
 
             status_path = derived / "vehicle_status.parquet"
             actuator_path = derived / "actuator_armed.parquet"

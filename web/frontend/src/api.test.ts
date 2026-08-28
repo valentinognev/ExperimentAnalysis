@@ -6,14 +6,16 @@ import {
   openExperiment,
   importPaths,
   addDrone,
+  setDroneCount,
   pullDrone,
   listSshLogs,
   copySshLogs,
   listMavlinkLogs,
   downloadMavlinkLog,
   rebuild,
-  browseFolder,
+  browseFile,
   getPose,
+  getTrajectory,
   getSeries,
   getDuration,
   patchManifest,
@@ -139,6 +141,23 @@ describe("api", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: 2 }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("setDroneCount PUTs {count}", async () => {
+    const body = { slug: "foo", manifest: { drones: [{ id: 1 }, { id: 2 }] } };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await setDroneCount("foo", 2);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/drones", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ count: 2 }),
     });
     expect(result).toEqual(body);
   });
@@ -296,19 +315,35 @@ describe("api", () => {
     expect(result).toEqual(body);
   });
 
-  it("browseFolder POSTs /api/browse-folder and parses {path}", async () => {
-    const body = { path: "/tmp/sitl" };
+  it("browseFile POSTs /api/browse-file and parses {path}", async () => {
+    const body = { path: "/tmp/d2.ulg" };
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => body,
     } as Response);
 
-    const result = await browseFolder();
+    const result = await browseFile();
 
-    expect(fetch).toHaveBeenCalledWith("/api/browse-folder", {
+    expect(fetch).toHaveBeenCalledWith("/api/browse-file", {
       method: "POST",
     });
     expect(result).toEqual(body);
+  });
+
+  it("browseFile POSTs {start} when a path is given", async () => {
+    const body = { path: "/tmp/other.ulg" };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    await browseFile("/tmp/d2.ulg");
+
+    expect(fetch).toHaveBeenCalledWith("/api/browse-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start: "/tmp/d2.ulg" }),
+    });
   });
 
   it("rebuild POSTs rebuild URL", async () => {
@@ -408,6 +443,22 @@ describe("api", () => {
     const result = await getPose("foo", 1.5);
 
     expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/pose?t=1.5");
+    expect(result).toEqual(body);
+  });
+
+  it("getTrajectory GETs trajectory", async () => {
+    const body = {
+      origin: { lat: 0, lon: 0, alt_m: 0 },
+      drones: { "2": { ekf_ned: { t: [0], e: [0], n: [0], u: [0] } } },
+    };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await getTrajectory("foo");
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/trajectory");
     expect(result).toEqual(body);
   });
 });

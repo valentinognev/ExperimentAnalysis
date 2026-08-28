@@ -23,6 +23,14 @@ describe("parseUlgStamp", () => {
     ).toEqual({ date: "2026-08-25", time: "17:05:30" });
   });
 
+  it("reads the flight stamp when a UTC collision suffix is present", () => {
+    expect(
+      parseUlgStamp(
+        "Group3RLcat2_log_41_2026-8-25-17-05-30_2026-08-28T19:34:01Z.ulg",
+      ),
+    ).toEqual({ date: "2026-08-25", time: "17:05:30" });
+  });
+
   it("returns null when the name has no stamp", () => {
     expect(parseUlgStamp("Group3RLcat2_log_1.ulg")).toBeNull();
     expect(parseUlgStamp("notes.txt")).toBeNull();
@@ -45,6 +53,7 @@ describe("summariesFromManifest", () => {
     ).toEqual({
       "2": {
         ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+        ulgOrigin: "",
         date: "2026-08-25",
         time: "17:05:30",
         sm: ["20260825_system_manager_d2.csv"],
@@ -57,7 +66,7 @@ describe("summariesFromManifest", () => {
     expect(
       summariesFromManifest([{ id: 1, sources: { ulg: [], system_manager: [], hardware_adapter: [] } }]),
     ).toEqual({
-      "1": { ulg: "—", date: "—", time: "—", sm: [], ha: [] },
+      "1": { ulg: "—", ulgOrigin: "", date: "—", time: "—", sm: [], ha: [] },
     });
   });
 
@@ -72,6 +81,22 @@ describe("summariesFromManifest", () => {
     ]);
     expect(s["2"].ulg).toBe("Group3RLcat2_log_41_2026-8-25-17-05-30.ulg");
     expect(s["2"].date).toBe("2026-08-25");
+    expect(s["2"].ulgOrigin).toBe("");
+  });
+
+  it("passes through sources.ulg_origin as ulgOrigin", () => {
+    const s = summariesFromManifest([
+      {
+        id: 2,
+        sources: {
+          ulg: ["raw/drone_2/Group3RLcat2_log_41_2026-8-25-17-05-30.ulg"],
+          ulg_origin: "/home/valentin/RL/TESTFLIGHTS/Baseball/Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+        },
+      },
+    ]);
+    expect(s["2"].ulgOrigin).toBe(
+      "/home/valentin/RL/TESTFLIGHTS/Baseball/Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+    );
   });
 
   it("returns empty for missing drones", () => {

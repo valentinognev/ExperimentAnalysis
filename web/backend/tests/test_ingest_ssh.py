@@ -186,6 +186,42 @@ def test_copy_only_selected_files(tmp_path, monkeypatch):
     assert not manifest["drones"][0]["sources"]["hardware_adapter"]
 
 
+def test_copy_selected_sm_replaces_manifest_not_all_raw(tmp_path, monkeypatch):
+    listings = {"~/RL/system_manager/logs/": SM_LISTING}
+    _setup_experiment(tmp_path, monkeypatch)
+    raw = tmp_path / "PullTest" / "raw" / "drone_2"
+    raw.mkdir(parents=True)
+    (raw / "2026-07-19_22-33-25_system_manager.csv").write_text("old")
+    (raw / "2026-08-03_21-54-03_system_manager.csv").write_text("also old")
+    manifest_path = tmp_path / "PullTest" / "manifest.json"
+    manifest = load_manifest(manifest_path)
+    manifest["drones"][0]["sources"]["system_manager"] = [
+        "raw/drone_2/2026-07-19_22-33-25_system_manager.csv",
+        "raw/drone_2/2026-08-03_21-54-03_system_manager.csv",
+    ]
+    save_manifest(manifest_path, manifest)
+
+    result = ssh_copy_logs(
+        "PullTest",
+        2,
+        files=[
+            {
+                "remote": "~/RL/system_manager/logs/20260825_system_manager_d2.csv",
+                "name": "20260825_system_manager_d2.csv",
+            },
+        ],
+        runner=_listing_runner(listings),
+    )
+
+    assert result["ok"] is True
+    manifest = load_manifest(manifest_path)
+    assert manifest["drones"][0]["sources"]["system_manager"] == [
+        "raw/drone_2/20260825_system_manager_d2.csv",
+    ]
+    assert (raw / "2026-07-19_22-33-25_system_manager.csv").is_file()
+    assert (raw / "2026-08-03_21-54-03_system_manager.csv").is_file()
+
+
 def test_copy_rejects_path_outside_candidates(tmp_path, monkeypatch):
     _setup_experiment(tmp_path, monkeypatch)
     result = ssh_copy_logs(

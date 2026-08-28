@@ -61,6 +61,7 @@ def test_unknown_slug_404(tmp_path, monkeypatch):
 
     for path in (
         "/api/experiments/nope/pose",
+        "/api/experiments/nope/trajectory",
         "/api/experiments/nope/rebuild",
         "/api/experiments/nope/series",
         "/api/experiments/nope/topics",
@@ -75,6 +76,17 @@ def test_unknown_slug_404(tmp_path, monkeypatch):
             r = c.get(path)
         assert r.status_code == 404
         assert r.json()["detail"] == "experiment not found"
+
+
+def test_trajectory_after_rebuild(tmp_path, monkeypatch):
+    c, slug = _setup_experiment_with_ulog(tmp_path, monkeypatch)
+
+    r = c.get(f"/api/experiments/{slug}/trajectory")
+    assert r.status_code == 200
+    ekf = r.json()["drones"]["2"]["ekf_ned"]
+    assert len(ekf["t"]) >= 2
+    assert ekf["t"][0] == pytest.approx(0.0, abs=1e-6)
+    assert "e" in ekf and "n" in ekf and "u" in ekf
 
 
 def test_series_local_position_x_after_rebuild(tmp_path, monkeypatch):

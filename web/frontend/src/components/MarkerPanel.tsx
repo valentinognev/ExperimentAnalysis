@@ -46,7 +46,8 @@ export default function MarkerPanel({
     >
       <h2 className="mb-2 font-medium">Markers</h2>
       <p className="mb-2 text-xs text-zinc-400">
-        Click the 3D ground to add. Select two to measure.
+        Double-click the 3D ground to add. Right-click a marker to remove.
+        Select two to measure.
       </p>
       {markers.length === 0 ? (
         <p className="text-zinc-500">No markers yet.</p>

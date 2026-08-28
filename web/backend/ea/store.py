@@ -1,3 +1,5 @@
+import shutil
+
 from ea.manifest import empty_manifest, load_manifest, save_manifest
 from ea.slug import slugify
 from paths import experiments_dir
@@ -91,3 +93,39 @@ def add_drone(slug: str, drone_id: int) -> dict:
     manifest.setdefault("drones", []).append(default_drone(drone_id))
     save_manifest(result["path"] / "manifest.json", manifest)
     return result
+
+
+def _visible_id_kept(vid, count: int) -> bool:
+    if isinstance(vid, int):
+        return vid <= count
+    if isinstance(vid, str) and vid.isdigit():
+        return int(vid) <= count
+    return False
+
+
+def set_drone_count(slug: str, count: int) -> dict:
+    if count < 1 or count > 9:
+        raise ValueError("drone count must be 1..9")
+    result = open_experiment(slug)
+    path = result["path"]
+    manifest = result["manifest"]
+    drones = list(manifest.get("drones", []))
+    have = {d["id"] for d in drones}
+    for drone_id in range(1, count + 1):
+        if drone_id not in have:
+            drones.append(default_drone(drone_id))
+            have.add(drone_id)
+    removed = [d["id"] for d in drones if d["id"] > count]
+    manifest["drones"] = [d for d in drones if d["id"] <= count]
+    ui = manifest.setdefault("ui", {})
+    visible = ui.get("visible_drone_ids", [])
+    ui["visible_drone_ids"] = [vid for vid in visible if _visible_id_kept(vid, count)]
+    for drone_id in removed:
+        for rel in (
+            path / "raw" / f"drone_{drone_id}",
+            path / "derived" / f"drone_{drone_id}",
+            path / "derived" / "ha" / f"drone_{drone_id}",
+        ):
+            shutil.rmtree(rel, ignore_errors=True)
+    save_manifest(path / "manifest.json", manifest)
+    return {"slug": slug, "path": path, "manifest": manifest}

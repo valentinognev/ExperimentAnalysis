@@ -101,6 +101,25 @@ def test_series_invalid_channel_empty_arrays(tmp_path):
     assert result[channel] == {"t": [], "y": []}
 
 
+def test_series_reads_multi_instance_topic(tmp_path):
+    exp_dir = tmp_path / "exp"
+    exp_dir.mkdir()
+    derived = exp_dir / "derived" / "drone_2"
+    derived.mkdir(parents=True)
+    arm_us = 5000
+    pq.write_table(
+        pa.table({"timestamp": [arm_us, arm_us + 1000], "x": [1.5, 2.5]}),
+        derived / "sensor_accel.00.parquet",
+    )
+    write_sync(exp_dir, {"2": {"ulog_arm_us": arm_us, "sm_arm_local_ts": None}})
+    _save_manifest_drones(exp_dir, [2])
+
+    channel = "2.ulog.sensor_accel.00.x"
+    result = series(exp_dir, [channel])
+    assert result[channel]["y"] == [1.5, 2.5]
+    assert result[channel]["t"][0] == pytest.approx(0.0, abs=1e-6)
+
+
 def test_list_topics_includes_local_position_x(tmp_path):
     exp_dir = _build_single_drone_fixture(tmp_path)
     tree = list_topics(exp_dir)

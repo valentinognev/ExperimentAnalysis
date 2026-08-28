@@ -41,25 +41,28 @@ def _is_ha_file(path: Path) -> bool:
     return False
 
 
-def _collect_import_files(paths: list[str]) -> list[Path]:
-    found: list[Path] = []
+def _file_kind(path: Path) -> str | None:
+    if path.suffix.lower() == ".ulg":
+        return "ulg"
+    if _is_sm_csv(path):
+        return "sm"
+    if _is_ha_file(path):
+        return "ha"
+    return None
+
+
+def _collect_import_files(paths: list[str]) -> list[tuple[Path, bool]]:
+    found: list[tuple[Path, bool]] = []
     for raw in paths:
         p = Path(raw)
         if not p.exists():
             continue
         if p.is_dir():
             for child in sorted(p.iterdir()):
-                if not child.is_file():
-                    continue
-                if (
-                    child.suffix.lower() == ".ulg"
-                    or _is_sm_csv(child)
-                    or _is_ha_file(child)
-                ):
-                    found.append(child)
-        elif p.is_file():
-            if p.suffix.lower() == ".ulg" or _is_sm_csv(p) or _is_ha_file(p):
-                found.append(p)
+                if child.is_file() and _file_kind(child):
+                    found.append((child, True))
+        elif p.is_file() and _file_kind(p):
+            found.append((p, False))
     return found
 
 
@@ -71,6 +74,26 @@ def _resolve_drone_id(
     if drone_id is not None:
         return drone_id
     return assignments.get(filename)
+
+
+def _needs_pick_drones(candidates: list[tuple[Path, int, bool, str]]) -> set[int]:
+    sm_from_dir: dict[int, int] = {}
+    ha_from_dir: dict[int, int] = {}
+    for _path, resolved_id, from_dir, kind in candidates:
+        if not from_dir:
+            continue
+        if kind == "sm":
+            sm_from_dir[resolved_id] = sm_from_dir.get(resolved_id, 0) + 1
+        elif kind == "ha":
+            ha_from_dir[resolved_id] = ha_from_dir.get(resolved_id, 0) + 1
+    defer: set[int] = set()
+    for drone, n in sm_from_dir.items():
+        if n > 1:
+            defer.add(drone)
+    for drone, n in ha_from_dir.items():
+        if n > 2:
+            defer.add(drone)
+    return defer
 
 
 def import_paths(
@@ -89,8 +112,13 @@ def import_paths(
     needs_id: list[str] = []
     copied_any = False
     drones_touched: set[int] = set()
+    copied_dests: dict[int, list[Path]] = {}
 
-    for file_path in _collect_import_files(paths):
+    candidates: list[tuple[Path, int, bool, str]] = []
+    for file_path, from_dir in _collect_import_files(paths):
+        kind = _file_kind(file_path)
+        if kind is None:
+            continue
         if drone_id is not None:
             filename_id = drone_id_from_filename(file_path.name)
             if filename_id is not None and filename_id != drone_id:
@@ -101,6 +129,22 @@ def import_paths(
             if resolved_id is None:
                 needs_id.append(file_path.name)
                 continue
+        candidates.append((file_path, resolved_id, from_dir, kind))
+
+    defer = _needs_pick_drones(candidates)
+    needs_pick: list[dict] = []
+
+    for file_path, resolved_id, from_dir, kind in candidates:
+        if from_dir and resolved_id in defer and kind in ("sm", "ha"):
+            needs_pick.append(
+                {
+                    "path": str(file_path.resolve()),
+                    "name": file_path.name,
+                    "kind": kind,
+                    "size": file_path.stat().st_size,
+                }
+            )
+            continue
 
         drone_key = str(resolved_id)
         dest_dir = exp_path / "raw" / f"drone_{resolved_id}"
@@ -116,19 +160,27 @@ def import_paths(
                 manifest.setdefault("drones", []).append(drone)
 
             sources = drone.setdefault("sources", {})
-            if file_path.suffix.lower() == ".ulg":
+            if kind == "ulg":
                 ulg_list = sources.setdefault("ulg", [])
                 ulg_list.append(rel)
+                sources["ulg_origin"] = str(file_path.resolve())
 
             copied_any = True
             drones_touched.add(resolved_id)
+            copied_dests.setdefault(resolved_id, []).append(dest)
             drones_out[drone_key] = {"ok": True}
         except OSError as e:
             drones_out[drone_key] = {"ok": False, "error": str(e)}
 
     for touched_id in drones_touched:
         dest_dir = exp_path / "raw" / f"drone_{touched_id}"
-        _update_manifest_sources(manifest, touched_id, exp_path, dest_dir)
+        _update_manifest_sources(
+            manifest,
+            touched_id,
+            exp_path,
+            dest_dir,
+            copied_paths=copied_dests.get(touched_id),
+        )
 
     save_manifest(manifest_path, manifest)
 
@@ -136,4 +188,5 @@ def import_paths(
         "ok": copied_any,
         "drones": drones_out,
         "needs_id": needs_id,
+        "needs_pick": needs_pick,
     }

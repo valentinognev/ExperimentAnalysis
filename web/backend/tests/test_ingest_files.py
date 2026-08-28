@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app import app
@@ -62,6 +64,22 @@ def test_import_paths_drone_id_copies_only_that_drone(tmp_path, monkeypatch):
     assert result["needs_id"] == []
 
 
+def test_import_paths_records_ulg_origin(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("Origin")
+    src = tmp_path / "incoming" / "Group3RLcat2_log_1.ulg"
+    src.parent.mkdir()
+    src.write_bytes(b"ULog")
+
+    import_paths("Origin", [str(src)], drone_id=2)
+
+    from ea.manifest import load_manifest
+
+    manifest = load_manifest(tmp_path / "Origin" / "manifest.json")
+    drone = next(d for d in manifest["drones"] if d["id"] == 2)
+    assert drone["sources"]["ulg_origin"] == str(src.resolve())
+
+
 def test_import_paths_drone_id_copies_mystery_and_empty_needs_id(tmp_path, monkeypatch):
     monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
     create_experiment("Mystery")
@@ -70,3 +88,95 @@ def test_import_paths_drone_id_copies_mystery_and_empty_needs_id(tmp_path, monke
     result = import_paths("Mystery", [str(f)], drone_id=3)
     assert result["needs_id"] == []
     assert (tmp_path / "Mystery" / "raw" / "drone_3" / "mystery.ulg").is_file()
+
+
+def test_directory_of_many_sm_csv_needs_pick_does_not_copy_them(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("ManySM")
+    src = tmp_path / "logs"
+    src.mkdir()
+    names = [
+        "2026-07-19_22-33-25_system_manager.csv",
+        "2026-08-03_21-54-03_system_manager.csv",
+        "2026-08-25_17-00-00_system_manager.csv",
+    ]
+    for name in names:
+        (src / name).write_text("local_ts,state\n1,S3")
+    ulg = src / "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg"
+    ulg.write_bytes(b"ULog")
+
+    result = import_paths("ManySM", [str(src)], drone_id=2)
+
+    raw = tmp_path / "ManySM" / "raw" / "drone_2"
+    assert result["ok"] is True
+    assert list(raw.glob("*.ulg"))
+    assert list(raw.glob("*.csv")) == []
+    pick = result["needs_pick"]
+    assert {p["name"] for p in pick} == set(names)
+    assert all(p["kind"] == "sm" for p in pick)
+    assert all(Path(p["path"]).is_file() for p in pick)
+
+    chosen = next(p for p in pick if p["name"] == "2026-08-25_17-00-00_system_manager.csv")
+    second = import_paths("ManySM", [chosen["path"]], drone_id=2)
+    assert second.get("needs_pick") in (None, [])
+    assert (raw / chosen["name"]).is_file()
+    from ea.manifest import load_manifest
+
+    manifest = load_manifest(tmp_path / "ManySM" / "manifest.json")
+    drone = next(d for d in manifest["drones"] if d["id"] == 2)
+    assert drone["sources"]["system_manager"] == [
+        f"raw/drone_2/{chosen['name']}",
+    ]
+
+
+def test_import_selected_sm_replaces_sources_not_all_raw(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("PickOne")
+    raw = tmp_path / "PickOne" / "raw" / "drone_2"
+    raw.mkdir(parents=True)
+    (raw / "2026-07-19_22-33-25_system_manager.csv").write_text("local_ts,state\n1,S3")
+    src = tmp_path / "2026-08-25_17-00-00_system_manager.csv"
+    src.write_text("local_ts,state\n1,S3")
+
+    from ea.manifest import load_manifest, save_manifest
+
+    manifest_path = tmp_path / "PickOne" / "manifest.json"
+    manifest = load_manifest(manifest_path)
+    manifest["drones"] = [
+        {
+            "id": 2,
+            "label": "D2",
+            "sources": {
+                "ulg": [],
+                "system_manager": ["raw/drone_2/2026-07-19_22-33-25_system_manager.csv"],
+                "hardware_adapter": [],
+            },
+        }
+    ]
+    save_manifest(manifest_path, manifest)
+
+    import_paths("PickOne", [str(src)], drone_id=2)
+
+    manifest = load_manifest(manifest_path)
+    drone = next(d for d in manifest["drones"] if d["id"] == 2)
+    assert drone["sources"]["system_manager"] == [
+        "raw/drone_2/2026-08-25_17-00-00_system_manager.csv",
+    ]
+    assert (raw / "2026-07-19_22-33-25_system_manager.csv").is_file()
+
+
+def test_directory_of_many_sm_defers_ha_too(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("ManySmHa")
+    src = tmp_path / "logs"
+    src.mkdir()
+    (src / "2026-07-19_22-33-25_system_manager.csv").write_text("local_ts,state\n1,S3")
+    (src / "2026-08-25_17-00-00_system_manager.csv").write_text("local_ts,state\n1,S3")
+    (src / "2026-08-25_17-06-00_adapter_diag.log").write_text("diag\n")
+
+    result = import_paths("ManySmHa", [str(src)], drone_id=2)
+    raw = tmp_path / "ManySmHa" / "raw" / "drone_2"
+    assert not raw.exists() or list(raw.iterdir()) == []
+    names = {p["name"] for p in result["needs_pick"]}
+    assert "2026-08-25_17-00-00_system_manager.csv" in names
+    assert "2026-08-25_17-06-00_adapter_diag.log" in names

@@ -1,0 +1,94 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, cleanup, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+
+type PlotTrace = {
+  name?: string;
+  line?: { color?: string; width?: number; dash?: string };
+};
+
+type PlotProps = {
+  data?: PlotTrace[];
+  layout?: { xaxis?: { range?: [number, number]; autorange?: boolean } };
+};
+
+let lastPlot: PlotProps | null = null;
+
+vi.mock("react-plotly.js", () => ({
+  default: function MockPlot(props: PlotProps) {
+    lastPlot = props;
+    return <div data-testid="plotly" />;
+  },
+}));
+
+vi.mock("../api", () => ({
+  getSeries: vi.fn(),
+}));
+
+import { getSeries } from "../api";
+import { droneColor } from "../droneColor";
+import ChannelPlot from "./ChannelPlot";
+
+beforeEach(() => {
+  lastPlot = null;
+  vi.mocked(getSeries).mockResolvedValue({
+    "2.ulog.vehicle_local_position.x": { t: [0, 1], y: [1, 2] },
+    "2.ulog.vehicle_local_position.y": { t: [0, 1], y: [3, 4] },
+    "2.ulog.vehicle_local_position.z": { t: [0, 1], y: [5, 6] },
+    "3.ulog.vehicle_local_position.x": { t: [0, 1], y: [7, 8] },
+    "3.ulog.vehicle_local_position.y": { t: [0, 1], y: [9, 10] },
+    "3.ulog.vehicle_local_position.z": { t: [0, 1], y: [11, 12] },
+  });
+});
+
+afterEach(() => cleanup());
+
+function tracesByName(): Map<string, PlotTrace> {
+  return new Map((lastPlot?.data ?? []).map((t) => [t.name ?? "", t]));
+}
+
+describe("ChannelPlot NED traces", () => {
+  it("keeps drone color but distinguishes x/y/z by dash and width", async () => {
+    render(
+      <ChannelPlot slug="exp" visibleDroneIds={["2", "3"]} t={0} tMax={1} />,
+    );
+
+    await waitFor(() => {
+      expect(tracesByName().size).toBe(6);
+    });
+
+    const traces = tracesByName();
+    const d2x = traces.get("D2 x");
+    const d2y = traces.get("D2 y");
+    const d2z = traces.get("D2 z");
+    const d3x = traces.get("D3 x");
+
+    expect(d2x?.line?.color).toBe(droneColor("2"));
+    expect(d2y?.line?.color).toBe(droneColor("2"));
+    expect(d2z?.line?.color).toBe(droneColor("2"));
+    expect(d3x?.line?.color).toBe(droneColor("3"));
+
+    expect(d2x?.line).toMatchObject({ dash: "solid", width: 2.5 });
+    expect(d2y?.line).toMatchObject({ dash: "dash", width: 1.5 });
+    expect(d2z?.line).toMatchObject({ dash: "dot", width: 1 });
+
+    expect(d3x?.line).toMatchObject({ dash: "solid", width: 2.5 });
+    expect(traces.get("D3 y")?.line).toMatchObject({ dash: "dash", width: 1.5 });
+    expect(traces.get("D3 z")?.line).toMatchObject({ dash: "dot", width: 1 });
+
+    const styles = [d2x, d2y, d2z].map((t) => `${t?.line?.dash}:${t?.line?.width}`);
+    expect(new Set(styles).size).toBe(3);
+  });
+
+  it("pins x-axis to experiment duration so stacked panes share ticks", async () => {
+    render(
+      <ChannelPlot slug="exp" visibleDroneIds={["2"]} t={0} tMax={160} />,
+    );
+
+    await waitFor(() => {
+      expect(lastPlot?.layout?.xaxis?.range).toEqual([0, 160]);
+    });
+    expect(lastPlot?.layout?.xaxis?.autorange).toBe(false);
+  });
+});

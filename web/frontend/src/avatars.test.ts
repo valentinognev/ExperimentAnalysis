@@ -3,6 +3,7 @@ import {
   enabledAvatarKeys,
   primaryAvatarPos,
   avatarUsesTriad,
+  toggleAvatarKeys,
 } from "./avatars";
 import type { PoseDrone } from "./api";
 
@@ -23,6 +24,22 @@ describe("avatars", () => {
     expect(enabledAvatarKeys("2", poseAvatars, { "2": ["sm_ned"] })).toEqual([
       "sm_ned",
     ]);
+  });
+
+  it("empty saved list means no avatars, not default-all", () => {
+    expect(enabledAvatarKeys("2", poseAvatars, { "2": [] })).toEqual([]);
+  });
+
+  it("toggleAvatarKeys unchecks from the default-all set", () => {
+    expect(toggleAvatarKeys(undefined, ["ekf_ned", "gps"], "gps", false)).toEqual([
+      "ekf_ned",
+    ]);
+  });
+
+  it("toggleAvatarKeys can clear the last source", () => {
+    expect(
+      toggleAvatarKeys(["ekf_ned"], ["ekf_ned", "gps"], "ekf_ned", false),
+    ).toEqual([]);
   });
 
   it("primaryAvatarPos prefers ekf then sm", () => {

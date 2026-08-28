@@ -23,13 +23,42 @@ export function enabledAvatarKeys(
   if (available.length === 0) return [];
 
   const saved = uiAvatars[droneId];
-  if (Array.isArray(saved) && saved.length > 0) {
+  if (Array.isArray(saved)) {
     return saved.filter(
       (k): k is AvatarKey =>
         typeof k === "string" && available.includes(k as AvatarKey),
     );
   }
   return available;
+}
+
+export function toggleAvatarKeys(
+  saved: unknown,
+  available: AvatarKey[],
+  key: AvatarKey,
+  checked: boolean,
+): AvatarKey[] {
+  const current = Array.isArray(saved)
+    ? saved.filter((k): k is AvatarKey => available.includes(k as AvatarKey))
+    : [...available];
+  const set = new Set(current);
+  if (checked) set.add(key);
+  else set.delete(key);
+  return available.filter((k) => set.has(k));
+}
+
+export function avatarShortLabel(key: AvatarKey): string {
+  if (key === "ekf_ned") return "ekf";
+  if (key === "sm_ned") return "sm ned";
+  if (key === "sm_lla") return "sm lla";
+  return key;
+}
+
+export function avatarLineDash(key: AvatarKey): string | undefined {
+  if (key === "gps") return "dash";
+  if (key === "sm_ned") return "dot";
+  if (key === "sm_lla") return "dashdot";
+  return undefined;
 }
 
 export function primaryAvatarPos(
@@ -66,7 +95,7 @@ export function hasMapPosition(
 }
 
 export function hasAnyMapAvatar(drones: Record<string, PoseDrone>): boolean {
-  return Object.values(drones).some((d) =>
-    AVATAR_KEYS.some((k) => hasMapPosition(d, k)),
+  return Object.values(drones).some(
+    (d) => availableAvatarKeys(d.avatars).length > 0,
   );
 }

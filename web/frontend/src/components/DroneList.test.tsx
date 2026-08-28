@@ -12,7 +12,7 @@ vi.mock("../api", () => ({
   copySshLogs: vi.fn(),
   listMavlinkLogs: vi.fn(),
   downloadMavlinkLog: vi.fn(),
-  browseFolder: vi.fn(),
+  browseFile: vi.fn(),
   importPaths: vi.fn(),
 }));
 
@@ -23,7 +23,7 @@ import {
   copySshLogs,
   listMavlinkLogs,
   downloadMavlinkLog,
-  browseFolder,
+  browseFile,
   importPaths,
 } from "../api";
 
@@ -35,7 +35,7 @@ describe("DroneList", () => {
     vi.mocked(copySshLogs).mockReset();
     vi.mocked(listMavlinkLogs).mockReset();
     vi.mocked(downloadMavlinkLog).mockReset();
-    vi.mocked(browseFolder).mockReset();
+    vi.mocked(browseFile).mockReset();
     vi.mocked(importPaths).mockReset();
   });
 
@@ -88,6 +88,31 @@ describe("DroneList", () => {
     expect(screen.queryByRole("button", { name: "Import" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "SSH" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "MAVLink" })).not.toBeInTheDocument();
+  });
+
+  it("analysis variant lists pose-source checkboxes for available avatars", async () => {
+    const user = userEvent.setup();
+    const onAvatarToggle = vi.fn();
+    render(
+      <DroneList
+        variant="analysis"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        availableAvatars={{ "2": ["ekf_ned", "gps", "sm_ned"] }}
+        enabledAvatars={{ "2": ["ekf_ned", "gps"] }}
+        onAvatarToggle={onAvatarToggle}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: "D2 ekf" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "D2 gps" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "D2 sm ned" })).not.toBeChecked();
+    expect(screen.queryByRole("checkbox", { name: "D2 sm lla" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: "D2 sm ned" }));
+    expect(onAvatarToggle).toHaveBeenCalledWith("2", "sm_ned", true);
   });
 
   it("lists Pi logs then copies the selected file", async () => {
@@ -153,6 +178,68 @@ describe("DroneList", () => {
       expect(rebuild).toHaveBeenCalledWith("Baseball");
       expect(onPulled).toHaveBeenCalled();
     });
+  });
+
+  it("SSH picker sorts by ulg time and prechecks the closest SM and HA", async () => {
+    vi.mocked(listSshLogs).mockResolvedValue({
+      ok: true,
+      logs: [
+        {
+          kind: "sm",
+          name: "2026-07-19_22-33-25_system_manager.csv",
+          remote: "~/RL/system_manager/logs/2026-07-19_22-33-25_system_manager.csv",
+          size: 1,
+          mtime: "2026/07/19 22:33:25",
+        },
+        {
+          kind: "sm",
+          name: "2026-08-25_17-00-00_system_manager.csv",
+          remote: "~/RL/system_manager/logs/2026-08-25_17-00-00_system_manager.csv",
+          size: 2,
+          mtime: "2026/08/25 17:00:00",
+        },
+        {
+          kind: "ha",
+          name: "2026-08-25_17-06-00_adapter_diag.log",
+          remote: "~/RL/logs/2026-08-25_17-06-00_adapter_diag.log",
+          size: 3,
+          mtime: "2026/08/25 17:06:00",
+        },
+      ],
+    });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        summaries={{
+          "2": {
+            ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+            ulgOrigin: "",
+            date: "2026-08-25",
+            time: "17:05:30",
+            sm: [],
+            ha: [],
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "SSH" }));
+    const dialog = await screen.findByRole("dialog", { name: /SSH logs/i });
+    const boxes = within(dialog).getAllByRole("checkbox");
+    expect(boxes[0]).toHaveAccessibleName(/2026-08-25_17-06-00_adapter_diag/);
+    expect(
+      within(dialog).getByRole("checkbox", { name: /2026-08-25_17-00-00_system_manager/ }),
+    ).toBeChecked();
+    expect(
+      within(dialog).getByRole("checkbox", { name: /2026-08-25_17-06-00_adapter_diag/ }),
+    ).toBeChecked();
+    expect(boxes[boxes.length - 1]).toHaveAccessibleName(/2026-07-19_22-33-25_system_manager/);
+    expect(boxes[boxes.length - 1]).not.toBeChecked();
   });
 
   it("shows copy progress and Cancel aborts the transfer", async () => {
@@ -615,7 +702,7 @@ describe("DroneList", () => {
 
   it("Import opens a dialog; Browse fills the path and does not import", async () => {
     const user = userEvent.setup();
-    vi.mocked(browseFolder).mockResolvedValue({ path: "/tmp/d2.ulg" });
+    vi.mocked(browseFile).mockResolvedValue({ path: "/tmp/d2.ulg" });
 
     render(
       <DroneList
@@ -629,7 +716,7 @@ describe("DroneList", () => {
 
     await user.click(screen.getByRole("button", { name: "Import" }));
     const dialog = screen.getByRole("dialog", { name: "Import files" });
-    const pathInput = screen.getByPlaceholderText("path to .ulg or logs dir");
+    const pathInput = screen.getByPlaceholderText("path to .ulg or log file");
     expect(pathInput).toHaveValue("");
     expect(within(dialog).getByRole("button", { name: "Import" })).toBeDisabled();
 
@@ -638,14 +725,67 @@ describe("DroneList", () => {
     await waitFor(() => {
       expect(pathInput).toHaveValue("/tmp/d2.ulg");
     });
-    expect(browseFolder).toHaveBeenCalled();
+    expect(browseFile).toHaveBeenCalledWith(undefined);
     expect(importPaths).not.toHaveBeenCalled();
     expect(rebuild).not.toHaveBeenCalled();
   });
 
+  it("Browse sits to the left of the import path field", async () => {
+    const user = userEvent.setup();
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const dialog = screen.getByRole("dialog", { name: "Import files" });
+    const browse = within(dialog).getByRole("button", { name: "Browse" });
+    const pathInput = screen.getByPlaceholderText("path to .ulg or log file");
+    expect(browse.compareDocumentPosition(pathInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("Import path prefills with the existing ulg origin", async () => {
+    const user = userEvent.setup();
+    const origin =
+      "/home/valentin/RL/TESTFLIGHTS/Baseball/Group3RLcat2_log_41_2026-8-25-17-05-30.ulg";
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        summaries={{
+          "2": {
+            ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+            ulgOrigin: origin,
+            date: "2026-08-25",
+            time: "17:05:30",
+            sm: [],
+            ha: [],
+          },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(screen.getByPlaceholderText("path to .ulg or log file")).toHaveValue(origin);
+
+    vi.mocked(browseFile).mockResolvedValue({ path: null });
+    await user.click(within(screen.getByRole("dialog", { name: "Import files" })).getByRole("button", { name: "Browse" }));
+    expect(browseFile).toHaveBeenCalledWith(origin);
+  });
+
   it("Browse cancel leaves the path and does not import", async () => {
     const user = userEvent.setup();
-    vi.mocked(browseFolder).mockResolvedValue({ path: null });
+    vi.mocked(browseFile).mockResolvedValue({ path: null });
 
     render(
       <DroneList
@@ -659,17 +799,113 @@ describe("DroneList", () => {
 
     await user.click(screen.getByRole("button", { name: "Import" }));
     const dialog = screen.getByRole("dialog", { name: "Import files" });
-    const pathInput = screen.getByPlaceholderText("path to .ulg or logs dir");
+    const pathInput = screen.getByPlaceholderText("path to .ulg or log file");
     await user.type(pathInput, "/already/there");
 
     await user.click(within(dialog).getByRole("button", { name: "Browse" }));
 
     await waitFor(() => {
-      expect(browseFolder).toHaveBeenCalled();
+      expect(browseFile).toHaveBeenCalledWith("/already/there");
     });
     expect(pathInput).toHaveValue("/already/there");
     expect(importPaths).not.toHaveBeenCalled();
     expect(rebuild).not.toHaveBeenCalled();
+  });
+
+  it("Import panel sits inside that drone row, not after the list", async () => {
+    const user = userEvent.setup();
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2", "3"]}
+        visible={new Set(["2", "3"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getAllByRole("button", { name: "Import" })[0]);
+    const items = screen.getAllByRole("listitem");
+    expect(
+      within(items[0]).getByRole("dialog", { name: "Import files" }),
+    ).toBeInTheDocument();
+    expect(within(items[1]).queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("SSH picker sits inside that drone row, not after the list", async () => {
+    vi.mocked(listSshLogs).mockResolvedValue({
+      ok: true,
+      logs: [
+        {
+          kind: "sm",
+          name: "20260825_system_manager_d2.csv",
+          remote: "~/RL/system_manager/logs/20260825_system_manager_d2.csv",
+          size: 1,
+          mtime: "2026/08/25 17:05:30",
+        },
+      ],
+    });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2", "3"]}
+        visible={new Set(["2", "3"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "SSH" })[0]);
+    const dialog = await screen.findByRole("dialog", { name: /SSH logs/i });
+    const d2 = screen.getByLabelText("D2 host").closest("li");
+    const d3 = screen.getByLabelText("D3 host").closest("li");
+    expect(d2).toContainElement(dialog);
+    expect(d3).not.toContainElement(dialog);
+  });
+
+  it("MAVLink picker sits inside that drone row, not after the list", async () => {
+    const user = userEvent.setup();
+    vi.mocked(listMavlinkLogs).mockResolvedValue({
+      ok: true,
+      logs: [{ id: 1, time_utc: 0, size: 10 }],
+    });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2", "3"]}
+        visible={new Set(["2", "3"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getAllByRole("button", { name: "MAVLink" })[0]);
+    await user.click(screen.getByRole("menuitem", { name: "TCP" }));
+    const dialog = await screen.findByRole("dialog", { name: /MAVLink logs/i });
+    const d2 = screen.getByLabelText("D2 host").closest("li");
+    const d3 = screen.getByLabelText("D3 host").closest("li");
+    expect(d2).toContainElement(dialog);
+    expect(d3).not.toContainElement(dialog);
+  });
+
+  it("Import path field fills the space after Browse", async () => {
+    const user = userEvent.setup();
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const pathInput = screen.getByPlaceholderText("path to .ulg or log file");
+    expect(pathInput.className).toMatch(/\bflex-1\b/);
+    expect(pathInput.className).not.toMatch(/\bw-full\b/);
   });
 
   it("Import posts importPaths with drone id 2, then rebuild, then onPulled", async () => {
@@ -701,7 +937,7 @@ describe("DroneList", () => {
     await user.click(screen.getByRole("button", { name: "Import" }));
     const dialog = screen.getByRole("dialog", { name: "Import files" });
     await user.type(
-      screen.getByPlaceholderText("path to .ulg or logs dir"),
+      screen.getByPlaceholderText("path to .ulg or log file"),
       "/tmp/d2.ulg",
     );
     await user.click(within(dialog).getByRole("button", { name: "Import" }));
@@ -718,6 +954,82 @@ describe("DroneList", () => {
     });
     expect(order).toEqual(["import", "rebuild", "pulled"]);
     expect(screen.queryByRole("dialog", { name: "Import files" })).not.toBeInTheDocument();
+  });
+
+  it("import of many SM files opens a picker ranked by ulg time", async () => {
+    const user = userEvent.setup();
+    vi.mocked(importPaths)
+      .mockResolvedValueOnce({
+        ok: true,
+        needs_pick: [
+          {
+            path: "/logs/2026-07-19_22-33-25_system_manager.csv",
+            name: "2026-07-19_22-33-25_system_manager.csv",
+            kind: "sm",
+            size: 10,
+          },
+          {
+            path: "/logs/2026-08-25_17-00-00_system_manager.csv",
+            name: "2026-08-25_17-00-00_system_manager.csv",
+            kind: "sm",
+            size: 20,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ ok: true, needs_pick: [] });
+    vi.mocked(rebuild).mockResolvedValue({ ok: true });
+    const onPulled = vi.fn();
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        onPulled={onPulled}
+        summaries={{
+          "2": {
+            ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+            ulgOrigin: "",
+            date: "2026-08-25",
+            time: "17:05:30",
+            sm: [],
+            ha: [],
+          },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const importDialog = screen.getByRole("dialog", { name: "Import files" });
+    await user.type(
+      screen.getByPlaceholderText("path to .ulg or log file"),
+      "/logs",
+    );
+    await user.click(within(importDialog).getByRole("button", { name: "Import" }));
+
+    const picker = await screen.findByRole("dialog", { name: /Import logs/i });
+    expect(rebuild).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "Import files" })).not.toBeInTheDocument();
+
+    const boxes = within(picker).getAllByRole("checkbox");
+    expect(boxes[0]).toHaveAccessibleName(/2026-08-25_17-00-00_system_manager/);
+    expect(boxes[0]).toBeChecked();
+    expect(boxes[1]).toHaveAccessibleName(/2026-07-19_22-33-25_system_manager/);
+    expect(boxes[1]).not.toBeChecked();
+
+    await user.click(within(picker).getByRole("button", { name: "Copy" }));
+    await waitFor(() => {
+      expect(importPaths).toHaveBeenLastCalledWith(
+        "Baseball",
+        ["/logs/2026-08-25_17-00-00_system_manager.csv"],
+        undefined,
+        2,
+      );
+      expect(rebuild).toHaveBeenCalledWith("Baseball");
+      expect(onPulled).toHaveBeenCalled();
+    });
   });
 
   it("still passes droneId when the path is a mixed folder", async () => {
@@ -738,7 +1050,7 @@ describe("DroneList", () => {
     await user.click(screen.getByRole("button", { name: "Import" }));
     const dialog = screen.getByRole("dialog", { name: "Import files" });
     await user.type(
-      screen.getByPlaceholderText("path to .ulg or logs dir"),
+      screen.getByPlaceholderText("path to .ulg or log file"),
       "/home/logs",
     );
     await user.click(within(dialog).getByRole("button", { name: "Import" }));
@@ -770,7 +1082,7 @@ describe("DroneList", () => {
     await user.click(screen.getAllByRole("button", { name: "Import" })[0]);
     const dialog = screen.getByRole("dialog", { name: "Import files" });
     await user.type(
-      screen.getByPlaceholderText("path to .ulg or logs dir"),
+      screen.getByPlaceholderText("path to .ulg or log file"),
       "/tmp/d2.ulg",
     );
     await user.click(within(dialog).getByRole("button", { name: "Import" }));
@@ -882,6 +1194,7 @@ describe("DroneList", () => {
         summaries={{
           "2": {
             ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+            ulgOrigin: "",
             date: "2026-08-25",
             time: "17:05:30",
             sm: ["20260825_system_manager_d2.csv"],
@@ -898,11 +1211,51 @@ describe("DroneList", () => {
     expect(d2).toHaveTextContent("20260825_system_manager_d2.csv");
     expect(d2).toHaveTextContent("adapter_diag_d2.log");
     expect(screen.getByLabelText("D2 color")).toHaveStyle({
-      backgroundColor: "rgb(34, 211, 238)",
+      backgroundColor: "rgb(0, 140, 255)",
     });
 
     const d1 = screen.getByLabelText("D1 sources");
     expect(d1).toHaveTextContent("—");
+  });
+
+  it("lists SM files one per line, not a comma wall", () => {
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        summaries={{
+          "2": {
+            ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+            ulgOrigin: "",
+            date: "2026-08-25",
+            time: "17:05:30",
+            sm: [
+              "2026-07-19_22-33-25_system_manager.csv",
+              "2026-08-25_17-00-00_system_manager.csv",
+            ],
+            ha: ["a_adapter_diag.log", "b_mavlink.txt"],
+          },
+        }}
+      />,
+    );
+
+    const d2 = screen.getByLabelText("D2 sources");
+    expect(d2).not.toHaveTextContent(
+      "2026-07-19_22-33-25_system_manager.csv, 2026-08-25_17-00-00_system_manager.csv",
+    );
+    const sm = within(d2).getByLabelText("D2 SM files");
+    expect(within(sm).getAllByRole("listitem").map((el) => el.textContent)).toEqual([
+      "2026-07-19_22-33-25_system_manager.csv",
+      "2026-08-25_17-00-00_system_manager.csv",
+    ]);
+    const ha = within(d2).getByLabelText("D2 HA files");
+    expect(within(ha).getAllByRole("listitem").map((el) => el.textContent)).toEqual([
+      "a_adapter_diag.log",
+      "b_mavlink.txt",
+    ]);
   });
 
   it("analysis variant does not show source summaries", () => {
@@ -916,6 +1269,7 @@ describe("DroneList", () => {
         summaries={{
           "2": {
             ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+            ulgOrigin: "",
             date: "2026-08-25",
             time: "17:05:30",
             sm: [],
