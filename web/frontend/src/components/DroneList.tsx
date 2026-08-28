@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  browseFolder,
   copySshLogs,
   downloadMavlinkLog,
+  importPaths,
   listMavlinkLogs,
   listSshLogs,
   rebuild,
@@ -61,6 +63,11 @@ type Picker = {
   selected: number;
 };
 
+type ImportPanel = {
+  droneId: string;
+  path: string;
+};
+
 type Props = {
   droneIds: string[];
   visible: Set<string>;
@@ -91,6 +98,7 @@ export default function DroneList({
   const [menuId, setMenuId] = useState<string | null>(null);
   const [picker, setPicker] = useState<Picker | null>(null);
   const [sshPicker, setSshPicker] = useState<SshPicker | null>(null);
+  const [importPanel, setImportPanel] = useState<ImportPanel | null>(null);
   const [progress, setProgress] = useState<TransferProgress | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -112,6 +120,7 @@ export default function DroneList({
   async function handleSsh(droneId: string) {
     if (!slug) return;
     setPicker(null);
+    setImportPanel(null);
     setBusyId(droneId);
     clearError(droneId);
     try {
@@ -213,6 +222,7 @@ export default function DroneList({
     if (!slug) return;
     setMenuId(null);
     setSshPicker(null);
+    setImportPanel(null);
     let serial: string | undefined;
     if (transport === "serial") {
       const answer = window.prompt("Serial device", SERIAL_DEFAULT);
@@ -347,6 +357,51 @@ export default function DroneList({
     setPicker(null);
   }
 
+  function openImport(droneId: string) {
+    setPicker(null);
+    setSshPicker(null);
+    setMenuId(null);
+    setImportPanel({ droneId, path: "" });
+  }
+
+  async function handleBrowse() {
+    if (!importPanel) return;
+    try {
+      const { path } = await browseFolder();
+      if (path) {
+        setImportPanel((prev) => (prev ? { ...prev, path } : prev));
+      }
+    } catch (e: unknown) {
+      const droneId = importPanel.droneId;
+      setRowError((prev) => ({
+        ...prev,
+        [droneId]: e instanceof Error ? e.message : String(e),
+      }));
+    }
+  }
+
+  async function handleImportFiles() {
+    if (!slug || !importPanel) return;
+    const path = importPanel.path.trim();
+    if (!path) return;
+    const { droneId } = importPanel;
+    setBusyId(droneId);
+    clearError(droneId);
+    try {
+      await importPaths(slug, [path], undefined, Number(droneId));
+      await rebuild(slug);
+      onPulled?.();
+      setImportPanel(null);
+    } catch (e: unknown) {
+      setRowError((prev) => ({
+        ...prev,
+        [droneId]: e instanceof Error ? e.message : String(e),
+      }));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function commitHost(id: string) {
     const value = (draft[id] ?? hosts[id] ?? "").trim();
     const prev = (hosts[id] ?? "").trim();
@@ -392,6 +447,14 @@ export default function DroneList({
                       if (e.key === "Enter") commitHost(id);
                     }}
                   />
+                  <button
+                    type="button"
+                    className={BTN}
+                    disabled={!slug || busyId === id}
+                    onClick={() => openImport(id)}
+                  >
+                    Import
+                  </button>
                   <button
                     type="button"
                     className={ready ? SSH_READY : SSH_IDLE}
@@ -448,6 +511,56 @@ export default function DroneList({
           );
         })}
       </ul>
+      {importPanel && (
+        <div
+          role="dialog"
+          aria-label="Import files"
+          className="mt-2 rounded border border-zinc-700 bg-zinc-900 p-3"
+        >
+          <p className="mb-2 text-xs text-zinc-400">D{importPanel.droneId}</p>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <input
+              className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs"
+              type="text"
+              placeholder="path to .ulg or logs dir"
+              value={importPanel.path}
+              disabled={busyId === importPanel.droneId}
+              onChange={(e) =>
+                setImportPanel((prev) =>
+                  prev ? { ...prev, path: e.target.value } : prev,
+                )
+              }
+            />
+            <button
+              type="button"
+              className={BTN}
+              disabled={busyId === importPanel.droneId}
+              onClick={() => handleBrowse()}
+            >
+              Browse
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={BTN}
+              disabled={
+                busyId === importPanel.droneId || !importPanel.path.trim()
+              }
+              onClick={() => handleImportFiles()}
+            >
+              Import
+            </button>
+            <button
+              type="button"
+              className={BTN}
+              onClick={() => setImportPanel(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {sshPicker && (
         <div
           role="dialog"

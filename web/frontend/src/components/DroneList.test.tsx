@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import DroneList from "./DroneList";
@@ -12,6 +12,8 @@ vi.mock("../api", () => ({
   copySshLogs: vi.fn(),
   listMavlinkLogs: vi.fn(),
   downloadMavlinkLog: vi.fn(),
+  browseFolder: vi.fn(),
+  importPaths: vi.fn(),
 }));
 
 import {
@@ -21,6 +23,8 @@ import {
   copySshLogs,
   listMavlinkLogs,
   downloadMavlinkLog,
+  browseFolder,
+  importPaths,
 } from "../api";
 
 describe("DroneList", () => {
@@ -31,6 +35,8 @@ describe("DroneList", () => {
     vi.mocked(copySshLogs).mockReset();
     vi.mocked(listMavlinkLogs).mockReset();
     vi.mocked(downloadMavlinkLog).mockReset();
+    vi.mocked(browseFolder).mockReset();
+    vi.mocked(importPaths).mockReset();
   });
 
   afterEach(() => {
@@ -50,7 +56,18 @@ describe("DroneList", () => {
     );
 
     expect(screen.getByLabelText("D2 host")).toHaveValue("192.168.31.30");
-    expect(screen.getByRole("button", { name: "SSH" })).toBeInTheDocument();
+    const host = screen.getByLabelText("D2 host");
+    const importBtn = screen.getByRole("button", { name: "Import" });
+    const ssh = screen.getByRole("button", { name: "SSH" });
+    expect(importBtn).toBeInTheDocument();
+    expect(ssh).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "MAVLink" })).toBeInTheDocument();
+    expect(
+      host.compareDocumentPosition(importBtn) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      importBtn.compareDocumentPosition(ssh) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
@@ -68,7 +85,9 @@ describe("DroneList", () => {
 
     expect(screen.getByRole("checkbox")).toBeChecked();
     expect(screen.queryByLabelText("D2 host")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Import" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "SSH" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "MAVLink" })).not.toBeInTheDocument();
   });
 
   it("lists Pi logs then copies the selected file", async () => {
@@ -592,5 +611,262 @@ describe("DroneList", () => {
       expect(rebuild).toHaveBeenCalled();
     });
     vi.unstubAllGlobals();
+  });
+
+  it("Import opens a dialog; Browse fills the path and does not import", async () => {
+    const user = userEvent.setup();
+    vi.mocked(browseFolder).mockResolvedValue({ path: "/tmp/d2.ulg" });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const dialog = screen.getByRole("dialog", { name: "Import files" });
+    const pathInput = screen.getByPlaceholderText("path to .ulg or logs dir");
+    expect(pathInput).toHaveValue("");
+    expect(within(dialog).getByRole("button", { name: "Import" })).toBeDisabled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(pathInput).toHaveValue("/tmp/d2.ulg");
+    });
+    expect(browseFolder).toHaveBeenCalled();
+    expect(importPaths).not.toHaveBeenCalled();
+    expect(rebuild).not.toHaveBeenCalled();
+  });
+
+  it("Browse cancel leaves the path and does not import", async () => {
+    const user = userEvent.setup();
+    vi.mocked(browseFolder).mockResolvedValue({ path: null });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const dialog = screen.getByRole("dialog", { name: "Import files" });
+    const pathInput = screen.getByPlaceholderText("path to .ulg or logs dir");
+    await user.type(pathInput, "/already/there");
+
+    await user.click(within(dialog).getByRole("button", { name: "Browse" }));
+
+    await waitFor(() => {
+      expect(browseFolder).toHaveBeenCalled();
+    });
+    expect(pathInput).toHaveValue("/already/there");
+    expect(importPaths).not.toHaveBeenCalled();
+    expect(rebuild).not.toHaveBeenCalled();
+  });
+
+  it("Import posts importPaths with drone id 2, then rebuild, then onPulled", async () => {
+    const user = userEvent.setup();
+    const order: string[] = [];
+    vi.mocked(importPaths).mockImplementation(async () => {
+      order.push("import");
+      return { ok: true };
+    });
+    vi.mocked(rebuild).mockImplementation(async () => {
+      order.push("rebuild");
+      return { ok: true };
+    });
+    const onPulled = vi.fn(() => {
+      order.push("pulled");
+    });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        onPulled={onPulled}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const dialog = screen.getByRole("dialog", { name: "Import files" });
+    await user.type(
+      screen.getByPlaceholderText("path to .ulg or logs dir"),
+      "/tmp/d2.ulg",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Import" }));
+
+    await waitFor(() => {
+      expect(importPaths).toHaveBeenCalledWith(
+        "Baseball",
+        ["/tmp/d2.ulg"],
+        undefined,
+        2,
+      );
+      expect(rebuild).toHaveBeenCalledWith("Baseball");
+      expect(onPulled).toHaveBeenCalled();
+    });
+    expect(order).toEqual(["import", "rebuild", "pulled"]);
+    expect(screen.queryByRole("dialog", { name: "Import files" })).not.toBeInTheDocument();
+  });
+
+  it("still passes droneId when the path is a mixed folder", async () => {
+    const user = userEvent.setup();
+    vi.mocked(importPaths).mockResolvedValue({ ok: true });
+    vi.mocked(rebuild).mockResolvedValue({ ok: true });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const dialog = screen.getByRole("dialog", { name: "Import files" });
+    await user.type(
+      screen.getByPlaceholderText("path to .ulg or logs dir"),
+      "/home/logs",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Import" }));
+
+    await waitFor(() => {
+      expect(importPaths).toHaveBeenCalledWith(
+        "Baseball",
+        ["/home/logs"],
+        undefined,
+        2,
+      );
+    });
+  });
+
+  it("shows a row error when import fails", async () => {
+    const user = userEvent.setup();
+    vi.mocked(importPaths).mockRejectedValue(new Error("disk full"));
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2", "3"]}
+        visible={new Set(["2", "3"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getAllByRole("button", { name: "Import" })[0]);
+    const dialog = screen.getByRole("dialog", { name: "Import files" });
+    await user.type(
+      screen.getByPlaceholderText("path to .ulg or logs dir"),
+      "/tmp/d2.ulg",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Import" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("disk full");
+    });
+    expect(rebuild).not.toHaveBeenCalled();
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("disk full");
+    expect(rows[1]).not.toHaveTextContent("disk full");
+  });
+
+  it("opening Import closes SSH and MAVLink pickers", async () => {
+    const user = userEvent.setup();
+    vi.mocked(listSshLogs).mockResolvedValue({
+      ok: true,
+      logs: [
+        {
+          kind: "sm",
+          name: "20260825_system_manager_d2.csv",
+          remote: "~/RL/system_manager/logs/20260825_system_manager_d2.csv",
+          size: 1,
+          mtime: "2026/08/25 17:05:30",
+        },
+      ],
+    });
+    vi.mocked(listMavlinkLogs).mockResolvedValue({
+      ok: true,
+      logs: [{ id: 1, time_utc: 0, size: 10 }],
+    });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "SSH" }));
+    await waitFor(() => screen.getByRole("dialog", { name: /SSH logs/i }));
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(screen.queryByRole("dialog", { name: /SSH logs/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Import files" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "MAVLink" }));
+    await user.click(screen.getByRole("menuitem", { name: "TCP" }));
+    await waitFor(() => screen.getByRole("dialog", { name: /MAVLink logs/i }));
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(screen.queryByRole("dialog", { name: /MAVLink logs/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Import files" })).toBeInTheDocument();
+  });
+
+  it("opening SSH or MAVLink closes the import panel", async () => {
+    const user = userEvent.setup();
+    vi.mocked(listSshLogs).mockResolvedValue({
+      ok: true,
+      logs: [
+        {
+          kind: "sm",
+          name: "20260825_system_manager_d2.csv",
+          remote: "~/RL/system_manager/logs/20260825_system_manager_d2.csv",
+          size: 1,
+          mtime: "2026/08/25 17:05:30",
+        },
+      ],
+    });
+    vi.mocked(listMavlinkLogs).mockResolvedValue({
+      ok: true,
+      logs: [{ id: 1, time_utc: 0, size: 10 }],
+    });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(screen.getByRole("dialog", { name: "Import files" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "SSH" }));
+    expect(screen.queryByRole("dialog", { name: "Import files" })).not.toBeInTheDocument();
+
+    await waitFor(() => screen.getByRole("dialog", { name: /SSH logs/i }));
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(screen.getByRole("dialog", { name: "Import files" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "MAVLink" }));
+    await user.click(screen.getByRole("menuitem", { name: "TCP" }));
+    expect(screen.queryByRole("dialog", { name: "Import files" })).not.toBeInTheDocument();
   });
 });
