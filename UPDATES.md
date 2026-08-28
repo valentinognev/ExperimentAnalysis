@@ -1,5 +1,19 @@
 # Updates
 
+## 0.45.1 - Browse test isolation and README inventory
+- `ExperimentBar.test.tsx`: `vi.clearAllMocks()` in `beforeEach`; cancel case waits for Browse re-enable before asserting path
+- README UI bullet: Browse next to Import path
+
+## 0.45.0 - Import folder Browse dialog
+- `api.browseFolder()` POSTs `/api/browse-folder` (no body); `{path: string | null}`
+- `ExperimentBar`: Browse between Import path and Import; fills path on pick, cancel leaves field, does not import/rebuild
+- README API table: `POST /browse-folder`
+
+## 0.44.1 - Vite EMFILE: frontend never bound 6473
+- `start.sh`: `CHOKIDAR_USEPOLLING=1` for Vite (same as Observation Board / Playwright); native `fs.watch` hit EMFILE and Vite exited while the script still printed "running"
+- `vite.config.ts`: `server.watch.usePolling: true` so `npm run dev` without the env also avoids inotify
+- `test_scripts.py` / `ports.test.ts`: assert polling is set
+
 ## 0.44.0 - Full README product description
 - `README.md`: purpose, non-goals, data flow, ingest/sync/ENU/avatars, API table, run/test, Baseball operator guide; still names `UPDATES.md`
 

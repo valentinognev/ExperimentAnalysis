@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ea.browse import pick_directory
 from ea.ingest_files import import_paths
 from ea.ingest_mavlink import mavlink_pull
 from ea.ingest_ssh import _redact_password, ssh_pull
@@ -65,6 +66,15 @@ class MarkersBody(BaseModel):
 @app.get("/api/health")
 def health():
     return {"ok": True}
+
+
+@app.post("/api/browse-folder")
+def post_browse_folder():
+    try:
+        result = pick_directory()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return {"path": result}
 
 
 @app.get("/api/experiments")

@@ -48,7 +48,7 @@ echo "  [1/2] Starting Backend (127.0.0.1:${BACKEND_PORT})..."
 tmux send-keys -t "${TMUX_SESSION}:backend" "cd '${SCRIPT_DIR}/web/backend' && source .venv/bin/activate && uvicorn app:app --host 127.0.0.1 --port ${BACKEND_PORT}" ENTER
 
 echo "  [2/2] Starting Frontend (127.0.0.1:${PORT_ARG})..."
-tmux send-keys -t "${TMUX_SESSION}:frontend" "cd '${SCRIPT_DIR}/web/frontend' && npm run dev -- --host 127.0.0.1 --port ${PORT_ARG}" ENTER
+tmux send-keys -t "${TMUX_SESSION}:frontend" "cd '${SCRIPT_DIR}/web/frontend' && CHOKIDAR_USEPOLLING=1 npm run dev -- --host 127.0.0.1 --port ${PORT_ARG}" ENTER
 
 echo ""
 echo "========================================"

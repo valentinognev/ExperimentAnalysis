@@ -83,7 +83,7 @@ Channel ids: `{drone_id}.{source}.{topic}.{field}` with source `ulog` | `sm` | `
 
 ### UI
 
-- Experiment switcher, New, Import path, Rebuild, Plotly | Cesium toggle.
+- Experiment switcher, New, Import path, Browse, Rebuild, Plotly | Cesium toggle.
 - Drone checkboxes, per-drone SSH / MAVLink pull.
 - Center: Plotly 3D (default) or Cesium globe (lazy `import("cesium")`, OSM tiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, **no Ion token**).
 - Linked 2D Plotly `scattermap` (`style: "open-street-map"`). Ground click / globe click → markers (LLA in manifest); two selected markers show haversine + 3D ENU distance.
@@ -101,6 +101,7 @@ GET experiment JSON **strips** `ssh.password` (file on disk may still hold it). 
 | GET | `/experiments/{slug}` | Manifest (password redacted) |
 | PATCH | `/experiments/{slug}/manifest` | Merge ui / drone hosts |
 | POST | `/experiments/{slug}/import` | `{paths, assignments?}` |
+| POST | `/browse-folder` | native folder dialog; `{path: string \| null}` or 503 |
 | POST | `/experiments/{slug}/pull` | `{drone_id, adapters: ["ssh"\|"mavlink"]}` then rebuild |
 | POST | `/experiments/{slug}/rebuild` | Re-extract + re-sync |
 | GET | `/experiments/{slug}/duration` | `{t_max_s}` |

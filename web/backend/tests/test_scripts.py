@@ -11,6 +11,7 @@ def test_scripts_scoped():
 
     assert "6400" in start and "6473" in start
     assert "experiment_analysis" in start
+    assert "CHOKIDAR_USEPOLLING" in start
     assert "ObservationBoard" not in kill or "Leaves ObservationBoard" in kill
     assert "killall.sh" in kill
     for bad in ("6173", "3001", "5173"):

@@ -66,6 +66,12 @@ export function patchMarkers(
   });
 }
 
+export function browseFolder(): Promise<{ path: string | null }> {
+  return json("/api/browse-folder", {
+    method: "POST",
+  });
+}
+
 export function importPaths(
   slug: string,
   paths: string[],

@@ -7,6 +7,7 @@ import {
   importPaths,
   pullDrone,
   rebuild,
+  browseFolder,
   getPose,
   getSeries,
   getDuration,
@@ -115,6 +116,21 @@ describe("api", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ drone_id: 2, adapters: ["ssh", "mavlink"] }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("browseFolder POSTs /api/browse-folder and parses {path}", async () => {
+    const body = { path: "/tmp/sitl" };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await browseFolder();
+
+    expect(fetch).toHaveBeenCalledWith("/api/browse-folder", {
+      method: "POST",
     });
     expect(result).toEqual(body);
   });

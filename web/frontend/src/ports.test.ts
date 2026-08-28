@@ -8,5 +8,6 @@ describe("vite ports", () => {
     expect(c.server.port).toBe(6473);
     expect(c.server.host).toBe("127.0.0.1");
     expect(c.server.proxy["/api"].target).toBe("http://127.0.0.1:6400");
+    expect(c.server.watch.usePolling).toBe(true);
   });
 });

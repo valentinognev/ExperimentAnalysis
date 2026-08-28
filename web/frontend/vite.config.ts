@@ -45,6 +45,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "127.0.0.1",
     port: 6473,
+    watch: {
+      usePolling: true,
+    },
     proxy: {
       "/api": {
         target: "http://127.0.0.1:6400",

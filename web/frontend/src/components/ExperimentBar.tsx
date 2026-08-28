@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  browseFolder,
   createExperiment,
   importPaths,
   listExperiments,
@@ -60,6 +61,22 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
       setNewName("");
       await refresh();
       onSlugChange(result.slug);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleBrowse() {
+    if (!slug) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { path } = await browseFolder();
+      if (path) {
+        setImportPath(path);
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -174,6 +191,14 @@ export default function ExperimentBar({ slug, onSlugChange, onImported }: Props)
             onKeyDown={(e) => e.key === "Enter" && handleImport()}
           />
         </label>
+        <button
+          className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
+          type="button"
+          disabled={busy || !slug}
+          onClick={handleBrowse}
+        >
+          Browse
+        </button>
         <button
           className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
           type="button"
