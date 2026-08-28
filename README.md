@@ -60,7 +60,7 @@ experiments/Baseball/
 | SSH | List SM/HA files on the Pi (`rsync --list-only`), operator picks which to copy. Probe `~/RL/CatSwarm/{system_manager,hardware_adapter}/logs/`, then `~/RL/system_manager/logs/`, `~/RL/hardware_adapter/logs/`, `~/RL/logs/` (Python HA `../logs` from adapter cwd). Publickey only, 30s list timeout. Copy streams SSE progress (bar at top of picker from 0%); Cancel kills rsync and drops partials. Missing dir skipped. Password never logged or returned. Empty remote / timeout does not delete existing `raw/`. |
 | MAVLink | List onboard logs via **TCP** (`tcp:{ssh.host}:5760`) or **serial** (`/dev/ttyUSB0`, baud 57600). Operator picks a log; download streams SSE progress (same top-of-picker bar) and writes one `.ulg` per drone. Existing ulog is replaced only after confirm. **No `COMMAND_LONG`.** |
 
-Successful pull triggers rebuild (same as import). Header also has an explicit Rebuild button.
+Successful pull triggers rebuild (same as import). Header **Update** writes `manifest.name` and persists D1..DN from Drone #; it does not re-extract.
 
 Seeded hosts when drones 2 and 4 are first created: D2 `192.168.31.30`, D4 `192.168.31.152`, user `pi`, MAVLink tcp 5760. D3 has no host until the operator adds one.
 
@@ -83,7 +83,7 @@ Channel ids: `{drone_id}.{source}.{topic}.{field}` with source `ulog` | `sm` | `
 
 ### UI
 
-- Tabs: **Sources** (New, Drone # / Add, Rebuild, per-drone Pi IP, Import / SSH / MAVLink) and **Analysis** (drone visibility, Plotly/Cesium 3D, 2D OSM map, Plotly plots, timeline). Experiment switcher stays in the chrome. Tabs change only by click. Drone list is a column, one row per drone. Import opens a path/Browse dialog on that row. SSH is green when SM/HA logs are present; a failed pull shows an error on that row. SSH lists Pi log files for the operator to pick (many dates); copy shows a progress bar at the top of the picker (0% immediately, then SSE updates) and Cancel stops rsync. MAVLink lists vehicle logs for the operator to pick; download shows the same top-of-picker progress and Cancel stops the transfer; replacing an existing `.ulg` needs confirmation. Picker stays open through rebuild.
+- Tabs: **Sources** (New, Drone # as a single 1–9 count matching the number of D1..DN rows, Update persists those ids and the Name field, per-drone Pi IP, Import / SSH / MAVLink; each drone row includes a summary of ULG filename, date/time, SM/HA log names, and analysis color) and **Analysis** (drone visibility, Plotly/Cesium 3D, 2D OSM map, Plotly plots, timeline). Experiment switcher stays in the chrome. Tabs change only by click. Drone list is a column, one row per drone (sparse saved ids fill D1..Dmax so the count and the list match). Import opens a path/Browse dialog on that row. SSH is green when SM/HA logs are present; a failed pull shows an error on that row. SSH lists Pi log files for the operator to pick (many dates); copy shows a progress bar at the top of the picker (0% immediately, then SSE updates) and Cancel stops rsync. MAVLink lists vehicle logs for the operator to pick; download shows the same top-of-picker progress and Cancel stops the transfer; replacing an existing `.ulg` needs confirmation. Picker stays open through rebuild.
 - Center: Plotly 3D (default) or Cesium globe (lazy `import("cesium")`, OSM tiles `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, **no Ion token**).
 - Linked 2D Plotly `scattermap` (`style: "open-street-map"`). Ground click / globe click → markers (LLA in manifest); two selected markers show haversine + 3D ENU distance.
 - Timeline: slider, play / reverse / pause, speeds 0.25/1/2/4, numeric T. `tMax` comes from `GET .../duration` (`t_max_s` from rebuild), not a 60s placeholder.
@@ -146,16 +146,17 @@ cd web/frontend && npx playwright test e2e/baseball.spec.ts
 
 ## Operator guide (Baseball reconstruction)
 
-New experiment, Add drones 2, 3, 4, then Import `/home/valentin/RL/TESTFLIGHTS/Baseball` on each row (filename ids pick the matching ulog):
+New experiment, set Drone # to **4** (four rows D1–D4 appear; Update persists them), then Import `/home/valentin/RL/TESTFLIGHTS/Baseball` on D2, D3, and D4 (filename ids pick the matching ulog):
 
 - `Group3RLcat2_log_41_2026-8-25-17-05-30.ulg`
 - `Group3RLcat3_log_18_2026-8-25-17-05-26.ulg`
 - `Group3RLcat4_log_28_2026-8-25-17-05-24.ulg`
 
-Rebuild populates pose, duration (~155–161 s after ARM), and default NED plots. D3 reconstructs from ulog alone. Later pull from D2/D4 appends SM/HA without replacing ulogs.
+Import rebuilds extracts: pose, duration (~155–161 s after ARM), and default NED plots. D3 reconstructs from ulog alone. Later pull from D2/D4 appends SM/HA without replacing ulogs.
 
 | Drone | SSH host | Notes |
 |---|---|---|
+| D1 | — | slot present; no Baseball ulog |
 | D2 | `192.168.31.30` | user `pi`; MAVLink `tcp:192.168.31.30:5760` |
 | D3 | — | ulog-only (no SSH host seeded) |
 | D4 | `192.168.31.152` | user `pi`; MAVLink `tcp:192.168.31.152:5760` |

@@ -2,12 +2,15 @@ import { test, expect, type Page } from "@playwright/test";
 
 const BASEBALL = "/home/valentin/RL/TESTFLIGHTS/Baseball";
 
-async function addDrone(page: Page, id: string) {
-  await page.getByLabel("Drone #").fill(id);
-  await page.getByRole("button", { name: "Add" }).click();
-  await expect(
-    page.getByRole("listitem").filter({ hasText: `D${id}` }),
-  ).toBeVisible();
+async function setDroneCount(page: Page, n: string) {
+  await page.getByRole("combobox", { name: "Drone #" }).selectOption(n);
+  const count = Number(n);
+  for (let id = 1; id <= count; id++) {
+    await expect(
+      page.getByRole("listitem").filter({ hasText: `D${id}` }),
+    ).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Update" }).click();
 }
 
 async function importBaseballOnRow(page: Page, id: string) {
@@ -32,9 +35,7 @@ test("Baseball reconstruction in the UI", async ({ page }) => {
   );
   await expect(page.getByLabel("Experiment")).not.toHaveValue("");
 
-  await addDrone(page, "2");
-  await addDrone(page, "3");
-  await addDrone(page, "4");
+  await setDroneCount(page, "4");
 
   for (const id of ["2", "3", "4"]) {
     await importBaseballOnRow(page, id);
@@ -44,11 +45,17 @@ test("Baseball reconstruction in the UI", async ({ page }) => {
     );
   }
 
+  const d2 = page.getByLabel("D2 sources");
+  await expect(d2).toContainText("Group3RLcat2_log_41_2026-8-25-17-05-30.ulg");
+  await expect(d2).toContainText("2026-08-25");
+  await expect(d2).toContainText("17:05:30");
+
   await page.getByRole("tab", { name: "Analysis" }).click();
   await expect(page.getByRole("tab", { name: "Analysis" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
+  await expect(page.getByRole("checkbox", { name: "D1" })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "D2" })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "D3" })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "D4" })).toBeVisible();

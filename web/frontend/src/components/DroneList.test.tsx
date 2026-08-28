@@ -869,4 +869,61 @@ describe("DroneList", () => {
     await user.click(screen.getByRole("menuitem", { name: "TCP" }));
     expect(screen.queryByRole("dialog", { name: "Import files" })).not.toBeInTheDocument();
   });
+
+  it("sources variant shows a per-drone summary of files, stamp, and color", () => {
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["1", "2"]}
+        visible={new Set(["1", "2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        hosts={{ "2": "192.168.31.30" }}
+        summaries={{
+          "2": {
+            ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+            date: "2026-08-25",
+            time: "17:05:30",
+            sm: ["20260825_system_manager_d2.csv"],
+            ha: ["adapter_diag_d2.log"],
+          },
+        }}
+      />,
+    );
+
+    const d2 = screen.getByLabelText("D2 sources");
+    expect(d2).toHaveTextContent("Group3RLcat2_log_41_2026-8-25-17-05-30.ulg");
+    expect(d2).toHaveTextContent("2026-08-25");
+    expect(d2).toHaveTextContent("17:05:30");
+    expect(d2).toHaveTextContent("20260825_system_manager_d2.csv");
+    expect(d2).toHaveTextContent("adapter_diag_d2.log");
+    expect(screen.getByLabelText("D2 color")).toHaveStyle({
+      backgroundColor: "rgb(34, 211, 238)",
+    });
+
+    const d1 = screen.getByLabelText("D1 sources");
+    expect(d1).toHaveTextContent("—");
+  });
+
+  it("analysis variant does not show source summaries", () => {
+    render(
+      <DroneList
+        variant="analysis"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        summaries={{
+          "2": {
+            ulg: "Group3RLcat2_log_41_2026-8-25-17-05-30.ulg",
+            date: "2026-08-25",
+            time: "17:05:30",
+            sm: [],
+            ha: [],
+          },
+        }}
+      />,
+    );
+    expect(screen.queryByLabelText("D2 sources")).not.toBeInTheDocument();
+  });
 });

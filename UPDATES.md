@@ -1,5 +1,31 @@
 # Updates
 
+## 0.55.0 - Sources drone data summary
+- Each Sources drone row lists ULG name, date/time from the PX4 filename, SM/HA log names, and the analysis color
+- Avatar/plot color is keyed by physical drone id so hiding D1 does not recolor D2
+
+## 0.54.0 - Update replaces Rebuild and Add
+- Sources: **Update** persists D1..DN from Drone # and writes `manifest.name` from Name; folder slug unchanged
+- Name field fills from the open experiment; New still creates
+- Selecting Drone # still previews rows; shrinking the count does not delete drones
+- Extract rebuild remains after Import / SSH / MAVLink only
+
+## 0.53.1 - Drone # count matches drone rows
+- Choosing N (or opening an experiment whose max saved id is N) shows N rows D1..DN, not only the sparse ids in the manifest
+- Add still POSTs 1..N; shrinking the count does not delete drones
+
+## 0.53.0 - Drone # is a single count
+- Field is one number 1–9 (not a list of ids); opening an experiment shows max saved id (Baseball → 4)
+- Add creates D1..DN; Baseball: set 4, then Import the folder on D2/D3/D4
+
+## 0.52.3 - Drone # shows saved ids for the open experiment
+- Opening an experiment fills the Drone # blank option with its saved ids (e.g. `2, 4`)
+- Those numbers are disabled in the 1–9 list so Add only offers ids not yet in the manifest
+
+## 0.52.2 - Drone # is a 1–9 dropdown
+- Sources experiment line: `Drone #` is a `<select>` of 1–9 (not a free number field)
+- Add stays disabled until a number is chosen; E2E uses `selectOption`
+
 ## 0.52.1 - Add-drone typecheck and id-0 API test
 - `ExperimentBar.test.tsx`: `vi.mocked(addDrone).mock.invocationCallOrder` so tsc accepts the mock
 - `POST /experiments/{slug}/drones` with `{"id": 0}` asserted 400

@@ -12,9 +12,19 @@ import {
 import { mavlinkLogLabel, type MavlinkLogEntry } from "../mavlinkLogs";
 import { sshLogLabel, type SshLogEntry } from "../sshLogs";
 import { transferProgressLabel, type TransferProgress } from "../transferProgress";
+import { droneColor } from "../droneColor";
+import { type DroneSummary } from "../droneSummary";
 
 const EMPTY_HOSTS: Record<string, string> = {};
 const EMPTY_READY: Record<string, boolean> = {};
+const EMPTY_SUMMARIES: Record<string, DroneSummary> = {};
+const EMPTY_SUMMARY: DroneSummary = {
+  ulg: "—",
+  date: "—",
+  time: "—",
+  sm: [],
+  ha: [],
+};
 const SERIAL_DEFAULT = "/dev/ttyUSB0";
 
 const SSH_IDLE =
@@ -78,6 +88,7 @@ type Props = {
   onHostCommit?: (id: string, host: string) => void;
   variant?: "sources" | "analysis";
   sshReady?: Record<string, boolean>;
+  summaries?: Record<string, DroneSummary>;
 };
 
 export default function DroneList({
@@ -90,6 +101,7 @@ export default function DroneList({
   onHostCommit,
   variant = "sources",
   sshReady = EMPTY_READY,
+  summaries = EMPTY_SUMMARIES,
 }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>(hosts);
   const [pulledOk, setPulledOk] = useState<Record<string, boolean>>({});
@@ -416,96 +428,116 @@ export default function DroneList({
         {droneIds.map((id) => {
           const ready = Boolean(sshReady[id] || pulledOk[id]);
           const note = rowError[id];
+          const summary = summaries[id] ?? EMPTY_SUMMARY;
           return (
-            <li key={id} className="flex flex-wrap items-center gap-1.5">
-              {variant === "analysis" ? (
-                <label className="flex items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={visible.has(id)}
-                    onChange={(e) => onToggle(id, e.target.checked)}
-                  />
-                  <span>D{id}</span>
-                </label>
-              ) : (
-                <span className="w-8 shrink-0">D{id}</span>
-              )}
-              {variant === "sources" && (
-                <>
-                  <input
-                    className="w-32 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs"
-                    type="text"
-                    aria-label={`D${id} host`}
-                    placeholder="Pi IP"
-                    value={draft[id] ?? hosts[id] ?? ""}
-                    disabled={!slug}
-                    onChange={(e) =>
-                      setDraft((prev) => ({ ...prev, [id]: e.target.value }))
-                    }
-                    onBlur={() => commitHost(id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitHost(id);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className={BTN}
-                    disabled={!slug || busyId === id}
-                    onClick={() => openImport(id)}
-                  >
-                    Import
-                  </button>
-                  <button
-                    type="button"
-                    className={ready ? SSH_READY : SSH_IDLE}
-                    disabled={!slug || busyId === id}
-                    onClick={() => handleSsh(id)}
-                  >
-                    SSH
-                  </button>
-                  <div className="relative">
+            <li key={id} className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {variant === "analysis" ? (
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={visible.has(id)}
+                      onChange={(e) => onToggle(id, e.target.checked)}
+                    />
+                    <span>D{id}</span>
+                  </label>
+                ) : (
+                  <span className="w-8 shrink-0">D{id}</span>
+                )}
+                {variant === "sources" && (
+                  <>
+                    <input
+                      className="w-32 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs"
+                      type="text"
+                      aria-label={`D${id} host`}
+                      placeholder="Pi IP"
+                      value={draft[id] ?? hosts[id] ?? ""}
+                      disabled={!slug}
+                      onChange={(e) =>
+                        setDraft((prev) => ({ ...prev, [id]: e.target.value }))
+                      }
+                      onBlur={() => commitHost(id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitHost(id);
+                      }}
+                    />
                     <button
                       type="button"
                       className={BTN}
                       disabled={!slug || busyId === id}
-                      aria-haspopup="menu"
-                      aria-expanded={menuId === id}
-                      onClick={() =>
-                        setMenuId((prev) => (prev === id ? null : id))
-                      }
+                      onClick={() => openImport(id)}
                     >
-                      MAVLink
+                      Import
                     </button>
-                    {menuId === id && (
-                      <div
-                        role="menu"
-                        className="absolute z-10 mt-1 min-w-24 rounded border border-zinc-700 bg-zinc-900 py-1 shadow"
+                    <button
+                      type="button"
+                      className={ready ? SSH_READY : SSH_IDLE}
+                      disabled={!slug || busyId === id}
+                      onClick={() => handleSsh(id)}
+                    >
+                      SSH
+                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className={BTN}
+                        disabled={!slug || busyId === id}
+                        aria-haspopup="menu"
+                        aria-expanded={menuId === id}
+                        onClick={() =>
+                          setMenuId((prev) => (prev === id ? null : id))
+                        }
                       >
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="block w-full px-3 py-1 text-left text-xs hover:bg-zinc-800"
-                          onClick={() => handleMavlinkList(id, "tcp")}
+                        MAVLink
+                      </button>
+                      {menuId === id && (
+                        <div
+                          role="menu"
+                          className="absolute z-10 mt-1 min-w-24 rounded border border-zinc-700 bg-zinc-900 py-1 shadow"
                         >
-                          TCP
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="block w-full px-3 py-1 text-left text-xs hover:bg-zinc-800"
-                          onClick={() => handleMavlinkList(id, "serial")}
-                        >
-                          Serial
-                        </button>
-                      </div>
-                    )}
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="block w-full px-3 py-1 text-left text-xs hover:bg-zinc-800"
+                            onClick={() => handleMavlinkList(id, "tcp")}
+                          >
+                            TCP
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="block w-full px-3 py-1 text-left text-xs hover:bg-zinc-800"
+                            onClick={() => handleMavlinkList(id, "serial")}
+                          >
+                            Serial
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {note ? (
+                      <span className="flex-1 text-xs text-red-400" role="status">
+                        {note}
+                      </span>
+                    ) : null}
+                  </>
+                )}
+              </div>
+              {variant === "sources" && (
+                <section aria-label={`D${id} sources`} className="w-full pl-8 text-xs text-zinc-400">
+                  <div className="flex items-center gap-1.5">
+                    <span>Color</span>
+                    <span
+                      aria-label={`D${id} color`}
+                      className="inline-block h-3 w-3 rounded-sm border border-zinc-600"
+                      style={{ backgroundColor: droneColor(id) }}
+                    />
                   </div>
-                  {note ? (
-                    <span className="flex-1 text-xs text-red-400" role="status">
-                      {note}
-                    </span>
-                  ) : null}
-                </>
+                  <div>ULG {summary.ulg}</div>
+                  <div>Date {summary.date}</div>
+                  <div>Time {summary.time}</div>
+                  <div>SM {summary.sm.length ? summary.sm.join(", ") : "—"}</div>
+                  <div>HA {summary.ha.length ? summary.ha.join(", ") : "—"}</div>
+                </section>
               )}
             </li>
           );

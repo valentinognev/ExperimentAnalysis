@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { getDuration, listExperiments, openExperiment, patchManifest, patchMarkers } from "./api";
 import { hostPatch, hostsFromManifest } from "./hosts";
 import { sshReadyFromManifest } from "./sshReady";
+import { summariesFromManifest, type DroneSummary } from "./droneSummary";
 import {
   avatarUsesTriad,
   enabledAvatarKeys,
@@ -26,7 +27,14 @@ import { plotsOnSlugChange, type PlotDef } from "./plotBoard";
 import type { EnuPos } from "./triad";
 import { usePose } from "./usePose";
 import { bannerText } from "./unsynced";
-import { filterVisible, idsChanged, mergeDroneIds } from "./visibleDrones";
+import {
+  droneCountFromIds,
+  droneRowsForCount,
+  droneRowsFromIds,
+  filterVisible,
+  idsChanged,
+  mergeDroneIds,
+} from "./visibleDrones";
 
 const View3DCesium = lazy(() => import("./components/View3DCesium"));
 
@@ -45,12 +53,14 @@ function downsampleTrail(
 export default function App() {
   const [slug, setSlug] = useState<string | null>(null);
   const [tab, setTab] = useState<WorkspaceTab>(DEFAULT_TAB);
+  const [experimentName, setExperimentName] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
   const [t, setT] = useState(0);
   const [tMax, setTMax] = useState(60);
   const [droneIds, setDroneIds] = useState<string[]>([]);
   const [hosts, setHosts] = useState<Record<string, string>>({});
   const [sshReady, setSshReady] = useState<Record<string, boolean>>({});
+  const [summaries, setSummaries] = useState<Record<string, DroneSummary>>({});
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const [plots, setPlots] = useState<PlotDef[]>([]);
   const [avatars, setAvatars] = useState<Record<string, unknown>>({});
@@ -72,10 +82,6 @@ export default function App() {
   const mapDefaultAppliedRef = useRef(false);
 
   const handlePulled = useCallback(() => {
-    setRefreshToken((n) => n + 1);
-  }, []);
-
-  const handleRebuilt = useCallback(() => {
     setRefreshToken((n) => n + 1);
   }, []);
 
@@ -102,9 +108,11 @@ export default function App() {
 
   useEffect(() => {
     if (!slug) {
+      setExperimentName("");
       setDroneIds([]);
       setHosts({});
       setSshReady({});
+      setSummaries({});
       setVisibleIds(new Set());
       setPlots([]);
       setAvatars({});
@@ -122,7 +130,10 @@ export default function App() {
     }
 
     const slugChanged = prevSlugRef.current !== slug;
-    if (slugChanged) prevSlugRef.current = slug;
+    if (slugChanged) {
+      prevSlugRef.current = slug;
+      setExperimentName("");
+    }
 
     let cancelled = false;
     skipSaveRef.current = true;
@@ -143,14 +154,18 @@ export default function App() {
           markers?: Marker[];
         };
 
+        const manifestName = detail.manifest.name;
+        setExperimentName(typeof manifestName === "string" ? manifestName : "");
         setHosts(hostsFromManifest(detail.manifest.drones));
         setSshReady(sshReadyFromManifest(detail.manifest.drones));
+        setSummaries(summariesFromManifest(detail.manifest.drones));
 
         if (slugChanged) {
-          setDroneIds(listed);
+          const rows = droneRowsFromIds(listed);
+          setDroneIds(rows);
           const saved = ui.visible_drone_ids ?? [];
           setVisibleIds(
-            new Set(saved.length > 0 ? saved.map(String) : listed),
+            new Set(saved.length > 0 ? saved.map(String) : rows),
           );
           setPlots(Array.isArray(ui.plots) ? ui.plots : []);
           setEngine3d(typeof ui.engine3d === "string" ? ui.engine3d : "plotly");
@@ -169,13 +184,13 @@ export default function App() {
           setSelectedMarkerIds([]);
         } else {
           setDroneIds((prev) => {
-            const merged = mergeDroneIds(listed, prev);
+            const merged = droneRowsFromIds(mergeDroneIds(listed, prev));
             return idsChanged(prev, merged) ? merged : prev;
           });
           setVisibleIds((prev) => {
             const next = new Set(prev);
             let changed = false;
-            for (const id of listed) {
+            for (const id of droneRowsFromIds(listed)) {
               if (!prev.has(id)) {
                 next.add(id);
                 changed = true;
@@ -193,9 +208,11 @@ export default function App() {
       .catch(() => {
         if (cancelled) return;
         if (slugChanged) {
+          setExperimentName("");
           setDroneIds([]);
           setHosts({});
           setSshReady({});
+          setSummaries({});
           setVisibleIds(new Set());
           setPlots([]);
         }
@@ -268,7 +285,7 @@ export default function App() {
     if (!pose?.drones) return;
     const poseIds = Object.keys(pose.drones);
     setDroneIds((prev) => {
-      const merged = mergeDroneIds(prev, poseIds);
+      const merged = droneRowsFromIds(mergeDroneIds(prev, poseIds));
       return idsChanged(prev, merged) ? merged : prev;
     });
     setVisibleIds((prev) => {
@@ -298,6 +315,24 @@ export default function App() {
       if (checked) next.add(id);
       else next.delete(id);
       return next;
+    });
+  }, []);
+
+  const handleDroneCountChange = useCallback((n: number) => {
+    setDroneIds((prev) => {
+      const want = droneRowsForCount(Math.max(n, droneCountFromIds(prev)));
+      return idsChanged(prev, want) ? want : prev;
+    });
+    setVisibleIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of droneRowsForCount(n)) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
     });
   }, []);
 
@@ -417,8 +452,10 @@ export default function App() {
       <ExperimentBar
         slug={slug}
         onSlugChange={setSlug}
+        droneIds={droneIds}
+        experimentName={experimentName}
         onDronesChange={handlePulled}
-        onRebuilt={handleRebuilt}
+        onDroneCountChange={handleDroneCountChange}
         showSetup={tab === "sources"}
       />
       {tab === "sources" && (
@@ -437,6 +474,7 @@ export default function App() {
             onHostCommit={handleHostCommit}
             onPulled={handlePulled}
             sshReady={sshReady}
+            summaries={summaries}
           />
         </div>
       )}
