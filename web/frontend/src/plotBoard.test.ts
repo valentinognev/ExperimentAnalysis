@@ -7,7 +7,13 @@ import {
   flattenTopics,
   plotsForSlug,
   plotsOnSlugChange,
+  topicsToChannelTree,
+  filterChannelTree,
+  channelLeaves,
+  selectionAfterToggle,
+  leafSelectionState,
   type PlotDef,
+  type ChannelNode,
 } from "./plotBoard";
 
 describe("addPlot", () => {
@@ -96,4 +102,95 @@ describe("flattenTopics", () => {
       "2.ulog.vehicle_local_position.z",
     ]);
   });
+});
+
+const topics = {
+  "2": {
+    ulog: { vehicle_local_position: ["x", "y"] },
+    sm: { sm_system_manager: ["state"] },
+  },
+  "4": {
+    ulog: { vehicle_attitude: ["q[0]"] },
+  },
+};
+
+it("topicsToChannelTree groups drone → source → topic → field", () => {
+  const tree = topicsToChannelTree(topics);
+  expect(tree.map((n) => n.label)).toEqual(["2", "4"]);
+  expect(tree[0].children!.map((n) => n.label)).toEqual(["sm", "ulog"]);
+  const ulog = tree[0].children!.find((n) => n.label === "ulog")!;
+  const topic = ulog.children!.find((n) => n.label === "vehicle_local_position")!;
+  expect(topic.children!.map((n) => n.id)).toEqual([
+    "2.ulog.vehicle_local_position.x",
+    "2.ulog.vehicle_local_position.y",
+  ]);
+  expect(topic.children![0].label).toBe("x");
+  expect(topic.children![0].children).toBeFalsy();
+});
+
+it("filterChannelTree keeps only matching leaves and their ancestors", () => {
+  const tree = topicsToChannelTree(topics);
+  const filtered = filterChannelTree(tree, "local_pos");
+  expect(filtered.map((n) => n.label)).toEqual(["2"]);
+  const ids = filtered.flatMap((n) => n.children ?? []).flatMap(function leaves(n: ChannelNode): string[] {
+    return n.children?.length ? n.children.flatMap(leaves) : [n.id];
+  });
+  expect(ids).toEqual([
+    "2.ulog.vehicle_local_position.x",
+    "2.ulog.vehicle_local_position.y",
+  ]);
+});
+
+it("filterChannelTree is case-insensitive and matches dotted prefixes", () => {
+  const tree = topicsToChannelTree(topics);
+  const filtered = filterChannelTree(tree, "2.ULOG");
+  const ids = filtered.flatMap(function leaves(n: ChannelNode): string[] {
+    return n.children?.length ? n.children.flatMap(leaves) : [n.id];
+  });
+  expect(ids.sort()).toEqual([
+    "2.ulog.vehicle_local_position.x",
+    "2.ulog.vehicle_local_position.y",
+  ]);
+});
+
+it("filterChannelTree empty query returns the original tree", () => {
+  const tree = topicsToChannelTree(topics);
+  expect(filterChannelTree(tree, "  ")).toBe(tree);
+});
+
+it("channelLeaves returns all descendant channel ids", () => {
+  const tree = topicsToChannelTree(topics);
+  expect(channelLeaves(tree[0]).sort()).toEqual([
+    "2.sm.sm_system_manager.state",
+    "2.ulog.vehicle_local_position.x",
+    "2.ulog.vehicle_local_position.y",
+  ]);
+});
+
+it("selectionAfterToggle selects all leaves when any are off, else clears them", () => {
+  const tree = topicsToChannelTree(topics);
+  const topic = tree[0].children!.find((n) => n.label === "ulog")!.children![0];
+  const one = selectionAfterToggle(new Set(), topic);
+  expect([...one].sort()).toEqual([
+    "2.ulog.vehicle_local_position.x",
+    "2.ulog.vehicle_local_position.y",
+  ]);
+  const none = selectionAfterToggle(one, topic);
+  expect(none.size).toBe(0);
+});
+
+it("leafSelectionState reports none / some / all", () => {
+  const tree = topicsToChannelTree(topics);
+  const topic = tree[0].children!.find((n) => n.label === "ulog")!.children![0];
+  expect(leafSelectionState(new Set(), topic)).toBe("none");
+  expect(leafSelectionState(new Set(["2.ulog.vehicle_local_position.x"]), topic)).toBe("some");
+  expect(
+    leafSelectionState(
+      new Set([
+        "2.ulog.vehicle_local_position.x",
+        "2.ulog.vehicle_local_position.y",
+      ]),
+      topic,
+    ),
+  ).toBe("all");
 });
