@@ -33,3 +33,24 @@ export function mergeDroneIds(listed: string[], poseIds: string[]): string[] {
   }
   return result;
 }
+
+/** Highest physical id in 1..9, or 0 if none. */
+export function droneCountFromIds(ids: string[]): number {
+  let max = 0;
+  for (const raw of ids) {
+    const id = Number(raw);
+    if (Number.isInteger(id) && id >= 1 && id <= 9 && id > max) max = id;
+  }
+  return max;
+}
+
+/** Consecutive D1..DN so the count field matches the number of rows. */
+export function droneRowsForCount(n: number): string[] {
+  const count = Math.max(0, Math.min(9, Math.trunc(n)));
+  if (count < 1) return [];
+  return Array.from({ length: count }, (_, i) => String(i + 1));
+}
+
+export function droneRowsFromIds(ids: string[]): string[] {
+  return droneRowsForCount(droneCountFromIds(ids));
+}

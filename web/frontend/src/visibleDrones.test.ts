@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { filterVisible, idsChanged, mergeDroneIds } from "./visibleDrones";
+import { filterVisible, idsChanged, mergeDroneIds, droneRowsFromIds } from "./visibleDrones";
 
 describe("filterVisible", () => {
   it("keeps ids that are in the visible set", () => {
@@ -47,5 +47,23 @@ describe("mergeDroneIds", () => {
 
   it("returns listed when pose is empty", () => {
     expect(mergeDroneIds(["2", "3"], [])).toEqual(["2", "3"]);
+  });
+});
+
+describe("droneRowsFromIds", () => {
+  it("fills D1..Dmax so a count of 4 is four rows", () => {
+    expect(droneRowsFromIds(["2", "3", "4"])).toEqual(["1", "2", "3", "4"]);
+  });
+
+  it("returns empty when there are no ids", () => {
+    expect(droneRowsFromIds([])).toEqual([]);
+  });
+
+  it("keeps a single drone as D1..DN for that N", () => {
+    expect(droneRowsFromIds(["2"])).toEqual(["1", "2"]);
+  });
+
+  it("fills from a lone max id", () => {
+    expect(droneRowsFromIds(["4"])).toEqual(["1", "2", "3", "4"]);
   });
 });

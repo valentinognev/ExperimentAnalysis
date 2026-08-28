@@ -3,30 +3,46 @@ import {
   addDrone,
   createExperiment,
   listExperiments,
-  rebuild,
+  patchManifest,
   type ExperimentSummary,
 } from "../api";
+import { droneCountFromIds } from "../visibleDrones";
 
 type Props = {
   slug: string | null;
   onSlugChange: (slug: string | null) => void;
-  onRebuilt?: () => void;
   onDronesChange?: () => void;
-  /** New / Drone # / Add / Rebuild. Chrome keeps the experiment switcher. */
+  /** Grow the drone list to D1..DN as soon as the count is chosen. */
+  onDroneCountChange?: (n: number) => void;
+  /** Physical ids already in the open experiment (from the manifest). */
+  droneIds?: string[];
+  /** Manifest name of the open experiment; fills the Name field. */
+  experimentName?: string;
+  /** New / Drones 1–9 / Update. Chrome keeps the experiment switcher. */
   showSetup?: boolean;
 };
 
-function parsePositiveInt(text: string): number | null {
-  const id = Number.parseInt(text, 10);
-  if (Number.isNaN(id) || id < 1) return null;
+const DRONE_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+const EMPTY_IDS: string[] = [];
+
+function parseDroneId(text: string): number | null {
+  const id = Number(text);
+  if (!Number.isInteger(id) || id < 1 || id > 9) return null;
   return id;
+}
+
+function countLabel(droneIds: string[]): string {
+  const n = droneCountFromIds(droneIds);
+  return n > 0 ? String(n) : "";
 }
 
 export default function ExperimentBar({
   slug,
   onSlugChange,
-  onRebuilt,
   onDronesChange,
+  onDroneCountChange,
+  droneIds = EMPTY_IDS,
+  experimentName = "",
   showSetup = true,
 }: Props) {
   const [experiments, setExperiments] = useState<ExperimentSummary[]>([]);
@@ -35,7 +51,7 @@ export default function ExperimentBar({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const droneId = parsePositiveInt(droneIdText);
+  const droneId = parseDroneId(droneIdText);
 
   const refresh = useCallback(async () => {
     const list = await listExperiments();
@@ -49,13 +65,20 @@ export default function ExperimentBar({
     );
   }, [refresh]);
 
+  useEffect(() => {
+    setDroneIdText(slug ? countLabel(droneIds) : "");
+  }, [slug, droneIds]);
+
+  useEffect(() => {
+    setNewName(slug ? experimentName : "");
+  }, [slug, experimentName]);
+
   async function handleCreate() {
     if (!newName.trim()) return;
     setBusy(true);
     setError(null);
     try {
       const result = await createExperiment(newName.trim());
-      setNewName("");
       await refresh();
       onSlugChange(result.slug);
     } catch (e: unknown) {
@@ -65,30 +88,23 @@ export default function ExperimentBar({
     }
   }
 
-  async function handleAdd() {
-    if (!slug || droneId === null) return;
+  async function handleUpdate() {
+    if (!slug) return;
+    const name = newName.trim();
+    if (droneId === null && !name) return;
     setBusy(true);
     setError(null);
     try {
-      await addDrone(slug, droneId);
-      setDroneIdText("");
+      if (name) {
+        await patchManifest(slug, { name });
+      }
+      if (droneId !== null) {
+        for (let id = 1; id <= droneId; id++) {
+          await addDrone(slug, id);
+        }
+      }
       await refresh();
       onDronesChange?.();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleRebuild() {
-    if (!slug) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await rebuild(slug);
-      await refresh();
-      onRebuilt?.();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -145,37 +161,35 @@ export default function ExperimentBar({
         <div className="flex items-center gap-2 text-sm">
           <label className="flex items-center gap-2">
             <span className="text-zinc-400">Drone #</span>
-            <input
-              className="w-20 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
-              type="number"
-              min={1}
-              step={1}
+            <select
+              className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
               aria-label="Drone #"
               value={droneIdText}
               disabled={busy}
-              onChange={(e) => setDroneIdText(e.target.value)}
-            />
+              onChange={(e) => {
+                const v = e.target.value;
+                setDroneIdText(v);
+                const n = parseDroneId(v);
+                if (slug && n !== null) onDroneCountChange?.(n);
+              }}
+            >
+              <option value="">—</option>
+              {DRONE_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
           </label>
           <button
             className="rounded bg-zinc-700 px-2 py-1 hover:bg-zinc-600 disabled:opacity-50"
             type="button"
-            disabled={busy || !slug || droneId === null}
-            onClick={handleAdd}
+            disabled={busy || !slug || (droneId === null && !newName.trim())}
+            onClick={handleUpdate}
           >
-            Add
+            Update
           </button>
         </div>
-      )}
-
-      {showSetup && (
-        <button
-          className="rounded bg-zinc-700 px-2 py-1 text-sm hover:bg-zinc-600 disabled:opacity-50"
-          type="button"
-          disabled={busy || !slug}
-          onClick={handleRebuild}
-        >
-          Rebuild
-        </button>
       )}
 
       {error && <span className="text-sm text-red-400">{error}</span>}

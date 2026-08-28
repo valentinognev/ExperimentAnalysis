@@ -9,14 +9,14 @@ vi.mock("../api", () => ({
   listExperiments: vi.fn(),
   createExperiment: vi.fn(),
   addDrone: vi.fn(),
-  rebuild: vi.fn(),
+  patchManifest: vi.fn(),
 }));
 
 import {
   listExperiments,
   createExperiment,
   addDrone,
-  rebuild,
+  patchManifest,
 } from "../api";
 
 describe("ExperimentBar", () => {
@@ -25,45 +25,149 @@ describe("ExperimentBar", () => {
     vi.mocked(listExperiments).mockResolvedValue([]);
     vi.mocked(createExperiment).mockResolvedValue({ slug: "foo", manifest: {} });
     vi.mocked(addDrone).mockResolvedValue({ slug: "foo", manifest: {} });
-    vi.mocked(rebuild).mockResolvedValue({});
+    vi.mocked(patchManifest).mockResolvedValue({ slug: "foo", manifest: {} });
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it("shows Drone # and Add when setup is shown, not Import or Browse", () => {
+  it("shows Drone # and Update when setup is shown, not Import, Browse, Add, or Rebuild", () => {
     render(<ExperimentBar slug="foo" onSlugChange={() => {}} />);
 
-    expect(screen.getByLabelText("Drone #")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Drone #" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rebuild" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Import" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Browse" })).not.toBeInTheDocument();
   });
 
-  it("enables Add only with a slug and a positive integer in Drone #", async () => {
+  it("Drone # is a dropdown of 1 through 9", () => {
+    render(<ExperimentBar slug="foo" onSlugChange={() => {}} />);
+
+    const select = screen.getByRole("combobox", { name: "Drone #" });
+    const values = [...select.querySelectorAll("option")].map((o) => o.value);
+    expect(values.filter((v) => v !== "")).toEqual(
+      ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    );
+    expect(values).not.toContain("0");
+    expect(values).not.toContain("10");
+  });
+
+  it("shows a single saved drone count when an experiment is selected", () => {
+    render(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        droneIds={["2", "3", "4"]}
+      />,
+    );
+
+    const select = screen.getByRole("combobox", { name: "Drone #" });
+    expect(select).toHaveValue("4");
+    expect(select).not.toHaveTextContent("2, 4");
+    expect(screen.getByRole("option", { name: "2" })).toBeEnabled();
+    expect(screen.getByRole("option", { name: "4" })).toBeEnabled();
+  });
+
+  it("updates the single drone count when the experiment changes", () => {
+    const { rerender } = render(
+      <ExperimentBar slug="foo" onSlugChange={() => {}} droneIds={["2"]} />,
+    );
+    expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("2");
+
+    rerender(
+      <ExperimentBar
+        slug="bar"
+        onSlugChange={() => {}}
+        droneIds={["2", "3", "4"]}
+      />,
+    );
+    expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("4");
+  });
+
+  it("clears the drone count when no experiment is selected", () => {
+    const { rerender } = render(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        droneIds={["2", "3", "4"]}
+      />,
+    );
+    expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("4");
+    rerender(
+      <ExperimentBar slug={null} onSlugChange={() => {}} droneIds={["2", "3", "4"]} />,
+    );
+    expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("");
+  });
+
+  it("fills Name from the open experiment", () => {
+    render(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        experimentName="Baseball"
+      />,
+    );
+
+    expect(screen.getByLabelText("Name")).toHaveValue("Baseball");
+  });
+
+  it("clears Name when no experiment is selected", () => {
+    const { rerender } = render(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        experimentName="Baseball"
+      />,
+    );
+    expect(screen.getByLabelText("Name")).toHaveValue("Baseball");
+    rerender(
+      <ExperimentBar slug={null} onSlugChange={() => {}} experimentName="Baseball" />,
+    );
+    expect(screen.getByLabelText("Name")).toHaveValue("");
+  });
+
+  it("enables Update only with a slug and a name or drone number", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
       <ExperimentBar slug={null} onSlugChange={() => {}} />,
     );
-    await user.type(screen.getByLabelText("Drone #"), "2");
-    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
 
     rerender(<ExperimentBar slug="foo" onSlugChange={() => {}} />);
-    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
 
-    await user.clear(screen.getByLabelText("Drone #"));
-    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Drone #" }), "4");
+    expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
 
-    await user.type(screen.getByLabelText("Drone #"), "0");
-    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Drone #" }), "");
+    expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
 
-    await user.clear(screen.getByLabelText("Drone #"));
-    await user.type(screen.getByLabelText("Drone #"), "2");
-    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+    await user.type(screen.getByLabelText("Name"), "Renamed");
+    expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
   });
 
-  it("click Add calls addDrone then onDronesChange and clears the field", async () => {
+  it("selecting 4 notifies onDroneCountChange so the list can show four rows", async () => {
+    const user = userEvent.setup();
+    const onDroneCountChange = vi.fn();
+    render(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        onDroneCountChange={onDroneCountChange}
+      />,
+    );
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Drone #" }), "4");
+
+    expect(onDroneCountChange).toHaveBeenCalledWith(4);
+    expect(addDrone).not.toHaveBeenCalled();
+    expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("4");
+  });
+
+  it("click Update with 4 creates drones 1 through 4", async () => {
     const user = userEvent.setup();
     const onDronesChange = vi.fn();
     render(
@@ -74,50 +178,57 @@ describe("ExperimentBar", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText("Drone #"), "2");
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Drone #" }), "4");
+    await user.click(screen.getByRole("button", { name: "Update" }));
 
     await waitFor(() => {
-      expect(addDrone).toHaveBeenCalledWith("foo", 2);
+      expect(addDrone).toHaveBeenCalledTimes(4);
+      expect(addDrone).toHaveBeenNthCalledWith(1, "foo", 1);
+      expect(addDrone).toHaveBeenNthCalledWith(2, "foo", 2);
+      expect(addDrone).toHaveBeenNthCalledWith(3, "foo", 3);
+      expect(addDrone).toHaveBeenNthCalledWith(4, "foo", 4);
       expect(onDronesChange).toHaveBeenCalled();
     });
     expect(vi.mocked(addDrone).mock.invocationCallOrder[0]).toBeLessThan(
       onDronesChange.mock.invocationCallOrder[0],
     );
-    expect(listExperiments).toHaveBeenCalledTimes(2);
-    expect(screen.getByLabelText("Drone #")).toHaveValue(null);
+    expect(screen.getByRole("combobox", { name: "Drone #" })).toHaveValue("4");
   });
 
-  it("hides New, Drone #, Add, and Rebuild when showSetup is false", () => {
+  it("click Update writes the Name field to the experiment", async () => {
+    const user = userEvent.setup();
+    const onDronesChange = vi.fn();
+    render(
+      <ExperimentBar
+        slug="foo"
+        onSlugChange={() => {}}
+        experimentName="Baseball"
+        onDronesChange={onDronesChange}
+      />,
+    );
+
+    const name = screen.getByLabelText("Name");
+    await user.clear(name);
+    await user.type(name, "Practice");
+    await user.click(screen.getByRole("button", { name: "Update" }));
+
+    await waitFor(() => {
+      expect(patchManifest).toHaveBeenCalledWith("foo", { name: "Practice" });
+      expect(onDronesChange).toHaveBeenCalled();
+    });
+    expect(addDrone).not.toHaveBeenCalled();
+  });
+
+  it("hides New, Drone #, and Update when showSetup is false", () => {
     render(
       <ExperimentBar slug="foo" onSlugChange={() => {}} showSetup={false} />,
     );
 
     expect(screen.getByLabelText("Experiment")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New" })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Drone #")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Drone #" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Update" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rebuild" })).not.toBeInTheDocument();
-  });
-
-  it("Rebuild notifies onRebuilt, not onDronesChange", async () => {
-    const user = userEvent.setup();
-    const onDronesChange = vi.fn();
-    const onRebuilt = vi.fn();
-    render(
-      <ExperimentBar
-        slug="foo"
-        onSlugChange={() => {}}
-        onDronesChange={onDronesChange}
-        onRebuilt={onRebuilt}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Rebuild" }));
-    await waitFor(() => {
-      expect(rebuild).toHaveBeenCalledWith("foo");
-      expect(onRebuilt).toHaveBeenCalled();
-    });
-    expect(onDronesChange).not.toHaveBeenCalled();
   });
 });

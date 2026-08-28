@@ -23,6 +23,11 @@ def test_create_list_get_patch(tmp_path, monkeypatch):
     r = c.patch("/api/experiments/Baseball/manifest", json={"ui": {"engine3d": "plotly"}})
     assert r.status_code == 200
     assert r.json()["manifest"]["ui"]["engine3d"] == "plotly"
+    r = c.patch("/api/experiments/Baseball/manifest", json={"name": "Practice"})
+    assert r.status_code == 200
+    assert r.json()["manifest"]["name"] == "Practice"
+    r = c.get("/api/experiments/Baseball")
+    assert r.json()["manifest"]["name"] == "Practice"
 
 
 def test_post_add_drone(tmp_path, monkeypatch):
