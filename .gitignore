@@ -1,4 +1,6 @@
 experiments/
+.worktrees/
+.superpowers/
 web/backend/.venv/
 web/backend/__pycache__/
 web/backend/**/__pycache__/
