@@ -81,7 +81,7 @@ describe("ExperimentBar", () => {
       expect(addDrone).toHaveBeenCalledWith("foo", 2);
       expect(onDronesChange).toHaveBeenCalled();
     });
-    expect(addDrone.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(vi.mocked(addDrone).mock.invocationCallOrder[0]).toBeLessThan(
       onDronesChange.mock.invocationCallOrder[0],
     );
     expect(listExperiments).toHaveBeenCalledTimes(2);

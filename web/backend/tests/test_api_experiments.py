@@ -43,6 +43,14 @@ def test_post_add_drone_missing_slug_404(tmp_path, monkeypatch):
     assert r.status_code == 404
 
 
+def test_post_add_drone_id_zero_400(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    c = TestClient(app)
+    c.post("/api/experiments", json={"name": "AddDronesZero"})
+    r = c.post("/api/experiments/AddDronesZero/drones", json={"id": 0})
+    assert r.status_code == 400
+
+
 def test_post_import_with_drone_id_only_that_drone(tmp_path, monkeypatch):
     monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
     c = TestClient(app)

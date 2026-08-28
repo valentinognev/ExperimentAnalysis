@@ -1,5 +1,9 @@
 # Updates
 
+## 0.52.1 - Add-drone typecheck and id-0 API test
+- `ExperimentBar.test.tsx`: `vi.mocked(addDrone).mock.invocationCallOrder` so tsc accepts the mock
+- `POST /experiments/{slug}/drones` with `{"id": 0}` asserted 400
+
 ## 0.52.0 - Per-drone Import and drone add
 - Sources: New, Drone # / Add, Rebuild; per-row Import / SSH / MAVLink (Pi IP)
 - Add POSTs `/experiments/{slug}/drones` `{id}`; Import may send `drone_id` (filename ids pick the matching ulog)
