@@ -209,6 +209,7 @@ export default function PlotBoard({
   };
 
   const handleRemove = (id: string) => {
+    if (id === editingId) closePicker();
     onPlotsChange(removePlot(plots, id));
   };
 

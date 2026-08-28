@@ -81,3 +81,19 @@ it("Edit updates the same plot channels", async () => {
     ],
   });
 });
+
+it("closes the picker when the edited plot is removed", async () => {
+  const user = userEvent.setup();
+  const onPlotsChange = vi.fn();
+  const plots = [{ id: "p1", channels: ["2.ulog.vehicle_local_position.x"] }];
+  render(
+    <PlotBoard slug="exp" t={0} plots={plots} onPlotsChange={onPlotsChange} />,
+  );
+  await user.click(screen.getByRole("button", { name: "Edit" }));
+  await waitFor(() => {
+    expect(screen.getByRole("searchbox", { name: "Search channels" })).toBeInTheDocument();
+  });
+  await user.click(screen.getByRole("button", { name: "Remove" }));
+  expect(screen.queryByRole("searchbox", { name: "Search channels" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Apply" })).not.toBeInTheDocument();
+});
