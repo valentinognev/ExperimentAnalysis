@@ -20,7 +20,7 @@ from ea.duration import experiment_t_max_s
 from ea.rebuild import rebuild
 from ea.series import series
 from ea.topics import list_topics
-from ea.store import create_experiment, list_experiments, open_experiment
+from ea.store import add_drone, create_experiment, list_experiments, open_experiment
 from ports import FRONTEND_PORT
 
 
@@ -50,6 +50,11 @@ class CreateExperimentBody(BaseModel):
 class ImportBody(BaseModel):
     paths: list[str]
     assignments: dict[str, int] | None = None
+    drone_id: int | None = None
+
+
+class AddDroneBody(BaseModel):
+    id: int
 
 
 class PullBody(BaseModel):
@@ -140,9 +145,20 @@ def get_experiment(slug: str):
 @app.post("/api/experiments/{slug}/import")
 def post_import(slug: str, body: ImportBody):
     try:
-        return import_paths(slug, body.paths, body.assignments)
+        return import_paths(slug, body.paths, body.assignments, drone_id=body.drone_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="experiment not found")
+
+
+@app.post("/api/experiments/{slug}/drones")
+def post_add_drone(slug: str, body: AddDroneBody):
+    try:
+        result = add_drone(slug, body.id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"slug": result["slug"], "manifest": _manifest_for_api(result["manifest"])}
 
 
 @app.post("/api/experiments/{slug}/pull")

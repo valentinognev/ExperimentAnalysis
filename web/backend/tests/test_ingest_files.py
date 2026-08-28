@@ -44,3 +44,29 @@ def test_post_import_api(tmp_path, monkeypatch):
     assert body["ok"] is True
     assert int(list(body["drones"].keys())[0]) == 2
     assert (tmp_path / "ApiImport" / "raw" / "drone_2").exists()
+
+
+def test_import_paths_drone_id_copies_only_that_drone(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("PerDrone")
+    src = tmp_path / "incoming"
+    src.mkdir()
+    for n in (2, 3, 4):
+        (src / f"Group3RLcat{n}_log_1.ulg").write_bytes(b"ULog")
+    result = import_paths("PerDrone", [str(src)], drone_id=2)
+    assert result["ok"] is True
+    root = tmp_path / "PerDrone"
+    assert list((root / "raw" / "drone_2").glob("Group3RLcat2_*.ulg"))
+    assert not (root / "raw" / "drone_3").exists()
+    assert not (root / "raw" / "drone_4").exists()
+    assert result["needs_id"] == []
+
+
+def test_import_paths_drone_id_copies_mystery_and_empty_needs_id(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("Mystery")
+    f = tmp_path / "mystery.ulg"
+    f.write_bytes(b"ULog")
+    result = import_paths("Mystery", [str(f)], drone_id=3)
+    assert result["needs_id"] == []
+    assert (tmp_path / "Mystery" / "raw" / "drone_3" / "mystery.ulg").is_file()

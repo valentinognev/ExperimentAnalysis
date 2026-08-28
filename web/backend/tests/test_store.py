@@ -1,7 +1,7 @@
 import pytest
 
 from ea.manifest import load_manifest, save_manifest
-from ea.store import create_experiment, list_experiments, open_experiment
+from ea.store import add_drone, create_experiment, list_experiments, open_experiment
 
 
 def test_create_and_list(tmp_path, monkeypatch):
@@ -57,3 +57,35 @@ def test_create_experiment_slugify_preserves_name(tmp_path, monkeypatch):
     listed = list_experiments()
     assert listed[0]["slug"] == "flight_01"
     assert listed[0]["name"] == "flight 01"
+
+
+def test_add_drone_sparse_ids_seeds_and_no_duplicate(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("Add")
+    add_drone("Add", 2)
+    add_drone("Add", 4)
+    add_drone("Add", 3)
+    opened = open_experiment("Add")
+    ids = [d["id"] for d in opened["manifest"]["drones"]]
+    assert ids == [2, 4, 3]
+    by_id = {d["id"]: d for d in opened["manifest"]["drones"]}
+    assert by_id[2]["ssh"]["host"] == "192.168.31.30"
+    assert by_id[4]["ssh"]["host"] == "192.168.31.152"
+    assert by_id[3]["ssh"]["host"] == ""
+    again = add_drone("Add", 2)
+    assert [d["id"] for d in again["manifest"]["drones"]] == [2, 4, 3]
+    assert again["slug"] == "Add"
+    assert again["path"] == tmp_path / "Add"
+
+
+def test_add_drone_missing_experiment_raises(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    with pytest.raises(FileNotFoundError):
+        add_drone("nope", 2)
+
+
+def test_add_drone_id_less_than_one_raises(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("Bad")
+    with pytest.raises(ValueError):
+        add_drone("Bad", 0)
