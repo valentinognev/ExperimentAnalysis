@@ -3,8 +3,7 @@ import type { PoseResponse } from "../api";
 import { hasAnyMapAvatar } from "../avatars";
 import { enuToLla, type Marker } from "../markers";
 import { mapFigure } from "../map2d";
-
-const DRONE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6"];
+import { droneColor } from "../droneColor";
 
 type Map2DProps = {
   pose: PoseResponse | null;
@@ -44,14 +43,14 @@ export default function Map2D({
       if (!visible.has(id)) return false;
       return mapAvatarPos(d.avatars ?? {}) !== undefined;
     });
-    droneEntries.forEach(([id, d], index) => {
+    droneEntries.forEach(([id, d]) => {
       const enu = mapAvatarPos(d.avatars!)!;
       const lla = enuToLla(enu.e, enu.n, enu.u, origin.lat, origin.lon, origin.alt_m);
       points.push({
         lat: lla.lat,
         lon: lla.lon,
         name: `D${id}`,
-        color: DRONE_COLORS[index % DRONE_COLORS.length],
+        color: droneColor(id),
       });
     });
   }

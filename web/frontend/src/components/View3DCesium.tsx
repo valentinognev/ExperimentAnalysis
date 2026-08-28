@@ -5,6 +5,7 @@ import { globePickToLla, markerEntity } from "../cesiumMarkers";
 import { enuToLla, type Marker, type Origin } from "../markers";
 import { triadSegments, type EnuPos } from "../triad";
 import type { DronePose } from "./View3D";
+import { droneColor } from "../droneColor";
 
 type View3DCesiumProps = {
   drones: DronePose[];
@@ -83,7 +84,7 @@ function updateEntities(
         position: enuToCartesian(drone.pos, origin, Cesium),
         point: {
           pixelSize: 10,
-          color: Cesium.Color.ORANGE,
+          color: Cesium.Color.fromCssColorString(droneColor(drone.id)),
           outlineColor: Cesium.Color.BLACK,
           outlineWidth: 1,
         },
@@ -122,7 +123,7 @@ function updateEntities(
         polyline: {
           positions: drone.trail.map((p) => enuToCartesian(p, origin, Cesium)),
           width: 2,
-          material: Cesium.Color.ORANGE,
+          material: Cesium.Color.fromCssColorString(droneColor(drone.id)),
         },
       });
     }

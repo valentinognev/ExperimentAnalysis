@@ -5,12 +5,11 @@ import { triadTraces, type EnuPos } from "../triad";
 import { sceneLayout } from "../view3dLayout";
 import type { Origin } from "../markers";
 import { groundClickToLla, type PlotlyGroundClick } from "../markers";
+import { droneColor } from "../droneColor";
 
 type QuatXyzw = [number, number, number, number];
 
 export { sceneLayout };
-
-const DRONE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6"];
 
 export type DronePose = {
   id: string;
@@ -104,8 +103,8 @@ export default function View3D({
     });
   }
 
-  drones.forEach((drone, index) => {
-    const color = DRONE_COLORS[index % DRONE_COLORS.length];
+  drones.forEach((drone) => {
+    const color = droneColor(drone.id);
     const namePrefix = drone.label
       ? `D${drone.id} ${drone.label}`
       : `D${drone.id}`;

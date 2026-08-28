@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
 import { getSeries, type SeriesResponse } from "../api";
-
-const DRONE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6"];
+import { droneColor } from "../droneColor";
 const COMPONENTS = ["x", "y", "z"] as const;
 
 function nedChannels(droneId: string): string[] {
@@ -62,8 +61,8 @@ export default function ChannelPlot({
     if (!series) return [];
     const out: Data[] = [];
 
-    visibleDroneIds.forEach((id, index) => {
-      const color = DRONE_COLORS[index % DRONE_COLORS.length];
+    visibleDroneIds.forEach((id) => {
+      const color = droneColor(id);
       for (const comp of COMPONENTS) {
         const ch = `${id}.ulog.vehicle_local_position.${comp}`;
         const data = series[ch];
