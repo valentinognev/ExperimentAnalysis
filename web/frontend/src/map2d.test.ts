@@ -8,9 +8,16 @@ const samplePoints: MapPoint[] = [
 ];
 
 describe("mapFigure", () => {
-  it("layout map.style is open-street-map", () => {
+  it("layout map.style is carto-darkmatter by default", () => {
     const { layout } = mapFigure(samplePoints);
+    expect(layout.map?.style).toBe("carto-darkmatter");
+    expect(layout.legend?.font?.color).toBe("#e4e4e7");
+  });
+
+  it("uses open-street-map tiles when skin is day", () => {
+    const { layout } = mapFigure(samplePoints, [], { skin: "day" });
     expect(layout.map?.style).toBe("open-street-map");
+    expect(layout.legend?.font?.color).toBe("#18181b");
   });
 
   it("trace type is scattermap not scattermapbox", () => {

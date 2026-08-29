@@ -4,6 +4,7 @@ import type { Dash, Data, Layout } from "plotly.js";
 import { getSeries, type SeriesResponse } from "../api";
 import { experimentTimeAxis } from "../channelPlotAxis";
 import { droneColor } from "../droneColor";
+import { plotTheme, type Skin } from "../skin";
 
 const COMPONENTS = ["x", "y", "z"] as const;
 
@@ -25,6 +26,7 @@ type Props = {
   t: number;
   tMax: number;
   refreshToken?: number;
+  skin?: Skin;
 };
 
 export default function ChannelPlot({
@@ -33,6 +35,7 @@ export default function ChannelPlot({
   t,
   tMax,
   refreshToken = 0,
+  skin = "night",
 }: Props) {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,14 +94,15 @@ export default function ChannelPlot({
     return out;
   }, [series, visibleDroneIds]);
 
-  const layout = useMemo(
-    (): Partial<Layout> => ({
-      paper_bgcolor: "#09090b",
-      plot_bgcolor: "#18181b",
-      font: { color: "#e4e4e7" },
+  const layout = useMemo((): Partial<Layout> => {
+    const theme = plotTheme(skin);
+    return {
+      paper_bgcolor: theme.paper_bgcolor,
+      plot_bgcolor: theme.plot_bgcolor,
+      font: { color: theme.font_color },
       margin: { l: 48, r: 16, t: 24, b: 40 },
       xaxis: experimentTimeAxis(tMax),
-      yaxis: { title: { text: "NED (m)" }, gridcolor: "#3f3f46" },
+      yaxis: { title: { text: "NED (m)" }, gridcolor: theme.gridcolor },
       showlegend: true,
       legend: { orientation: "h", y: 1.1 },
       shapes: [
@@ -109,12 +113,11 @@ export default function ChannelPlot({
           y0: 0,
           y1: 1,
           yref: "paper",
-          line: { color: "#fafafa", width: 1, dash: "dot" },
+          line: { color: theme.cursor_color, width: 1, dash: "dot" },
         },
       ],
-    }),
-    [t, tMax],
-  );
+    };
+  }, [t, tMax, skin]);
 
   if (!slug) return null;
 

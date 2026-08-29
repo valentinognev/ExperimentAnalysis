@@ -11,6 +11,7 @@ import { enuToLla, MARKER_COLOR, type Marker } from "../markers";
 import { mapFigure, stableMapTracks, type MapPoint } from "../map2d";
 import { droneColor } from "../droneColor";
 import { avatarMarkerStyle } from "../avatarMarker";
+import type { Skin } from "../skin";
 
 type Map2DProps = {
   pose: PoseResponse | null;
@@ -20,6 +21,7 @@ type Map2DProps = {
   visibleDroneIds: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  skin?: Skin;
 };
 
 export function hasGpsAvatar(pose: PoseResponse | null): boolean {
@@ -84,6 +86,7 @@ function Map2D({
   visibleDroneIds,
   open,
   onOpenChange,
+  skin = "night",
 }: Map2DProps) {
   const showPanel = hasGpsAvatar(pose) || markers.length > 0;
   const origin = trajectory?.origin ?? pose?.origin;
@@ -120,6 +123,7 @@ function Map2D({
   const points = currentPoints(pose, uiAvatars, markers, visibleDroneIds);
   const { data, layout } = mapFigure(points, tracks, {
     datarevision: pose?.t ?? 0,
+    skin,
   });
 
   return (

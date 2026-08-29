@@ -11,11 +11,15 @@ import {
   type TopicsTree,
 } from "../plotBoard";
 import { experimentTimeAxis } from "../channelPlotAxis";
+import { plotTheme, type Skin } from "../skin";
 import ChannelPicker from "./ChannelPicker";
 
 const TRACE_COLORS = ["#f97316", "#22d3ee", "#a78bfa", "#f472b6", "#4ade80"];
 
-function tCursorShape(t: number): NonNullable<Layout["shapes"]>[number] {
+function tCursorShape(
+  t: number,
+  color: string,
+): NonNullable<Layout["shapes"]>[number] {
   return {
     type: "line",
     x0: t,
@@ -23,7 +27,7 @@ function tCursorShape(t: number): NonNullable<Layout["shapes"]>[number] {
     y0: 0,
     y1: 1,
     yref: "paper",
-    line: { color: "#fafafa", width: 1, dash: "dot" },
+    line: { color, width: 1, dash: "dot" },
   };
 }
 
@@ -35,9 +39,19 @@ type PlotPaneProps = {
   refreshToken: number;
   onEdit: (plot: PlotDef) => void;
   onRemove: (id: string) => void;
+  skin?: Skin;
 };
 
-function PlotPane({ slug, plot, t, tMax, refreshToken, onEdit, onRemove }: PlotPaneProps) {
+function PlotPane({
+  slug,
+  plot,
+  t,
+  tMax,
+  refreshToken,
+  onEdit,
+  onRemove,
+  skin = "night",
+}: PlotPaneProps) {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,20 +98,20 @@ function PlotPane({ slug, plot, t, tMax, refreshToken, onEdit, onRemove }: PlotP
       .filter((trace): trace is NonNullable<typeof trace> => trace !== null);
   }, [series, plot.channels]);
 
-  const layout = useMemo(
-    (): Partial<Layout> => ({
-      paper_bgcolor: "#09090b",
-      plot_bgcolor: "#18181b",
-      font: { color: "#e4e4e7" },
+  const layout = useMemo((): Partial<Layout> => {
+    const theme = plotTheme(skin);
+    return {
+      paper_bgcolor: theme.paper_bgcolor,
+      plot_bgcolor: theme.plot_bgcolor,
+      font: { color: theme.font_color },
       margin: { l: 48, r: 16, t: 24, b: 40 },
       xaxis: experimentTimeAxis(tMax),
-      yaxis: { gridcolor: "#3f3f46" },
+      yaxis: { gridcolor: theme.gridcolor },
       showlegend: true,
       legend: { orientation: "h", y: 1.1 },
-      shapes: [tCursorShape(t)],
-    }),
-    [t, tMax],
-  );
+      shapes: [tCursorShape(t, theme.cursor_color)],
+    };
+  }, [t, tMax, skin]);
 
   return (
     <div className="rounded border border-zinc-800 p-2">
@@ -142,6 +156,7 @@ type Props = {
   refreshToken?: number;
   plots: PlotDef[];
   onPlotsChange: (plots: PlotDef[]) => void;
+  skin?: Skin;
 };
 
 export default function PlotBoard({
@@ -151,6 +166,7 @@ export default function PlotBoard({
   refreshToken = 0,
   plots,
   onPlotsChange,
+  skin = "night",
 }: Props) {
   const [topics, setTopics] = useState<TopicsTree>({});
   const [topicsError, setTopicsError] = useState<string | null>(null);
@@ -258,6 +274,7 @@ export default function PlotBoard({
           refreshToken={refreshToken}
           onEdit={handleEdit}
           onRemove={handleRemove}
+          skin={skin}
         />
       ))}
     </div>

@@ -10,7 +10,12 @@ type PlotTrace = {
 
 type PlotProps = {
   data?: PlotTrace[];
-  layout?: { xaxis?: { range?: [number, number]; autorange?: boolean } };
+  layout?: {
+    xaxis?: { range?: [number, number]; autorange?: boolean };
+    paper_bgcolor?: string;
+    plot_bgcolor?: string;
+    shapes?: Array<{ line?: { color?: string } }>;
+  };
 };
 
 let lastPlot: PlotProps | null = null;
@@ -90,5 +95,24 @@ describe("ChannelPlot NED traces", () => {
       expect(lastPlot?.layout?.xaxis?.range).toEqual([0, 160]);
     });
     expect(lastPlot?.layout?.xaxis?.autorange).toBe(false);
+    expect(lastPlot?.layout?.paper_bgcolor).toBe("#09090b");
+    expect(lastPlot?.layout?.shapes?.[0]?.line?.color).toBe("#fafafa");
+  });
+
+  it("uses day paper when skin is day", async () => {
+    render(
+      <ChannelPlot
+        slug="exp"
+        visibleDroneIds={["2"]}
+        t={0}
+        tMax={160}
+        skin="day"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(lastPlot?.layout?.paper_bgcolor).toBe("#fafafa");
+    });
+    expect(lastPlot?.layout?.shapes?.[0]?.line?.color).toBe("#18181b");
   });
 });

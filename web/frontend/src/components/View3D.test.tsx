@@ -25,6 +25,7 @@ type PlotProps = {
   onUnhover?: () => void;
   config?: { doubleClick?: boolean | string };
   data?: PlotTrace[];
+  layout?: { paper_bgcolor?: string; scene?: { bgcolor?: string } };
 };
 
 let lastPlot: PlotProps | null = null;
@@ -123,6 +124,25 @@ describe("View3D marker gestures", () => {
     expect(halo?.marker?.color).toBe(MARKER_OUTLINE_COLOR);
     expect(halo?.marker?.symbol).toBe("diamond");
     expect(halo?.marker?.size).toBeGreaterThan(fill?.marker?.size ?? 0);
+  });
+});
+
+describe("View3D skin", () => {
+  afterEach(() => {
+    cleanup();
+    lastPlot = null;
+  });
+
+  it("uses night scene colors by default", () => {
+    renderView();
+    expect(lastPlot?.layout?.paper_bgcolor).toBe("#09090b");
+    expect(lastPlot?.layout?.scene?.bgcolor).toBe("#18181b");
+  });
+
+  it("uses a white scene when skin is day", () => {
+    renderView({ skin: "day" });
+    expect(lastPlot?.layout?.paper_bgcolor).toBe("#fafafa");
+    expect(lastPlot?.layout?.scene?.bgcolor).toBe("#ffffff");
   });
 });
 

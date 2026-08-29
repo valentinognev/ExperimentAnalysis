@@ -58,6 +58,31 @@ describe("View3D sceneLayout", () => {
     expect(layout.legend?.xanchor).toBe("left");
   });
 
+  it("uses night paper and scene colors by default", () => {
+    const layout = sceneLayout();
+    expect(layout.paper_bgcolor).toBe("#09090b");
+    expect(layout.scene?.bgcolor).toBe("#18181b");
+    for (const axis of [
+      layout.scene?.xaxis,
+      layout.scene?.yaxis,
+      layout.scene?.zaxis,
+    ]) {
+      expect(axis?.color).toBe("#e4e4e7");
+      expect(axis?.gridcolor).toBe("#3f3f46");
+      expect(axis?.backgroundcolor).toBe("#18181b");
+      expect(axis?.showbackground).toBe(true);
+    }
+  });
+
+  it("uses a white scene when skin is day", () => {
+    const layout = sceneLayout({ skin: "day" });
+    expect(layout.paper_bgcolor).toBe("#fafafa");
+    expect(layout.scene?.bgcolor).toBe("#ffffff");
+    expect(layout.uirevision).toBe("camera");
+    expect(layout.legend?.x).toBeLessThanOrEqual(1);
+    expect(layout.legend?.y).toBeLessThanOrEqual(1);
+  });
+
   it("locks Plotly axes to East / North / Up", () => {
     const layout = sceneLayout();
     const xTitle = String(

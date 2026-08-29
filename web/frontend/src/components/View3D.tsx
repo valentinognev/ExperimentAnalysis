@@ -5,6 +5,7 @@ import { groundPlaneExtent, groundPlaneTrace } from "../groundPlane";
 import { triadTraces, type EnuPos } from "../triad";
 import { sceneLayout } from "../view3dLayout";
 import type { Origin } from "../markers";
+import type { Skin } from "../skin";
 import {
   groundClickToLla,
   isPlotDoubleClick,
@@ -57,6 +58,7 @@ type View3DProps = {
   markerPositions?: MarkerEnu[];
   onGroundClick?: (lla: { lat: number; lon: number; alt_m: number }) => void;
   onMarkerRemove?: (id: string) => void;
+  skin?: Skin;
 };
 
 function trailTrace(
@@ -145,6 +147,7 @@ function View3D({
   markerPositions = [],
   onGroundClick,
   onMarkerRemove,
+  skin = "night",
 }: View3DProps) {
   const lastClickMsRef = useRef<number | null>(null);
   const hoverPickRef = useRef<PlotlyGroundClick | null>(null);
@@ -270,7 +273,7 @@ function View3D({
     <div className="h-full w-full min-h-0 overflow-hidden" onContextMenu={handleContextMenu}>
       <Plot
         data={traces}
-        layout={sceneLayout({ datarevision })}
+        layout={sceneLayout({ datarevision, skin })}
         config={{ responsive: true, doubleClick: false }}
         style={{ width: "100%", height: "100%" }}
         useResizeHandler

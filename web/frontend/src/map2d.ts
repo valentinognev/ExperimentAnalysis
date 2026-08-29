@@ -8,7 +8,13 @@ import {
 } from "./avatars";
 import { droneColor, DRONE_COLORS } from "./droneColor";
 import { enuToLla, type Origin } from "./markers";
+import { mapTileStyle, plotTheme, type Skin } from "./skin";
 import { sliceTrail } from "./trail";
+
+type MapLayoutOpts = {
+  datarevision?: string | number;
+  skin?: Skin;
+};
 
 export type MapPoint = {
   lat: number;
@@ -39,14 +45,14 @@ export type MapTrajectory = {
   >;
 };
 
-export function mapLayout(opts?: {
-  datarevision?: string | number;
-}): Partial<Layout> {
+export function mapLayout(opts?: MapLayoutOpts): Partial<Layout> {
+  const skin = opts?.skin ?? "night";
+  const theme = plotTheme(skin);
   return {
     autosize: true,
     uirevision: "map",
     datarevision: opts?.datarevision,
-    map: { style: "open-street-map", uirevision: "map" },
+    map: { style: mapTileStyle(skin), uirevision: "map" },
     margin: { l: 0, r: 0, t: 48, b: 0 },
     showlegend: true,
     legend: {
@@ -55,7 +61,7 @@ export function mapLayout(opts?: {
       yanchor: "bottom",
       x: 0,
       xanchor: "left",
-      font: { size: 10 },
+      font: { size: 10, color: theme.legend_font_color },
     },
   };
 }
@@ -150,7 +156,7 @@ function currentPointTraces(points: MapPoint[]): Data[] {
 export function mapFigure(
   points: MapPoint[],
   tracks: MapTrack[] = [],
-  opts?: { datarevision?: string | number },
+  opts?: MapLayoutOpts,
 ): MapFigure {
   return {
     data: mapTraces(points, tracks),

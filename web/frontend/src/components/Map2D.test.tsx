@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
 import type { PoseResponse, TrajectoryResponse } from "../api";
 
 type PlotProps = {
-  layout?: { height?: number; autosize?: boolean };
+  layout?: { height?: number; autosize?: boolean; map?: { style?: string } };
   style?: CSSProperties;
 };
 
@@ -82,5 +82,39 @@ describe("Map2D height", () => {
     expect(lastPlot?.layout?.height).toBeUndefined();
     expect(lastPlot?.layout?.autosize).toBe(true);
     expect(lastPlot?.style?.height).toBe("100%");
+  });
+});
+
+describe("Map2D skin", () => {
+  afterEach(() => {
+    cleanup();
+    lastPlot = null;
+  });
+
+  it("uses carto-darkmatter tiles by default", () => {
+    render(
+      <Map2D
+        pose={poseAt(0)}
+        markers={[]}
+        visibleDroneIds={["2"]}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+    expect(lastPlot?.layout?.map?.style).toBe("carto-darkmatter");
+  });
+
+  it("uses open-street-map tiles when skin is day", () => {
+    render(
+      <Map2D
+        pose={poseAt(0)}
+        markers={[]}
+        visibleDroneIds={["2"]}
+        open
+        onOpenChange={() => {}}
+        skin="day"
+      />,
+    );
+    expect(lastPlot?.layout?.map?.style).toBe("open-street-map");
   });
 });
