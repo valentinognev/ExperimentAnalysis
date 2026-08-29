@@ -1,6 +1,32 @@
+import type { Skin } from "./skin";
+
 type PointerHandler = {
   removeInputAction: (type: unknown) => void;
 };
+
+export type CesiumSkinAction = "create" | "replace-imagery" | "noop";
+
+export function cesiumSkinAction(
+  prevSkin: Skin | null | undefined,
+  nextSkin: Skin,
+): CesiumSkinAction {
+  if (prevSkin == null) return "create";
+  if (prevSkin === nextSkin) return "noop";
+  return "replace-imagery";
+}
+
+type ImageryLayersLike = {
+  removeAll: () => void;
+  addImageryProvider: (provider: unknown) => unknown;
+};
+
+export function replaceCesiumImagery(
+  viewer: { imageryLayers: ImageryLayersLike },
+  provider: unknown,
+): void {
+  viewer.imageryLayers.removeAll();
+  viewer.imageryLayers.addImageryProvider(provider);
+}
 
 type CesiumViewerLike = {
   isDestroyed?: () => boolean;

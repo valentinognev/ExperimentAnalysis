@@ -52,6 +52,8 @@ export function mapLayout(opts?: MapLayoutOpts): Partial<Layout> {
     autosize: true,
     uirevision: "map",
     datarevision: opts?.datarevision,
+    paper_bgcolor: theme.paper_bgcolor,
+    font: { color: theme.font_color },
     map: { style: mapTileStyle(skin), uirevision: "map" },
     margin: { l: 0, r: 0, t: 48, b: 0 },
     showlegend: true,

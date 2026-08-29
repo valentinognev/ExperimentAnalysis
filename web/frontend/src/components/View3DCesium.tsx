@@ -8,7 +8,12 @@ import {
   markerEntityStyle,
   markerIdFromEntityId,
 } from "../cesiumMarkers";
-import { destroyCesiumViewer, unbindCesiumPointerEvents } from "../cesiumViewer";
+import {
+  cesiumSkinAction,
+  destroyCesiumViewer,
+  replaceCesiumImagery,
+  unbindCesiumPointerEvents,
+} from "../cesiumViewer";
 import { enuToLla, type Marker, type Origin } from "../markers";
 import { triadSegments, type EnuPos } from "../triad";
 import { avatarLegendName, type DronePose } from "./View3D";
@@ -179,8 +184,11 @@ export default function View3DCesium({
   const viewerRef = useRef<Viewer | null>(null);
   const cesiumRef = useRef<CesiumModule | null>(null);
   const framedOriginRef = useRef<string | null>(null);
+  const skinRef = useRef(skin);
+  const appliedSkinRef = useRef<Skin | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  skinRef.current = skin;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -195,10 +203,11 @@ export default function View3DCesium({
         if (cancelled) return;
 
         cesiumRef.current = Cesium;
+        const initialSkin = skinRef.current;
         const viewer = new Cesium.Viewer(container, {
           baseLayer: new Cesium.ImageryLayer(
             new Cesium.UrlTemplateImageryProvider({
-              url: cesiumImageryUrl(skin),
+              url: cesiumImageryUrl(initialSkin),
             }),
           ),
           terrainProvider: new Cesium.EllipsoidTerrainProvider(),
@@ -215,6 +224,7 @@ export default function View3DCesium({
           creditContainer: document.createElement("div"),
         });
         viewerRef.current = viewer;
+        appliedSkinRef.current = initialSkin;
         setViewerReady(true);
       })
       .catch((err: unknown) => {
@@ -227,11 +237,28 @@ export default function View3DCesium({
     return () => {
       cancelled = true;
       framedOriginRef.current = null;
+      appliedSkinRef.current = null;
       destroyCesiumViewer(viewerRef.current);
       viewerRef.current = null;
       cesiumRef.current = null;
     };
-  }, [skin]);
+  }, []);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    const Cesium = cesiumRef.current;
+    if (!viewerReady || !viewer || !Cesium) return;
+    if (cesiumSkinAction(appliedSkinRef.current, skin) !== "replace-imagery") {
+      return;
+    }
+    replaceCesiumImagery(
+      viewer,
+      new Cesium.UrlTemplateImageryProvider({
+        url: cesiumImageryUrl(skin),
+      }),
+    );
+    appliedSkinRef.current = skin;
+  }, [skin, viewerReady]);
 
   useEffect(() => {
     const viewer = viewerRef.current;

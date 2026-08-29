@@ -14,10 +14,22 @@ describe("mapFigure", () => {
     expect(layout.legend?.font?.color).toBe("#e4e4e7");
   });
 
+  it("uses night paper_bgcolor so the legend is not light text on white", () => {
+    const { layout } = mapFigure(samplePoints);
+    expect(layout.paper_bgcolor).toBe("#09090b");
+    expect(layout.font?.color).toBe("#e4e4e7");
+  });
+
   it("uses open-street-map tiles when skin is day", () => {
     const { layout } = mapFigure(samplePoints, [], { skin: "day" });
     expect(layout.map?.style).toBe("open-street-map");
     expect(layout.legend?.font?.color).toBe("#18181b");
+  });
+
+  it("uses day paper_bgcolor for the legend margin", () => {
+    const { layout } = mapFigure(samplePoints, [], { skin: "day" });
+    expect(layout.paper_bgcolor).toBe("#fafafa");
+    expect(layout.font?.color).toBe("#18181b");
   });
 
   it("trace type is scattermap not scattermapbox", () => {
