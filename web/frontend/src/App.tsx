@@ -22,6 +22,8 @@ import { DEFAULT_TAB, type WorkspaceTab } from "./workspaceTab";
 import Map2D from "./components/Map2D";
 import View3D, { type DronePose } from "./components/View3D";
 import { shouldLoadCesium } from "./engineToggle";
+import { useSkin } from "./SkinContext";
+import SkinToggle from "./components/SkinToggle";
 import { llaToEnu, newMarkerId, type Marker } from "./markers";
 import { plotsOnSlugChange, type PlotDef } from "./plotBoard";
 import { sliceTrail } from "./trail";
@@ -39,6 +41,7 @@ import {
 const View3DCesium = lazy(() => import("./components/View3DCesium"));
 
 export default function App() {
+  const { skin } = useSkin();
   const [slug, setSlug] = useState<string | null>(null);
   const [tab, setTab] = useState<WorkspaceTab>(DEFAULT_TAB);
   const [experimentName, setExperimentName] = useState("");
@@ -485,7 +488,10 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
-      <h1 className="px-4 pt-4 text-xl font-semibold">ExperimentAnalysis</h1>
+      <div className="flex items-center justify-between px-4 pt-4">
+        <h1 className="text-xl font-semibold">ExperimentAnalysis</h1>
+        <SkinToggle />
+      </div>
       <WorkspaceTabs tab={tab} onTabChange={setTab} />
       <ExperimentBar
         slug={slug}
@@ -594,6 +600,7 @@ export default function App() {
                               markers={markers}
                               onGroundClick={handleGroundClick}
                               onMarkerRemove={handleMarkerRemove}
+                              skin={skin}
                             />
                           </Suspense>
                         ) : (
@@ -603,6 +610,7 @@ export default function App() {
                             markerPositions={markerPositions}
                             onGroundClick={handleGroundClick}
                             onMarkerRemove={handleMarkerRemove}
+                            skin={skin}
                           />
                         )}
                       </div>
@@ -618,6 +626,7 @@ export default function App() {
                       visibleDroneIds={visibleDroneIds}
                       open={mapLinked}
                       onOpenChange={setMapLinked}
+                      skin={skin}
                     />
                   </div>
                   <div className="w-56 shrink-0">
@@ -637,6 +646,7 @@ export default function App() {
                 t={t}
                 tMax={tMax}
                 refreshToken={refreshToken}
+                skin={skin}
               />
               <PlotBoard
                 slug={slug}
@@ -645,6 +655,7 @@ export default function App() {
                 refreshToken={refreshToken}
                 plots={plots}
                 onPlotsChange={setPlots}
+                skin={skin}
               />
             </>
           )}

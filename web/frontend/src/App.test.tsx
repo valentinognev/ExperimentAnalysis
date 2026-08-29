@@ -36,6 +36,7 @@ import {
   patchMarkers,
 } from "./api";
 import App from "./App";
+import { SkinProvider } from "./SkinContext";
 
 function follows(earlier: Node, later: Node): boolean {
   return Boolean(
@@ -77,11 +78,21 @@ describe("App analysis layout", () => {
 
   afterEach(() => {
     cleanup();
+    localStorage.clear();
+    delete document.documentElement.dataset.skin;
   });
+
+  function renderApp() {
+    return render(
+      <SkinProvider>
+        <App />
+      </SkinProvider>,
+    );
+  }
 
   async function openAnalysis() {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     const picker = screen.getByRole("combobox", { name: "Experiment" });
     await waitFor(() => {
       expect(within(picker).getByRole("option", { name: "foo" })).toBeInTheDocument();
@@ -104,4 +115,29 @@ describe("App analysis layout", () => {
     expect(follows(engine, play)).toBe(true);
     expect(follows(play, addPlot)).toBe(true);
   });
+
+  it("shows Night and Day skin buttons", () => {
+    renderApp();
+    const group = screen.getByRole("group", { name: "Skin" });
+    expect(within(group).getByRole("button", { name: "Night" })).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: "Day" })).toBeInTheDocument();
+  });
+
+  it('clicking Day sets document.documentElement.dataset.skin to "day"', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole("button", { name: "Day" }));
+    expect(document.documentElement.dataset.skin).toBe("day");
+  });
+
+  it("does not persist skin on the experiment manifest", async () => {
+    const user = userEvent.setup();
+    await openAnalysis();
+    await user.click(screen.getByRole("button", { name: "Day" }));
+    await new Promise((r) => setTimeout(r, 400));
+    for (const [, body] of vi.mocked(patchManifest).mock.calls) {
+      expect(JSON.stringify(body ?? {})).not.toMatch(/"skin"/);
+    }
+  });
 });
+

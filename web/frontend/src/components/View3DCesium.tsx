@@ -14,6 +14,7 @@ import { triadSegments, type EnuPos } from "../triad";
 import { avatarLegendName, type DronePose } from "./View3D";
 import { droneColor } from "../droneColor";
 import { avatarMarkerStyle, avatarSymbolDataUri } from "../avatarMarker";
+import { cesiumImageryUrl, type Skin } from "../skin";
 
 type View3DCesiumProps = {
   drones: DronePose[];
@@ -22,6 +23,7 @@ type View3DCesiumProps = {
   markers?: Marker[];
   onGroundClick?: (lla: { lat: number; lon: number; alt_m: number }) => void;
   onMarkerRemove?: (id: string) => void;
+  skin?: Skin;
 };
 
 type CesiumModule = typeof import("cesium");
@@ -171,6 +173,7 @@ export default function View3DCesium({
   markers = [],
   onGroundClick,
   onMarkerRemove,
+  skin = "night",
 }: View3DCesiumProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -185,6 +188,7 @@ export default function View3DCesium({
 
     let cancelled = false;
     setLoadError(null);
+    setViewerReady(false);
 
     import("cesium")
       .then((Cesium) => {
@@ -194,7 +198,7 @@ export default function View3DCesium({
         const viewer = new Cesium.Viewer(container, {
           baseLayer: new Cesium.ImageryLayer(
             new Cesium.UrlTemplateImageryProvider({
-              url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+              url: cesiumImageryUrl(skin),
             }),
           ),
           terrainProvider: new Cesium.EllipsoidTerrainProvider(),
@@ -227,7 +231,7 @@ export default function View3DCesium({
       viewerRef.current = null;
       cesiumRef.current = null;
     };
-  }, []);
+  }, [skin]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
