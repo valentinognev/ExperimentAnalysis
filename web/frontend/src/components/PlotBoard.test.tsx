@@ -6,7 +6,8 @@ import "@testing-library/jest-dom/vitest";
 
 type PlotProps = {
   layout?: {
-    xaxis?: { range?: [number, number]; autorange?: boolean };
+    xaxis?: { range?: [number, number]; autorange?: boolean; gridcolor?: string };
+    yaxis?: { gridcolor?: string };
     paper_bgcolor?: string;
     shapes?: Array<{ line?: { color?: string } }>;
   };
@@ -148,4 +149,6 @@ it("uses day paper when skin is day", async () => {
     expect(lastPlot?.layout?.paper_bgcolor).toBe("#fafafa");
   });
   expect(lastPlot?.layout?.shapes?.[0]?.line?.color).toBe("#18181b");
+  expect(lastPlot?.layout?.xaxis?.gridcolor).toBe("#d4d4d8");
+  expect(lastPlot?.layout?.yaxis?.gridcolor).toBe("#d4d4d8");
 });

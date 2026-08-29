@@ -101,7 +101,7 @@ export default function ChannelPlot({
       plot_bgcolor: theme.plot_bgcolor,
       font: { color: theme.font_color },
       margin: { l: 48, r: 16, t: 24, b: 40 },
-      xaxis: experimentTimeAxis(tMax),
+      xaxis: { ...experimentTimeAxis(tMax), gridcolor: theme.gridcolor },
       yaxis: { title: { text: "NED (m)" }, gridcolor: theme.gridcolor },
       showlegend: true,
       legend: { orientation: "h", y: 1.1 },
