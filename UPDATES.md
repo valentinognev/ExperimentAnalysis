@@ -1,5 +1,8 @@
 # Updates
 
+## 0.72.0 - Day/night skin
+- Night/Day switch in the header; night darkens 3D scene and 2D/Cesium basemap; preference in `localStorage` (`ea-skin`).
+
 ## 0.71.2 - SM NED and EKF match on 2D and 3D
 - SM NED is a hollow square on both plots (`square-open` / Maki `square-stroked`); OSM has no plus icon
 - EKF keeps the black ring on the 2D map (larger black circle behind the fill), same as 3D
