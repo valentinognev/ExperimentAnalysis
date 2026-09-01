@@ -4,6 +4,7 @@ from ea.manifest import load_manifest, save_manifest
 from ea.store import (
     add_drone,
     create_experiment,
+    delete_replay_drone,
     list_experiments,
     open_experiment,
     set_drone_count,
@@ -135,3 +136,103 @@ def test_set_drone_count_out_of_range_raises(tmp_path, monkeypatch):
         set_drone_count("Range", 0)
     with pytest.raises(ValueError):
         set_drone_count("Range", 10)
+
+
+def test_set_drone_count_drops_replay_children(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("TrimR")
+    set_drone_count("TrimR", 3)
+    manifest_path = tmp_path / "TrimR" / "manifest.json"
+    manifest = load_manifest(manifest_path)
+    manifest["drones"].append({
+        "id": "2_r1",
+        "kind": "replay",
+        "parent_id": 2,
+        "replay_index": 1,
+        "label": "D2_r1",
+        "sources": {"ulg": ["raw/drone_2_r1/replayed_r1.ulg"]},
+    })
+    manifest["drones"].append({
+        "id": "3_r1",
+        "kind": "replay",
+        "parent_id": 3,
+        "replay_index": 1,
+        "label": "D3_r1",
+        "sources": {"ulg": []},
+    })
+    save_manifest(manifest_path, manifest)
+    (tmp_path / "TrimR" / "raw" / "drone_3_r1").mkdir(parents=True)
+    (tmp_path / "TrimR" / "raw" / "drone_2_r1").mkdir(parents=True)
+    trimmed = set_drone_count("TrimR", 2)
+    ids = [d["id"] for d in trimmed["manifest"]["drones"]]
+    assert 3 not in ids and "3_r1" not in ids
+    assert "2_r1" in ids and 2 in ids
+    assert not (tmp_path / "TrimR" / "raw" / "drone_3_r1").exists()
+    assert (tmp_path / "TrimR" / "raw" / "drone_2_r1").is_dir()
+
+
+def test_delete_replay_drone_removes_row(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("DelR")
+    set_drone_count("DelR", 2)
+    manifest_path = tmp_path / "DelR" / "manifest.json"
+    manifest = load_manifest(manifest_path)
+    manifest["drones"].append({
+        "id": "2_r1",
+        "kind": "replay",
+        "parent_id": 2,
+        "replay_index": 1,
+        "label": "D2_r1",
+        "sources": {"ulg": []},
+    })
+    manifest["ui"]["visible_drone_ids"] = [2, "2_r1"]
+    save_manifest(manifest_path, manifest)
+    (tmp_path / "DelR" / "raw" / "drone_2_r1").mkdir(parents=True)
+    result = delete_replay_drone("DelR", "2_r1")
+    ids = [d["id"] for d in result["manifest"]["drones"]]
+    assert "2_r1" not in ids
+    assert 2 in ids
+    assert "2_r1" not in result["manifest"]["ui"]["visible_drone_ids"]
+    assert not (tmp_path / "DelR" / "raw" / "drone_2_r1").exists()
+
+
+def test_delete_physical_raises(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("DelP")
+    set_drone_count("DelP", 2)
+    with pytest.raises(ValueError, match="replay"):
+        delete_replay_drone("DelP", 2)
+
+
+def test_delete_replay_drone_strips_avatars_and_plots(tmp_path, monkeypatch):
+    monkeypatch.setenv("EA_EXPERIMENTS_DIR", str(tmp_path))
+    create_experiment("DelUI")
+    set_drone_count("DelUI", 2)
+    manifest_path = tmp_path / "DelUI" / "manifest.json"
+    manifest = load_manifest(manifest_path)
+    manifest["drones"].append({
+        "id": "2_r1",
+        "kind": "replay",
+        "parent_id": 2,
+        "replay_index": 1,
+        "label": "D2_r1",
+        "sources": {"ulg": []},
+    })
+    manifest["ui"]["avatars"] = {
+        "2": {"ekf_ned": True},
+        "2_r1": {"ekf_ned": True},
+    }
+    manifest["ui"]["plots"] = [
+        {"channels": ["2.ulog.vehicle_local_position.x"]},
+        {"channels": ["2_r1.ulog.vehicle_local_position.x"]},
+        {"channels": ["2.ulog.vehicle_attitude.q"]},
+    ]
+    save_manifest(manifest_path, manifest)
+    result = delete_replay_drone("DelUI", "2_r1")
+    ui = result["manifest"]["ui"]
+    assert "2_r1" not in ui["avatars"]
+    assert "2" in ui["avatars"]
+    assert ui["plots"] == [
+        {"channels": ["2.ulog.vehicle_local_position.x"]},
+        {"channels": ["2.ulog.vehicle_attitude.q"]},
+    ]

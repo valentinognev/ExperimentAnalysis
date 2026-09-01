@@ -1,6 +1,7 @@
 import shutil
 
 from ea.manifest import empty_manifest, load_manifest, save_manifest
+from ea.replay_id import is_replay_id, physical_id
 from ea.slug import slugify
 from paths import experiments_dir
 
@@ -95,12 +96,19 @@ def add_drone(slug: str, drone_id: int) -> dict:
     return result
 
 
-def _visible_id_kept(vid, count: int) -> bool:
-    if isinstance(vid, int):
-        return vid <= count
-    if isinstance(vid, str) and vid.isdigit():
-        return int(vid) <= count
-    return False
+def _keep_id(drone_id, count: int) -> bool:
+    pid = physical_id(drone_id)
+    return pid is not None and pid <= count
+
+
+def _rmtree_drone_dirs(path, drone_id) -> None:
+    folder = f"drone_{str(drone_id)}"
+    for rel in (
+        path / "raw" / folder,
+        path / "derived" / folder,
+        path / "derived" / "ha" / folder,
+    ):
+        shutil.rmtree(rel, ignore_errors=True)
 
 
 def set_drone_count(slug: str, count: int) -> dict:
@@ -115,17 +123,44 @@ def set_drone_count(slug: str, count: int) -> dict:
         if drone_id not in have:
             drones.append(default_drone(drone_id))
             have.add(drone_id)
-    removed = [d["id"] for d in drones if d["id"] > count]
-    manifest["drones"] = [d for d in drones if d["id"] <= count]
+    removed = [d["id"] for d in drones if not _keep_id(d["id"], count)]
+    manifest["drones"] = [d for d in drones if _keep_id(d["id"], count)]
     ui = manifest.setdefault("ui", {})
     visible = ui.get("visible_drone_ids", [])
-    ui["visible_drone_ids"] = [vid for vid in visible if _visible_id_kept(vid, count)]
+    ui["visible_drone_ids"] = [vid for vid in visible if _keep_id(vid, count)]
     for drone_id in removed:
-        for rel in (
-            path / "raw" / f"drone_{drone_id}",
-            path / "derived" / f"drone_{drone_id}",
-            path / "derived" / "ha" / f"drone_{drone_id}",
-        ):
-            shutil.rmtree(rel, ignore_errors=True)
+        _rmtree_drone_dirs(path, drone_id)
+    save_manifest(path / "manifest.json", manifest)
+    return {"slug": slug, "path": path, "manifest": manifest}
+
+
+def delete_replay_drone(slug: str, drone_id: object) -> dict:
+    if not is_replay_id(drone_id):
+        raise ValueError("not a replay id")
+    result = open_experiment(slug)
+    path = result["path"]
+    manifest = result["manifest"]
+    drones = list(manifest.get("drones", []))
+    if not any(d["id"] == drone_id for d in drones):
+        raise KeyError(drone_id)
+    manifest["drones"] = [d for d in drones if d["id"] != drone_id]
+    ui = manifest.setdefault("ui", {})
+    ui["visible_drone_ids"] = [
+        vid for vid in ui.get("visible_drone_ids", []) if vid != drone_id
+    ]
+    avatars = ui.get("avatars")
+    if isinstance(avatars, dict):
+        avatars.pop(drone_id, None)
+        avatars.pop(str(drone_id), None)
+    prefix = f"{drone_id}."
+    plots = ui.get("plots") or []
+    ui["plots"] = [
+        plot for plot in plots
+        if not any(
+            isinstance(ch, str) and ch.startswith(prefix)
+            for ch in (plot.get("channels") or [])
+        )
+    ]
+    _rmtree_drone_dirs(path, drone_id)
     save_manifest(path / "manifest.json", manifest)
     return {"slug": slug, "path": path, "manifest": manifest}
