@@ -1,0 +1,27 @@
+<parameters>
+  <parameter name="EKF2_HGT_REF" type="INT32">
+    <values>
+      <value code="0">Barometric pressure</value>
+      <value code="1">GPS</value>
+    </values>
+  </parameter>
+  <parameter name="EKF2_GPS_CTRL" type="INT32">
+    <bitmask>
+      <bit index="0">Lon/lat</bit>
+      <bit index="1">Altitude</bit>
+    </bitmask>
+  </parameter>
+  <parameter name="EKF2_BARO_CTRL" type="INT32" boolean="true">
+  </parameter>
+  <parameter name="EKF2_RNG_NOISE" type="FLOAT">
+    <short_desc>Range finder noise</short_desc>
+  </parameter>
+  <parameter name="BOTH_MASK" type="INT32" boolean="true">
+    <values>
+      <value code="0">Ignore me</value>
+    </values>
+    <bitmask>
+      <bit index="2">Win</bit>
+    </bitmask>
+  </parameter>
+</parameters>
