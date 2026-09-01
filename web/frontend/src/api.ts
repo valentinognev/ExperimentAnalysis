@@ -126,6 +126,15 @@ export function setDroneCount(
   });
 }
 
+export function deleteReplayDrone(
+  slug: string,
+  id: string,
+): Promise<ExperimentDetail> {
+  return json(`/api/experiments/${slug}/drones/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function pullDrone(
   slug: string,
   droneId: number,

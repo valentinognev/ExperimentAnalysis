@@ -14,6 +14,7 @@ vi.mock("../api", () => ({
   downloadMavlinkLog: vi.fn(),
   browseFile: vi.fn(),
   importPaths: vi.fn(),
+  deleteReplayDrone: vi.fn(),
 }));
 
 import {
@@ -25,6 +26,7 @@ import {
   downloadMavlinkLog,
   browseFile,
   importPaths,
+  deleteReplayDrone,
 } from "../api";
 
 describe("DroneList", () => {
@@ -37,6 +39,7 @@ describe("DroneList", () => {
     vi.mocked(downloadMavlinkLog).mockReset();
     vi.mocked(browseFile).mockReset();
     vi.mocked(importPaths).mockReset();
+    vi.mocked(deleteReplayDrone).mockReset();
   });
 
   afterEach(() => {
@@ -1256,6 +1259,124 @@ describe("DroneList", () => {
       "a_adapter_diag.log",
       "b_mavlink.txt",
     ]);
+  });
+
+  it("sources variant lists D2 and D2_r1; replay row has Delete, not SSH", () => {
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2", "2_r1"]}
+        physicalCount={2}
+        visible={new Set(["2", "2_r1"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        hosts={{ "2": "192.168.31.30" }}
+        summaries={{
+          "2_r1": {
+            ulg: "replayed_r1.ulg",
+            ulgOrigin: "",
+            date: "2026-08-25",
+            time: "17:05:30",
+            sm: [],
+            ha: [],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("D2")).toBeInTheDocument();
+    expect(screen.getByText("D2_r1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete D2_r1" })).toBeInTheDocument();
+
+    const replayRow = screen.getByText("D2_r1").closest("li");
+    expect(replayRow).toBeTruthy();
+    expect(within(replayRow as HTMLElement).queryByRole("button", { name: "SSH" })).not.toBeInTheDocument();
+    expect(within(replayRow as HTMLElement).queryByRole("button", { name: "Import" })).not.toBeInTheDocument();
+    expect(within(replayRow as HTMLElement).queryByRole("button", { name: "MAVLink" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("D2_r1 host")).not.toBeInTheDocument();
+    expect(replayRow).toHaveClass("pl-6");
+    expect(screen.getByLabelText("D2_r1 sources")).toHaveTextContent("replayed_r1.ulg");
+    expect(screen.getByLabelText("D2_r1 color")).toHaveStyle({
+      backgroundColor: "rgb(46, 161, 255)",
+    });
+  });
+
+  it("analysis variant has an independent D2_r1 visibility checkbox", async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    render(
+      <DroneList
+        variant="analysis"
+        droneIds={["2", "2_r1"]}
+        physicalCount={2}
+        visible={new Set(["2", "2_r1"])}
+        onToggle={onToggle}
+        slug="Baseball"
+        availableAvatars={{ "2_r1": ["ekf_ned"] }}
+        enabledAvatars={{ "2_r1": ["ekf_ned"] }}
+      />,
+    );
+
+    const replayVis = screen.getByRole("checkbox", { name: /^D2_r1$/ });
+    expect(replayVis).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "D2_r1 ekf" })).toBeChecked();
+
+    await user.click(screen.getByRole("checkbox", { name: /^D2$/ }));
+    expect(onToggle).toHaveBeenCalledWith("2", false);
+    expect(replayVis).toBeChecked();
+  });
+
+  it("confirms then DELETEs the replay drone and refreshes", async () => {
+    const user = userEvent.setup();
+    const onPulled = vi.fn();
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    vi.mocked(deleteReplayDrone).mockResolvedValue({
+      slug: "Baseball",
+      manifest: {},
+    });
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2", "2_r1"]}
+        physicalCount={2}
+        visible={new Set(["2", "2_r1"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        onPulled={onPulled}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Delete D2_r1" }));
+
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalled();
+      expect(deleteReplayDrone).toHaveBeenCalledWith("Baseball", "2_r1");
+      expect(onPulled).toHaveBeenCalled();
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("does not DELETE when the operator cancels confirm", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2", "2_r1"]}
+        physicalCount={2}
+        visible={new Set(["2", "2_r1"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        onPulled={() => {}}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Delete D2_r1" }));
+
+    expect(deleteReplayDrone).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it("analysis variant does not show source summaries", () => {

@@ -33,6 +33,7 @@ test("Baseball reconstruction in the UI", async ({ page }) => {
     "aria-selected",
     "true",
   );
+  await expect(page.getByRole("tab", { name: "Replay" })).toBeVisible();
   await expect(page.getByLabel("Experiment")).not.toHaveValue("");
 
   await setDroneCount(page, "4");

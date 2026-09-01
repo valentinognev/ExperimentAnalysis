@@ -24,6 +24,7 @@ import {
   getReplay,
   stopReplay,
   getReplaySeries,
+  deleteReplayDrone,
 } from "./api";
 
 describe("api", () => {
@@ -550,6 +551,21 @@ describe("api", () => {
     expect(fetch).toHaveBeenCalledWith(
       "/api/experiments/foo/replay/abc/series",
     );
+    expect(result).toEqual(body);
+  });
+
+  it("deleteReplayDrone DELETEs /api/experiments/{slug}/drones/{id}", async () => {
+    const body = { slug: "foo", manifest: { drones: [] } };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await deleteReplayDrone("foo", "2_r1");
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/drones/2_r1", {
+      method: "DELETE",
+    });
     expect(result).toEqual(body);
   });
 });

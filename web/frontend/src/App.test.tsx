@@ -27,6 +27,7 @@ vi.mock("./api", () => ({
   getReplay: vi.fn(),
   stopReplay: vi.fn(),
   getReplaySeries: vi.fn(),
+  deleteReplayDrone: vi.fn(),
 }));
 
 import {
@@ -158,6 +159,38 @@ describe("App analysis layout", () => {
     for (const [, body] of vi.mocked(patchManifest).mock.calls) {
       expect(JSON.stringify(body ?? {})).not.toMatch(/"skin"/);
     }
+  });
+
+  it("shows D2_r1 on Sources when the manifest has a replay drone", async () => {
+    vi.mocked(listExperiments).mockResolvedValue([
+      { slug: "foo", name: "Foo", drone_ids: ["1", "2", "2_r1"], missing: [] },
+    ]);
+    vi.mocked(openExperiment).mockResolvedValue({
+      slug: "foo",
+      manifest: {
+        name: "Foo",
+        drones: [
+          { id: 1 },
+          { id: 2, sources: { ulg: ["raw/drone_2/d2.ulg"] } },
+          {
+            id: "2_r1",
+            kind: "replay",
+            sources: { ulg: ["raw/drone_2_r1/replayed_r1.ulg"] },
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+    renderApp();
+    const picker = screen.getByRole("combobox", { name: "Experiment" });
+    await waitFor(() => {
+      expect(within(picker).getByRole("option", { name: "foo" })).toBeInTheDocument();
+    });
+    await user.selectOptions(picker, "foo");
+    await waitFor(() => {
+      expect(screen.getByText("D2_r1")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "Delete D2_r1" })).toBeInTheDocument();
   });
 
   it("shows Replay tabpanel when Replay is clicked", async () => {

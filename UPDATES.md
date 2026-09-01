@@ -1,7 +1,10 @@
 # Updates
 
-## 0.78.0 - Di_rj replay id helpers
+## 0.78.0 - Di_rj replay rows and Replay tab
 - `ea.replay_id` / `replayId.ts`: parse `2_r1` (parent + index), `physical_id`, monotonic `next_replay_index` (mixed int/string ids)
+- Replay workspace tab (Sources | Analysis | Replay) on the open experiment; still two processes (`:6400` / `:6473`)
+- Sources/Analysis list `Di_rj` after the parent (indent, `replayColor`, ULG summary, no host/Import/SSH/MAVLink); Delete confirms then `DELETE /api/experiments/{slug}/drones/{id}`
+- Docker bind `/home/valentin/RL/CatSwarm/ExperimentAnalysis:/home/valentin/ExperimentAnalysis`; recreate `px4-noetic-firm`; do not bind 6500/6573
 
 ## 0.77.0 - Map trail dashes and 2D marker legend
 - 2D/3D (Plotly and Cesium) trails use the same color-collision dashes as extra plots: solid when unique, distinct dash per same-color trail

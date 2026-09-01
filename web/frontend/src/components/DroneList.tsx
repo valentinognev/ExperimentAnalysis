@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   browseFile,
   copySshLogs,
+  deleteReplayDrone,
   downloadMavlinkLog,
   importPaths,
   listMavlinkLogs,
@@ -9,10 +10,12 @@ import {
   rebuild,
   type MavlinkTransport,
 } from "../api";
+import { orderedDroneIds } from "../droneRows";
+import { isReplayId } from "../replayId";
 import { mavlinkLogLabel, type MavlinkLogEntry } from "../mavlinkLogs";
 import { sshLogLabel, type SshLogEntry } from "../sshLogs";
 import { transferProgressLabel, type TransferProgress } from "../transferProgress";
-import { droneColor } from "../droneColor";
+import { droneColor, replayColor } from "../droneColor";
 import { type DroneSummary } from "../droneSummary";
 import { preselectKeys, rankByUlg, stampMs } from "../logStamp";
 import { avatarShortLabel, type AvatarKey } from "../avatars";
@@ -139,6 +142,7 @@ type Props = {
   availableAvatars?: Record<string, AvatarKey[]>;
   enabledAvatars?: Record<string, AvatarKey[]>;
   onAvatarToggle?: (id: string, key: AvatarKey, checked: boolean) => void;
+  physicalCount?: number;
 };
 
 export default function DroneList({
@@ -155,6 +159,7 @@ export default function DroneList({
   availableAvatars,
   enabledAvatars,
   onAvatarToggle,
+  physicalCount,
 }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>(hosts);
   const [pulledOk, setPulledOk] = useState<Record<string, boolean>>({});
@@ -173,7 +178,12 @@ export default function DroneList({
     setDraft(hosts);
   }, [hosts]);
 
-  if (droneIds.length === 0) return null;
+  const displayIds =
+    physicalCount != null && physicalCount >= 1
+      ? orderedDroneIds(droneIds, physicalCount)
+      : droneIds;
+
+  if (displayIds.length === 0) return null;
 
   function clearError(droneId: string) {
     setRowError((prev) => {
@@ -522,16 +532,40 @@ export default function DroneList({
     onHostCommit?.(id, value);
   }
 
+  async function handleDeleteReplay(id: string) {
+    if (!slug) return;
+    if (!window.confirm(`Delete D${id}?`)) return;
+    setBusyId(id);
+    clearError(id);
+    try {
+      await deleteReplayDrone(slug, id);
+      onPulled?.();
+    } catch (e: unknown) {
+      setRowError((prev) => ({
+        ...prev,
+        [id]: e instanceof Error ? e.message : String(e),
+      }));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-1 px-4 py-2 text-sm">
       <span className="text-zinc-400">Drones</span>
       <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-        {droneIds.map((id) => {
+        {displayIds.map((id) => {
+          const replay = isReplayId(id);
           const ready = Boolean(sshReady[id] || pulledOk[id]);
           const note = rowError[id];
           const summary = summaries[id] ?? EMPTY_SUMMARY;
           return (
-            <li key={id} className="flex flex-col gap-1">
+            <li
+              key={id}
+              className={
+                replay ? "flex flex-col gap-1 pl-6" : "flex flex-col gap-1"
+              }
+            >
               <div className="flex flex-wrap items-center gap-1.5">
                 {variant === "analysis" ? (
                   <label className="flex items-center gap-1.5">
@@ -543,7 +577,9 @@ export default function DroneList({
                     <span>D{id}</span>
                   </label>
                 ) : (
-                  <span className="w-8 shrink-0">D{id}</span>
+                  <span className={replay ? "w-14 shrink-0" : "w-8 shrink-0"}>
+                    D{id}
+                  </span>
                 )}
                 {variant === "analysis" &&
                   (availableAvatars?.[id] ?? []).map((key) => {
@@ -566,7 +602,25 @@ export default function DroneList({
                       </label>
                     );
                   })}
-                {variant === "sources" && (
+                {variant === "sources" && replay && (
+                  <>
+                    <button
+                      type="button"
+                      className={BTN}
+                      disabled={!slug || busyId === id}
+                      aria-label={`Delete D${id}`}
+                      onClick={() => handleDeleteReplay(id)}
+                    >
+                      Delete
+                    </button>
+                    {note ? (
+                      <span className="flex-1 text-xs text-red-400" role="status">
+                        {note}
+                      </span>
+                    ) : null}
+                  </>
+                )}
+                {variant === "sources" && !replay && (
                   <>
                     <input
                       className="w-32 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs"
@@ -651,7 +705,9 @@ export default function DroneList({
                     <span
                       aria-label={`D${id} color`}
                       className="inline-block h-3 w-3 rounded-sm border border-zinc-600"
-                      style={{ backgroundColor: droneColor(id) }}
+                      style={{
+                        backgroundColor: replay ? replayColor(id) : droneColor(id),
+                      }}
                     />
                   </div>
                   <div>ULG {summary.ulg}</div>

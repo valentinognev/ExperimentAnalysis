@@ -32,14 +32,39 @@ import { usePose } from "./usePose";
 import { bannerText } from "./unsynced";
 import {
   droneCountFromIds,
-  droneRowsForCount,
-  droneRowsFromIds,
   filterVisible,
   idsChanged,
   mergeDroneIds,
 } from "./visibleDrones";
+import { orderedDroneIds } from "./droneRows";
+import { physicalId } from "./replayId";
 
 const View3DCesium = lazy(() => import("./components/View3DCesium"));
+
+function idsFromManifestDrones(drones: unknown): string[] {
+  if (!Array.isArray(drones)) return [];
+  const out: string[] = [];
+  for (const raw of drones) {
+    if (!raw || typeof raw !== "object") continue;
+    const id = (raw as { id?: unknown }).id;
+    if (id === undefined || id === null) continue;
+    out.push(String(id));
+  }
+  return out;
+}
+
+function rowsForPhysicalCount(ids: string[], physicalCount: number): string[] {
+  const cap = physicalCount > 0 ? physicalCount : droneCountFromIds(ids);
+  if (cap < 1) return [];
+  return orderedDroneIds(ids, cap);
+}
+
+function idFitsCount(id: string, cap: number): boolean {
+  const phys = physicalId(id);
+  if (phys === null) return false;
+  if (cap < 1) return true;
+  return phys >= 1 && phys <= cap;
+}
 
 export default function App() {
   const { skin } = useSkin();
@@ -135,6 +160,8 @@ export default function App() {
         if (cancelled) return;
         const exp = list.find((e) => e.slug === slug);
         const listed = (exp?.drone_ids ?? []).map(String);
+        const manifestIds = idsFromManifestDrones(detail.manifest.drones);
+        const combined = mergeDroneIds(listed, manifestIds);
         const ui = (detail.manifest.ui ?? {}) as {
           visible_drone_ids?: (string | number)[];
           plots?: PlotDef[];
@@ -153,7 +180,8 @@ export default function App() {
         setSummaries(summariesFromManifest(detail.manifest.drones));
 
         if (slugChanged) {
-          const rows = droneRowsFromIds(listed);
+          const cap = droneCountFromIds(combined);
+          const rows = rowsForPhysicalCount(combined, cap);
           setDroneIds(rows);
           const saved = ui.visible_drone_ids ?? [];
           setVisibleIds(
@@ -176,19 +204,24 @@ export default function App() {
           setSelectedMarkerIds([]);
         } else {
           setDroneIds((prev) => {
-            const listedRows = droneRowsFromIds(listed);
-            const listedMax = droneCountFromIds(listed);
+            const listedMax = droneCountFromIds(combined);
             const prevMax = droneCountFromIds(prev);
-            if (listedMax > 0 && listedMax < prevMax) {
-              return idsChanged(prev, listedRows) ? listedRows : prev;
-            }
-            const merged = droneRowsFromIds(mergeDroneIds(listed, prev));
+            const cap =
+              listedMax > 0 && listedMax < prevMax
+                ? listedMax
+                : Math.max(listedMax, prevMax);
+            const merged = rowsForPhysicalCount(
+              mergeDroneIds(combined, prev),
+              cap,
+            );
             return idsChanged(prev, merged) ? merged : prev;
           });
           setVisibleIds((prev) => {
             const next = new Set(prev);
             let changed = false;
-            for (const id of droneRowsFromIds(listed)) {
+            const cap = droneCountFromIds(combined);
+            const rows = rowsForPhysicalCount(combined, cap);
+            for (const id of rows) {
               if (!prev.has(id)) {
                 next.add(id);
                 changed = true;
@@ -303,14 +336,11 @@ export default function App() {
     const poseIds = Object.keys(pose.drones);
     setDroneIds((prev) => {
       const cap = droneCountFromIds(prev);
-      const allowed =
-        cap < 1
-          ? poseIds
-          : poseIds.filter((id) => {
-              const n = Number(id);
-              return Number.isInteger(n) && n >= 1 && n <= cap;
-            });
-      const merged = droneRowsFromIds(mergeDroneIds(prev, allowed));
+      const allowed = poseIds.filter((id) => idFitsCount(id, cap));
+      const merged = rowsForPhysicalCount(
+        mergeDroneIds(prev, allowed),
+        cap,
+      );
       return idsChanged(prev, merged) ? merged : prev;
     });
     setVisibleIds((prev) => {
@@ -318,8 +348,7 @@ export default function App() {
       let changed = false;
       const cap = droneCountFromIds([...prev]);
       for (const id of poseIds) {
-        const n = Number(id);
-        if (cap >= 1 && Number.isInteger(n) && n > cap) continue;
+        if (!idFitsCount(id, cap) && cap >= 1) continue;
         if (!prev.has(id)) {
           next.add(id);
           changed = true;
@@ -358,15 +387,17 @@ export default function App() {
   );
 
   const handleDroneCountChange = useCallback((n: number) => {
-    const want = droneRowsForCount(n);
-    setDroneIds((prev) => (idsChanged(prev, want) ? want : prev));
+    setDroneIds((prev) => {
+      const next = orderedDroneIds(prev, n);
+      return idsChanged(prev, next) ? next : prev;
+    });
     setVisibleIds((prev) => {
-      const keep = new Set(want);
       const next = new Set<string>();
       for (const id of prev) {
-        if (keep.has(id)) next.add(id);
+        if (idFitsCount(id, n)) next.add(id);
       }
-      for (const id of want) {
+      for (let k = 1; k <= n; k++) {
+        const id = String(k);
         if (!next.has(id)) next.add(id);
       }
       if (next.size === prev.size) {
@@ -517,6 +548,7 @@ export default function App() {
           <DroneList
             variant="sources"
             droneIds={droneIds}
+            physicalCount={droneCountFromIds(droneIds)}
             visible={visibleIds}
             onToggle={handleDroneToggle}
             slug={slug}
@@ -544,6 +576,7 @@ export default function App() {
               <DroneList
                 variant="analysis"
                 droneIds={droneIds}
+                physicalCount={droneCountFromIds(droneIds)}
                 visible={visibleIds}
                 onToggle={handleDroneToggle}
                 slug={slug}
