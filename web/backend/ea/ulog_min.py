@@ -37,6 +37,7 @@ _TOPIC_FIELDS: dict[str, list[str]] = {
     "vehicle_gps_position": ["timestamp", "lat", "lon", "alt"],
     "vehicle_global_position": ["timestamp", "lat", "lon", "alt"],
     "estimator_status": ["timestamp", "x"],
+    "estimator_innovations": ["timestamp", "x"],
 }
 
 
