@@ -1,10 +1,12 @@
-export type WorkspaceTab = "sources" | "analysis";
+export type WorkspaceTab = "sources" | "analysis" | "replay";
 export type WorkspaceAction = "import" | "pull" | "rebuild";
 
 export const DEFAULT_TAB: WorkspaceTab = "sources";
 
 export function tabLabel(tab: WorkspaceTab): string {
-  return tab === "sources" ? "Sources" : "Analysis";
+  if (tab === "sources") return "Sources";
+  if (tab === "analysis") return "Analysis";
+  return "Replay";
 }
 
 /** Tabs change only when the operator clicks them. */

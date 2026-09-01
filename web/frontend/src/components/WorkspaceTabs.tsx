@@ -1,6 +1,6 @@
 import { tabLabel, type WorkspaceTab } from "../workspaceTab";
 
-const TABS: WorkspaceTab[] = ["sources", "analysis"];
+const TABS: WorkspaceTab[] = ["sources", "analysis", "replay"];
 
 type Props = {
   tab: WorkspaceTab;

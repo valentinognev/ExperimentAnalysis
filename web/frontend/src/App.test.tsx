@@ -154,5 +154,14 @@ describe("App analysis layout", () => {
       expect(JSON.stringify(body ?? {})).not.toMatch(/"skin"/);
     }
   });
+
+  it("shows Replay tabpanel when Replay is clicked", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole("tab", { name: "Replay" }));
+    const panel = await screen.findByRole("tabpanel", { name: /replay/i });
+    expect(panel).toBeInTheDocument();
+    expect(within(panel).getByText(/Open an experiment/)).toBeInTheDocument();
+  });
 });
 

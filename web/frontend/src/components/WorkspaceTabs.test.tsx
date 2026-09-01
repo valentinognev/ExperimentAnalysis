@@ -10,13 +10,15 @@ describe("WorkspaceTabs", () => {
     cleanup();
   });
 
-  it("renders Sources and Analysis tabs with Sources selected", () => {
+  it("renders Sources, Analysis, and Replay tabs with Sources selected", () => {
     render(<WorkspaceTabs tab="sources" onTabChange={() => {}} />);
 
     const sources = screen.getByRole("tab", { name: "Sources" });
     const analysis = screen.getByRole("tab", { name: "Analysis" });
+    const replay = screen.getByRole("tab", { name: "Replay" });
     expect(sources).toHaveAttribute("aria-selected", "true");
     expect(analysis).toHaveAttribute("aria-selected", "false");
+    expect(replay).toHaveAttribute("aria-selected", "false");
   });
 
   it("notifies when Analysis is clicked", async () => {
@@ -26,5 +28,14 @@ describe("WorkspaceTabs", () => {
 
     await user.click(screen.getByRole("tab", { name: "Analysis" }));
     expect(onTabChange).toHaveBeenCalledWith("analysis");
+  });
+
+  it("notifies when Replay is clicked", async () => {
+    const onTabChange = vi.fn();
+    const user = userEvent.setup();
+    render(<WorkspaceTabs tab="sources" onTabChange={onTabChange} />);
+
+    await user.click(screen.getByRole("tab", { name: "Replay" }));
+    expect(onTabChange).toHaveBeenCalledWith("replay");
   });
 });

@@ -663,6 +663,19 @@ export default function App() {
           )}
         </div>
       )}
+      {tab === "replay" && (
+        <div
+          role="tabpanel"
+          id="workspace-panel-replay"
+          aria-labelledby="workspace-tab-replay"
+        >
+          {!slug ? (
+            <p className="px-4 py-8 text-sm text-zinc-400">
+              Open an experiment on the Sources tab to replay.
+            </p>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
