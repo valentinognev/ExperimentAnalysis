@@ -2,10 +2,17 @@ import meta from "./paramMeta.json";
 
 export type EnumOption = { value: number; label: string };
 export type Bit = { index: number; label: string };
-export type EnumMeta = { kind: "enum"; options: EnumOption[] };
-export type BitmaskMeta = { kind: "bitmask"; bits: Bit[] };
-export type BooleanMeta = { kind: "boolean" };
-export type ParamMeta = EnumMeta | BitmaskMeta | BooleanMeta;
+export type EnumMeta = { kind: "enum"; options: EnumOption[]; unit?: string };
+export type BitmaskMeta = { kind: "bitmask"; bits: Bit[]; unit?: string };
+export type BooleanMeta = { kind: "boolean"; unit?: string };
+export type NumericMeta = { unit: string };
+export type ParamMeta = EnumMeta | BitmaskMeta | BooleanMeta | NumericMeta;
+
+export function paramKind(
+  meta: ParamMeta | undefined,
+): "enum" | "bitmask" | "boolean" | undefined {
+  return meta && "kind" in meta ? meta.kind : undefined;
+}
 
 type ParamMetaMap = Record<string, ParamMeta>;
 

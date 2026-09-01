@@ -8,6 +8,14 @@ from pathlib import Path
 DEFAULT_QGC_META = Path("/home/valentin/.config/QGroundControl/ParameterFactMetaData.json")
 
 
+def _param_unit(param: ET.Element) -> str | None:
+    el = param.find("unit")
+    if el is None:
+        return None
+    text = (el.text or "").strip()
+    return text or None
+
+
 def parse_param_meta(xml: str | Path) -> dict[str, dict]:
     xml_text = xml.read_text(encoding="utf-8") if isinstance(xml, Path) else xml
     root = ET.fromstring(xml_text)
@@ -18,6 +26,7 @@ def parse_param_meta(xml: str | Path) -> dict[str, dict]:
         if not name:
             continue
 
+        entry: dict | None = None
         bitmask_el = param.find("bitmask")
         if bitmask_el is not None:
             bits = []
@@ -27,25 +36,32 @@ def parse_param_meta(xml: str | Path) -> dict[str, dict]:
                     continue
                 bits.append({"index": int(index), "label": (bit.text or "").strip()})
             if bits:
-                meta[name] = {"kind": "bitmask", "bits": bits}
-                continue
+                entry = {"kind": "bitmask", "bits": bits}
 
-        values_el = param.find("values")
-        if values_el is not None:
-            options = []
-            for value in values_el.findall("value"):
-                code = value.get("code")
-                if code is None:
-                    continue
-                options.append(
-                    {"value": int(float(code)), "label": (value.text or "").strip()}
-                )
-            if options:
-                meta[name] = {"kind": "enum", "options": options}
-                continue
+        if entry is None:
+            values_el = param.find("values")
+            if values_el is not None:
+                options = []
+                for value in values_el.findall("value"):
+                    code = value.get("code")
+                    if code is None:
+                        continue
+                    options.append(
+                        {"value": int(float(code)), "label": (value.text or "").strip()}
+                    )
+                if options:
+                    entry = {"kind": "enum", "options": options}
 
-        if param.get("boolean") == "true":
-            meta[name] = {"kind": "boolean"}
+        if entry is None and param.get("boolean") == "true":
+            entry = {"kind": "boolean"}
+
+        unit = _param_unit(param)
+        if entry is None and unit:
+            entry = {}
+        if entry is not None and unit:
+            entry["unit"] = unit
+        if entry:
+            meta[name] = entry
 
     return meta
 

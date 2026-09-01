@@ -10,6 +10,7 @@ def test_parse_enum_bitmask_boolean_and_omit_plain():
     meta = parse_param_meta(FIXTURE)
     assert meta["EKF2_HGT_REF"] == {
         "kind": "enum",
+        "unit": "m",
         "options": [
             {"value": 0, "label": "Barometric pressure"},
             {"value": 1, "label": "GPS"},
@@ -23,7 +24,8 @@ def test_parse_enum_bitmask_boolean_and_omit_plain():
         ],
     }
     assert meta["EKF2_BARO_CTRL"] == {"kind": "boolean"}
-    assert "EKF2_RNG_NOISE" not in meta
+    assert meta["EKF2_RNG_NOISE"] == {"unit": "m"}
+    assert "EKF2_EMPTY_UNIT" not in meta
 
 
 def test_bitmask_wins_over_values_and_boolean():

@@ -1,5 +1,6 @@
 <parameters>
   <parameter name="EKF2_HGT_REF" type="INT32">
+    <unit>m</unit>
     <values>
       <value code="0">Barometric pressure</value>
       <value code="1">GPS</value>
@@ -15,6 +16,10 @@
   </parameter>
   <parameter name="EKF2_RNG_NOISE" type="FLOAT">
     <short_desc>Range finder noise</short_desc>
+    <unit>m</unit>
+  </parameter>
+  <parameter name="EKF2_EMPTY_UNIT" type="FLOAT">
+    <unit></unit>
   </parameter>
   <parameter name="BOTH_MASK" type="INT32" boolean="true">
     <values>

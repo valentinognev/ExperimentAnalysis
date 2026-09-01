@@ -275,6 +275,9 @@
   "ATT_ACC_COMP": {
     "kind": "boolean"
   },
+  "ATT_BIAS_MAX": {
+    "unit": "rad/s"
+  },
   "ATT_EN": {
     "kind": "boolean"
   },
@@ -295,8 +298,14 @@
       }
     ]
   },
+  "ATT_MAG_DECL": {
+    "unit": "deg"
+  },
   "ATT_MAG_DECL_A": {
     "kind": "boolean"
+  },
+  "BAT1_CAPACITY": {
+    "unit": "mAh"
   },
   "BAT1_N_CELLS": {
     "kind": "enum",
@@ -371,6 +380,9 @@
       }
     ]
   },
+  "BAT1_R_INTERNAL": {
+    "unit": "Ohm"
+  },
   "BAT1_SOURCE": {
     "kind": "enum",
     "options": [
@@ -391,6 +403,15 @@
         "value": 2
       }
     ]
+  },
+  "BAT1_V_CHARGED": {
+    "unit": "V"
+  },
+  "BAT1_V_EMPTY": {
+    "unit": "V"
+  },
+  "BAT2_CAPACITY": {
+    "unit": "mAh"
   },
   "BAT2_N_CELLS": {
     "kind": "enum",
@@ -465,6 +486,9 @@
       }
     ]
   },
+  "BAT2_R_INTERNAL": {
+    "unit": "Ohm"
+  },
   "BAT2_SOURCE": {
     "kind": "enum",
     "options": [
@@ -485,6 +509,15 @@
         "value": 2
       }
     ]
+  },
+  "BAT2_V_CHARGED": {
+    "unit": "V"
+  },
+  "BAT2_V_EMPTY": {
+    "unit": "V"
+  },
+  "BAT3_CAPACITY": {
+    "unit": "mAh"
   },
   "BAT3_N_CELLS": {
     "kind": "enum",
@@ -559,6 +592,9 @@
       }
     ]
   },
+  "BAT3_R_INTERNAL": {
+    "unit": "Ohm"
+  },
   "BAT3_SOURCE": {
     "kind": "enum",
     "options": [
@@ -579,6 +615,24 @@
         "value": 2
       }
     ]
+  },
+  "BAT3_V_CHARGED": {
+    "unit": "V"
+  },
+  "BAT3_V_EMPTY": {
+    "unit": "V"
+  },
+  "BAT_AVRG_CURRENT": {
+    "unit": "A"
+  },
+  "BAT_CRIT_THR": {
+    "unit": "norm"
+  },
+  "BAT_EMERGEN_THR": {
+    "unit": "norm"
+  },
+  "BAT_LOW_THR": {
+    "unit": "norm"
   },
   "BMM350_AVG": {
     "kind": "enum",
@@ -848,6 +902,15 @@
       }
     ]
   },
+  "CAL_ACC0_XOFF": {
+    "unit": "m/s^2"
+  },
+  "CAL_ACC0_YOFF": {
+    "unit": "m/s^2"
+  },
+  "CAL_ACC0_ZOFF": {
+    "unit": "m/s^2"
+  },
   "CAL_ACC1_PRIO": {
     "kind": "enum",
     "options": [
@@ -1053,6 +1116,15 @@
         "value": 40
       }
     ]
+  },
+  "CAL_ACC1_XOFF": {
+    "unit": "m/s^2"
+  },
+  "CAL_ACC1_YOFF": {
+    "unit": "m/s^2"
+  },
+  "CAL_ACC1_ZOFF": {
+    "unit": "m/s^2"
   },
   "CAL_ACC2_PRIO": {
     "kind": "enum",
@@ -1260,6 +1332,15 @@
       }
     ]
   },
+  "CAL_ACC2_XOFF": {
+    "unit": "m/s^2"
+  },
+  "CAL_ACC2_YOFF": {
+    "unit": "m/s^2"
+  },
+  "CAL_ACC2_ZOFF": {
+    "unit": "m/s^2"
+  },
   "CAL_ACC3_PRIO": {
     "kind": "enum",
     "options": [
@@ -1466,6 +1547,15 @@
       }
     ]
   },
+  "CAL_ACC3_XOFF": {
+    "unit": "m/s^2"
+  },
+  "CAL_ACC3_YOFF": {
+    "unit": "m/s^2"
+  },
+  "CAL_ACC3_ZOFF": {
+    "unit": "m/s^2"
+  },
   "CAL_AIR_CMODEL": {
     "kind": "enum",
     "options": [
@@ -1482,6 +1572,12 @@
         "value": 2
       }
     ]
+  },
+  "CAL_AIR_TUBED_MM": {
+    "unit": "mm"
+  },
+  "CAL_AIR_TUBELEN": {
+    "unit": "m"
   },
   "CAL_BARO0_PRIO": {
     "kind": "enum",
@@ -1821,6 +1917,15 @@
       }
     ]
   },
+  "CAL_GYRO0_XOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_GYRO0_YOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_GYRO0_ZOFF": {
+    "unit": "rad/s"
+  },
   "CAL_GYRO1_PRIO": {
     "kind": "enum",
     "options": [
@@ -2026,6 +2131,15 @@
         "value": 40
       }
     ]
+  },
+  "CAL_GYRO1_XOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_GYRO1_YOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_GYRO1_ZOFF": {
+    "unit": "rad/s"
   },
   "CAL_GYRO2_PRIO": {
     "kind": "enum",
@@ -2233,6 +2347,15 @@
       }
     ]
   },
+  "CAL_GYRO2_XOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_GYRO2_YOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_GYRO2_ZOFF": {
+    "unit": "rad/s"
+  },
   "CAL_GYRO3_PRIO": {
     "kind": "enum",
     "options": [
@@ -2439,6 +2562,18 @@
       }
     ]
   },
+  "CAL_GYRO3_XOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_GYRO3_YOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_GYRO3_ZOFF": {
+    "unit": "rad/s"
+  },
+  "CAL_MAG0_PITCH": {
+    "unit": "deg"
+  },
   "CAL_MAG0_PRIO": {
     "kind": "enum",
     "options": [
@@ -2471,6 +2606,9 @@
         "value": 100
       }
     ]
+  },
+  "CAL_MAG0_ROLL": {
+    "unit": "deg"
   },
   "CAL_MAG0_ROT": {
     "kind": "enum",
@@ -2649,6 +2787,21 @@
       }
     ]
   },
+  "CAL_MAG0_XOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG0_YAW": {
+    "unit": "deg"
+  },
+  "CAL_MAG0_YOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG0_ZOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG1_PITCH": {
+    "unit": "deg"
+  },
   "CAL_MAG1_PRIO": {
     "kind": "enum",
     "options": [
@@ -2681,6 +2834,9 @@
         "value": 100
       }
     ]
+  },
+  "CAL_MAG1_ROLL": {
+    "unit": "deg"
   },
   "CAL_MAG1_ROT": {
     "kind": "enum",
@@ -2859,6 +3015,21 @@
       }
     ]
   },
+  "CAL_MAG1_XOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG1_YAW": {
+    "unit": "deg"
+  },
+  "CAL_MAG1_YOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG1_ZOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG2_PITCH": {
+    "unit": "deg"
+  },
   "CAL_MAG2_PRIO": {
     "kind": "enum",
     "options": [
@@ -2891,6 +3062,9 @@
         "value": 100
       }
     ]
+  },
+  "CAL_MAG2_ROLL": {
+    "unit": "deg"
   },
   "CAL_MAG2_ROT": {
     "kind": "enum",
@@ -3069,6 +3243,21 @@
       }
     ]
   },
+  "CAL_MAG2_XOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG2_YAW": {
+    "unit": "deg"
+  },
+  "CAL_MAG2_YOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG2_ZOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG3_PITCH": {
+    "unit": "deg"
+  },
   "CAL_MAG3_PRIO": {
     "kind": "enum",
     "options": [
@@ -3101,6 +3290,9 @@
         "value": 100
       }
     ]
+  },
+  "CAL_MAG3_ROLL": {
+    "unit": "deg"
   },
   "CAL_MAG3_ROT": {
     "kind": "enum",
@@ -3279,6 +3471,18 @@
       }
     ]
   },
+  "CAL_MAG3_XOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG3_YAW": {
+    "unit": "deg"
+  },
+  "CAL_MAG3_YOFF": {
+    "unit": "gauss"
+  },
+  "CAL_MAG3_ZOFF": {
+    "unit": "gauss"
+  },
   "CAL_MAG_COMP_TYP": {
     "kind": "enum",
     "options": [
@@ -3385,6 +3589,9 @@
   "CA_HELI_YAW_CCW": {
     "kind": "boolean"
   },
+  "CA_MAX_SVO_THROW": {
+    "unit": "deg"
+  },
   "CA_METHOD": {
     "kind": "enum",
     "options": [
@@ -3401,6 +3608,51 @@
         "value": 2
       }
     ]
+  },
+  "CA_R0_SLEW": {
+    "unit": "s"
+  },
+  "CA_R10_SLEW": {
+    "unit": "s"
+  },
+  "CA_R11_SLEW": {
+    "unit": "s"
+  },
+  "CA_R1_SLEW": {
+    "unit": "s"
+  },
+  "CA_R2_SLEW": {
+    "unit": "s"
+  },
+  "CA_R3_SLEW": {
+    "unit": "s"
+  },
+  "CA_R4_SLEW": {
+    "unit": "s"
+  },
+  "CA_R5_SLEW": {
+    "unit": "s"
+  },
+  "CA_R6_SLEW": {
+    "unit": "s"
+  },
+  "CA_R7_SLEW": {
+    "unit": "s"
+  },
+  "CA_R8_SLEW": {
+    "unit": "s"
+  },
+  "CA_R9_SLEW": {
+    "unit": "s"
+  },
+  "CA_ROTOR0_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR0_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR0_PZ": {
+    "unit": "m"
   },
   "CA_ROTOR0_TILT": {
     "kind": "enum",
@@ -3427,6 +3679,15 @@
       }
     ]
   },
+  "CA_ROTOR10_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR10_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR10_PZ": {
+    "unit": "m"
+  },
   "CA_ROTOR10_TILT": {
     "kind": "enum",
     "options": [
@@ -3451,6 +3712,15 @@
         "value": 4
       }
     ]
+  },
+  "CA_ROTOR11_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR11_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR11_PZ": {
+    "unit": "m"
   },
   "CA_ROTOR11_TILT": {
     "kind": "enum",
@@ -3477,6 +3747,15 @@
       }
     ]
   },
+  "CA_ROTOR1_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR1_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR1_PZ": {
+    "unit": "m"
+  },
   "CA_ROTOR1_TILT": {
     "kind": "enum",
     "options": [
@@ -3501,6 +3780,15 @@
         "value": 4
       }
     ]
+  },
+  "CA_ROTOR2_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR2_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR2_PZ": {
+    "unit": "m"
   },
   "CA_ROTOR2_TILT": {
     "kind": "enum",
@@ -3527,6 +3815,15 @@
       }
     ]
   },
+  "CA_ROTOR3_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR3_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR3_PZ": {
+    "unit": "m"
+  },
   "CA_ROTOR3_TILT": {
     "kind": "enum",
     "options": [
@@ -3551,6 +3848,15 @@
         "value": 4
       }
     ]
+  },
+  "CA_ROTOR4_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR4_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR4_PZ": {
+    "unit": "m"
   },
   "CA_ROTOR4_TILT": {
     "kind": "enum",
@@ -3577,6 +3883,15 @@
       }
     ]
   },
+  "CA_ROTOR5_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR5_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR5_PZ": {
+    "unit": "m"
+  },
   "CA_ROTOR5_TILT": {
     "kind": "enum",
     "options": [
@@ -3601,6 +3916,15 @@
         "value": 4
       }
     ]
+  },
+  "CA_ROTOR6_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR6_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR6_PZ": {
+    "unit": "m"
   },
   "CA_ROTOR6_TILT": {
     "kind": "enum",
@@ -3627,6 +3951,15 @@
       }
     ]
   },
+  "CA_ROTOR7_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR7_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR7_PZ": {
+    "unit": "m"
+  },
   "CA_ROTOR7_TILT": {
     "kind": "enum",
     "options": [
@@ -3652,6 +3985,15 @@
       }
     ]
   },
+  "CA_ROTOR8_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR8_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR8_PZ": {
+    "unit": "m"
+  },
   "CA_ROTOR8_TILT": {
     "kind": "enum",
     "options": [
@@ -3676,6 +4018,15 @@
         "value": 4
       }
     ]
+  },
+  "CA_ROTOR9_PX": {
+    "unit": "m"
+  },
+  "CA_ROTOR9_PY": {
+    "unit": "m"
+  },
+  "CA_ROTOR9_PZ": {
+    "unit": "m"
   },
   "CA_ROTOR9_TILT": {
     "kind": "enum",
@@ -3812,6 +4163,18 @@
     ],
     "kind": "bitmask"
   },
+  "CA_SP0_ANG0": {
+    "unit": "deg"
+  },
+  "CA_SP0_ANG1": {
+    "unit": "deg"
+  },
+  "CA_SP0_ANG2": {
+    "unit": "deg"
+  },
+  "CA_SP0_ANG3": {
+    "unit": "deg"
+  },
   "CA_SP0_COUNT": {
     "kind": "enum",
     "options": [
@@ -3828,6 +4191,30 @@
         "value": 4
       }
     ]
+  },
+  "CA_SV0_SLEW": {
+    "unit": "s"
+  },
+  "CA_SV1_SLEW": {
+    "unit": "s"
+  },
+  "CA_SV2_SLEW": {
+    "unit": "s"
+  },
+  "CA_SV3_SLEW": {
+    "unit": "s"
+  },
+  "CA_SV4_SLEW": {
+    "unit": "s"
+  },
+  "CA_SV5_SLEW": {
+    "unit": "s"
+  },
+  "CA_SV6_SLEW": {
+    "unit": "s"
+  },
+  "CA_SV7_SLEW": {
+    "unit": "s"
   },
   "CA_SV_CS0_TYPE": {
     "kind": "enum",
@@ -4539,6 +4926,12 @@
       }
     ]
   },
+  "CA_SV_TL0_MAXA": {
+    "unit": "deg"
+  },
+  "CA_SV_TL0_MINA": {
+    "unit": "deg"
+  },
   "CA_SV_TL0_TD": {
     "kind": "enum",
     "options": [
@@ -4572,6 +4965,12 @@
         "value": 3
       }
     ]
+  },
+  "CA_SV_TL1_MAXA": {
+    "unit": "deg"
+  },
+  "CA_SV_TL1_MINA": {
+    "unit": "deg"
   },
   "CA_SV_TL1_TD": {
     "kind": "enum",
@@ -4607,6 +5006,12 @@
       }
     ]
   },
+  "CA_SV_TL2_MAXA": {
+    "unit": "deg"
+  },
+  "CA_SV_TL2_MINA": {
+    "unit": "deg"
+  },
   "CA_SV_TL2_TD": {
     "kind": "enum",
     "options": [
@@ -4640,6 +5045,12 @@
         "value": 3
       }
     ]
+  },
+  "CA_SV_TL3_MAXA": {
+    "unit": "deg"
+  },
+  "CA_SV_TL3_MINA": {
+    "unit": "deg"
   },
   "CA_SV_TL3_TD": {
     "kind": "enum",
@@ -4733,11 +5144,26 @@
   "COM_ARM_AUTH_REQ": {
     "kind": "boolean"
   },
+  "COM_ARM_AUTH_TO": {
+    "unit": "s"
+  },
+  "COM_ARM_BAT_MIN": {
+    "unit": "norm"
+  },
   "COM_ARM_CHK_ESCS": {
     "kind": "boolean"
   },
   "COM_ARM_HFLT_CHK": {
     "kind": "boolean"
+  },
+  "COM_ARM_IMU_ACC": {
+    "unit": "m/s^2"
+  },
+  "COM_ARM_IMU_GYR": {
+    "unit": "rad/s"
+  },
+  "COM_ARM_MAG_ANG": {
+    "unit": "deg"
   },
   "COM_ARM_MAG_STR": {
     "kind": "enum",
@@ -4813,8 +5239,17 @@
       }
     ]
   },
+  "COM_CPU_MAX": {
+    "unit": "%"
+  },
+  "COM_DISARM_LAND": {
+    "unit": "s"
+  },
   "COM_DISARM_MAN": {
     "kind": "boolean"
+  },
+  "COM_DISARM_PRFLT": {
+    "unit": "s"
   },
   "COM_DLL_EXCEPT": {
     "bits": [
@@ -4832,6 +5267,12 @@
       }
     ],
     "kind": "bitmask"
+  },
+  "COM_DL_LOSS_T": {
+    "unit": "s"
+  },
+  "COM_FAIL_ACT_T": {
+    "unit": "s"
   },
   "COM_FLTMODE1": {
     "kind": "enum",
@@ -5477,8 +5918,17 @@
       }
     ]
   },
+  "COM_FLT_TIME_MAX": {
+    "unit": "s"
+  },
   "COM_FORCE_SAFETY": {
     "kind": "boolean"
+  },
+  "COM_HLDL_LOSS_T": {
+    "unit": "s"
+  },
+  "COM_HLDL_REG_T": {
+    "unit": "s"
   },
   "COM_HOME_EN": {
     "kind": "boolean"
@@ -5507,6 +5957,12 @@
       }
     ]
   },
+  "COM_KILL_DISARM": {
+    "unit": "s"
+  },
+  "COM_LKDOWN_TKO": {
+    "unit": "s"
+  },
   "COM_LOW_BAT_ACT": {
     "kind": "enum",
     "options": [
@@ -5529,6 +5985,9 @@
   },
   "COM_MOT_TEST_EN": {
     "kind": "boolean"
+  },
+  "COM_OBC_LOSS_T": {
+    "unit": "s"
   },
   "COM_OBL_RC_ACT": {
     "kind": "enum",
@@ -5567,8 +6026,14 @@
       }
     ]
   },
+  "COM_OF_LOSS_T": {
+    "unit": "s"
+  },
   "COM_PARACHUTE": {
     "kind": "boolean"
+  },
+  "COM_POS_FS_EPH": {
+    "unit": "m"
   },
   "COM_POS_LOW_ACT": {
     "kind": "enum",
@@ -5598,6 +6063,9 @@
         "value": 5
       }
     ]
+  },
+  "COM_POS_LOW_EPH": {
+    "unit": "m"
   },
   "COM_PREARM_MODE": {
     "kind": "enum",
@@ -5637,6 +6105,9 @@
       }
     ]
   },
+  "COM_RAM_MAX": {
+    "unit": "%"
+  },
   "COM_RCL_EXCEPT": {
     "bits": [
       {
@@ -5661,6 +6132,9 @@
       }
     ],
     "kind": "bitmask"
+  },
+  "COM_RC_ARM_HYST": {
+    "unit": "ms"
   },
   "COM_RC_IN_MODE": {
     "kind": "enum",
@@ -5703,6 +6177,9 @@
       }
     ]
   },
+  "COM_RC_LOSS_T": {
+    "unit": "s"
+  },
   "COM_RC_OVERRIDE": {
     "bits": [
       {
@@ -5715,6 +6192,12 @@
       }
     ],
     "kind": "bitmask"
+  },
+  "COM_RC_STICK_OV": {
+    "unit": "%"
+  },
+  "COM_SPOOLUP_TIME": {
+    "unit": "s"
   },
   "COM_TAKEOFF_ACT": {
     "kind": "enum",
@@ -5731,6 +6214,15 @@
   },
   "COM_THROW_EN": {
     "kind": "boolean"
+  },
+  "COM_THROW_SPEED": {
+    "unit": "m/s"
+  },
+  "COM_VEL_FS_EVH": {
+    "unit": "m/s"
+  },
+  "COM_WIND_MAX": {
+    "unit": "m/s"
   },
   "COM_WIND_MAX_ACT": {
     "kind": "enum",
@@ -5761,14 +6253,29 @@
       }
     ]
   },
+  "COM_WIND_WARN": {
+    "unit": "m/s"
+  },
+  "CP_DELAY": {
+    "unit": "s"
+  },
+  "CP_DIST": {
+    "unit": "m"
+  },
   "CP_GO_NO_DATA": {
     "kind": "boolean"
+  },
+  "CP_GUIDE_ANG": {
+    "unit": "deg"
   },
   "DSHOT_3D_ENABLE": {
     "kind": "boolean"
   },
   "DSHOT_BIDIR_EN": {
     "kind": "boolean"
+  },
+  "DSHOT_MIN": {
+    "unit": "norm"
   },
   "DSHOT_TEL_CFG": {
     "kind": "enum",
@@ -5803,6 +6310,27 @@
       }
     ]
   },
+  "EKF2_ABIAS_INIT": {
+    "unit": "m/s^2"
+  },
+  "EKF2_ABL_ACCLIM": {
+    "unit": "m/s^2"
+  },
+  "EKF2_ABL_GYRLIM": {
+    "unit": "rad/s"
+  },
+  "EKF2_ABL_LIM": {
+    "unit": "m/s^2"
+  },
+  "EKF2_ABL_TAU": {
+    "unit": "s"
+  },
+  "EKF2_ACC_B_NOISE": {
+    "unit": "m/s^3"
+  },
+  "EKF2_ACC_NOISE": {
+    "unit": "m/s^2"
+  },
   "EKF2_AGP_CTRL": {
     "bits": [
       {
@@ -5815,6 +6343,12 @@
       }
     ],
     "kind": "bitmask"
+  },
+  "EKF2_AGP_DELAY": {
+    "unit": "ms"
+  },
+  "EKF2_AGP_GATE": {
+    "unit": "SD"
   },
   "EKF2_AGP_MODE": {
     "kind": "enum",
@@ -5829,8 +6363,47 @@
       }
     ]
   },
+  "EKF2_AGP_NOISE": {
+    "unit": "m"
+  },
+  "EKF2_ANGERR_INIT": {
+    "unit": "rad"
+  },
+  "EKF2_ARSP_THR": {
+    "unit": "m/s"
+  },
+  "EKF2_ASPD_MAX": {
+    "unit": "m/s"
+  },
+  "EKF2_ASP_DELAY": {
+    "unit": "ms"
+  },
+  "EKF2_AVEL_DELAY": {
+    "unit": "ms"
+  },
   "EKF2_BARO_CTRL": {
     "kind": "boolean"
+  },
+  "EKF2_BARO_DELAY": {
+    "unit": "ms"
+  },
+  "EKF2_BARO_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_BARO_NOISE": {
+    "unit": "m"
+  },
+  "EKF2_BCOEF_X": {
+    "unit": "kg/m^2"
+  },
+  "EKF2_BCOEF_Y": {
+    "unit": "kg/m^2"
+  },
+  "EKF2_BETA_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_BETA_NOISE": {
+    "unit": "m/s"
   },
   "EKF2_DECL_TYPE": {
     "bits": [
@@ -5845,11 +6418,35 @@
     ],
     "kind": "bitmask"
   },
+  "EKF2_DELAY_MAX": {
+    "unit": "ms"
+  },
   "EKF2_DRAG_CTRL": {
     "kind": "boolean"
   },
+  "EKF2_DRAG_NOISE": {
+    "unit": "(m/s^2)^2"
+  },
+  "EKF2_EAS_NOISE": {
+    "unit": "m/s"
+  },
   "EKF2_EN": {
     "kind": "boolean"
+  },
+  "EKF2_EVA_NOISE": {
+    "unit": "rad"
+  },
+  "EKF2_EVP_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_EVP_NOISE": {
+    "unit": "m"
+  },
+  "EKF2_EVV_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_EVV_NOISE": {
+    "unit": "m/s"
   },
   "EKF2_EV_CTRL": {
     "bits": [
@@ -5872,6 +6469,9 @@
     ],
     "kind": "bitmask"
   },
+  "EKF2_EV_DELAY": {
+    "unit": "ms"
+  },
   "EKF2_EV_NOISE_MD": {
     "kind": "enum",
     "options": [
@@ -5885,8 +6485,26 @@
       }
     ]
   },
+  "EKF2_EV_POS_X": {
+    "unit": "m"
+  },
+  "EKF2_EV_POS_Y": {
+    "unit": "m"
+  },
+  "EKF2_EV_POS_Z": {
+    "unit": "m"
+  },
   "EKF2_FUSE_BETA": {
     "kind": "boolean"
+  },
+  "EKF2_GBIAS_INIT": {
+    "unit": "rad/s"
+  },
+  "EKF2_GND_EFF_DZ": {
+    "unit": "m"
+  },
+  "EKF2_GND_MAX_HGT": {
+    "unit": "m"
   },
   "EKF2_GPS_CHECK": {
     "bits": [
@@ -5958,6 +6576,9 @@
     ],
     "kind": "bitmask"
   },
+  "EKF2_GPS_DELAY": {
+    "unit": "ms"
+  },
   "EKF2_GPS_MODE": {
     "kind": "enum",
     "options": [
@@ -5970,6 +6591,51 @@
         "value": 1
       }
     ]
+  },
+  "EKF2_GPS_POS_X": {
+    "unit": "m"
+  },
+  "EKF2_GPS_POS_Y": {
+    "unit": "m"
+  },
+  "EKF2_GPS_POS_Z": {
+    "unit": "m"
+  },
+  "EKF2_GPS_P_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_GPS_P_NOISE": {
+    "unit": "m"
+  },
+  "EKF2_GPS_V_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_GPS_V_NOISE": {
+    "unit": "m/s"
+  },
+  "EKF2_GPS_YAW_OFF": {
+    "unit": "deg"
+  },
+  "EKF2_GRAV_NOISE": {
+    "unit": "g0"
+  },
+  "EKF2_GSF_TAS": {
+    "unit": "m/s"
+  },
+  "EKF2_GYR_B_LIM": {
+    "unit": "rad/s"
+  },
+  "EKF2_GYR_B_NOISE": {
+    "unit": "rad/s^2"
+  },
+  "EKF2_GYR_NOISE": {
+    "unit": "rad/s"
+  },
+  "EKF2_HDG_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_HEAD_NOISE": {
+    "unit": "rad"
   },
   "EKF2_HGT_REF": {
     "kind": "enum",
@@ -6009,8 +6675,23 @@
     ],
     "kind": "bitmask"
   },
+  "EKF2_IMU_POS_X": {
+    "unit": "m"
+  },
+  "EKF2_IMU_POS_Y": {
+    "unit": "m"
+  },
+  "EKF2_IMU_POS_Z": {
+    "unit": "m"
+  },
   "EKF2_LOG_VERBOSE": {
     "kind": "boolean"
+  },
+  "EKF2_MAG_ACCLIM": {
+    "unit": "m/s^2"
+  },
+  "EKF2_MAG_B_NOISE": {
+    "unit": "gauss/s"
   },
   "EKF2_MAG_CHECK": {
     "bits": [
@@ -6028,6 +6709,27 @@
       }
     ],
     "kind": "bitmask"
+  },
+  "EKF2_MAG_CHK_INC": {
+    "unit": "deg"
+  },
+  "EKF2_MAG_CHK_STR": {
+    "unit": "gauss"
+  },
+  "EKF2_MAG_DECL": {
+    "unit": "deg"
+  },
+  "EKF2_MAG_DELAY": {
+    "unit": "ms"
+  },
+  "EKF2_MAG_E_NOISE": {
+    "unit": "gauss/s"
+  },
+  "EKF2_MAG_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_MAG_NOISE": {
+    "unit": "gauss"
   },
   "EKF2_MAG_TYPE": {
     "kind": "enum",
@@ -6050,8 +6752,26 @@
       }
     ]
   },
+  "EKF2_MCOEF": {
+    "unit": "1/s"
+  },
+  "EKF2_MIN_RNG": {
+    "unit": "m"
+  },
+  "EKF2_NOAID_NOISE": {
+    "unit": "m"
+  },
+  "EKF2_NOAID_TOUT": {
+    "unit": "us"
+  },
   "EKF2_OF_CTRL": {
     "kind": "boolean"
+  },
+  "EKF2_OF_DELAY": {
+    "unit": "ms"
+  },
+  "EKF2_OF_GATE": {
+    "unit": "SD"
   },
   "EKF2_OF_GYR_SRC": {
     "kind": "enum",
@@ -6065,6 +6785,30 @@
         "value": 1
       }
     ]
+  },
+  "EKF2_OF_N_MAX": {
+    "unit": "rad/s"
+  },
+  "EKF2_OF_N_MIN": {
+    "unit": "rad/s"
+  },
+  "EKF2_OF_POS_X": {
+    "unit": "m"
+  },
+  "EKF2_OF_POS_Y": {
+    "unit": "m"
+  },
+  "EKF2_OF_POS_Z": {
+    "unit": "m"
+  },
+  "EKF2_PREDICT_US": {
+    "unit": "us"
+  },
+  "EKF2_REQ_EPH": {
+    "unit": "m"
+  },
+  "EKF2_REQ_EPV": {
+    "unit": "m"
   },
   "EKF2_REQ_FIX": {
     "kind": "enum",
@@ -6099,6 +6843,24 @@
       }
     ]
   },
+  "EKF2_REQ_GPS_H": {
+    "unit": "s"
+  },
+  "EKF2_REQ_HDRIFT": {
+    "unit": "m/s"
+  },
+  "EKF2_REQ_SACC": {
+    "unit": "m/s"
+  },
+  "EKF2_REQ_VDRIFT": {
+    "unit": "m/s"
+  },
+  "EKF2_RNG_A_HMAX": {
+    "unit": "m"
+  },
+  "EKF2_RNG_A_VMAX": {
+    "unit": "m/s"
+  },
   "EKF2_RNG_CTRL": {
     "kind": "enum",
     "options": [
@@ -6116,8 +6878,74 @@
       }
     ]
   },
+  "EKF2_RNG_DELAY": {
+    "unit": "ms"
+  },
+  "EKF2_RNG_FOG": {
+    "unit": "m"
+  },
+  "EKF2_RNG_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_RNG_K_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_RNG_NOISE": {
+    "unit": "m"
+  },
+  "EKF2_RNG_PITCH": {
+    "unit": "rad"
+  },
+  "EKF2_RNG_POS_X": {
+    "unit": "m"
+  },
+  "EKF2_RNG_POS_Y": {
+    "unit": "m"
+  },
+  "EKF2_RNG_POS_Z": {
+    "unit": "m"
+  },
+  "EKF2_RNG_QLTY_T": {
+    "unit": "s"
+  },
+  "EKF2_RNG_SFE": {
+    "unit": "m/m"
+  },
+  "EKF2_SEL_IMU_ACC": {
+    "unit": "m/s^2"
+  },
+  "EKF2_SEL_IMU_ANG": {
+    "unit": "deg"
+  },
+  "EKF2_SEL_IMU_RAT": {
+    "unit": "deg/s"
+  },
+  "EKF2_SEL_IMU_VEL": {
+    "unit": "m/s"
+  },
   "EKF2_SYNT_MAG_Z": {
     "kind": "boolean"
+  },
+  "EKF2_TAS_GATE": {
+    "unit": "SD"
+  },
+  "EKF2_TAU_POS": {
+    "unit": "s"
+  },
+  "EKF2_TAU_VEL": {
+    "unit": "s"
+  },
+  "EKF2_TERR_GRAD": {
+    "unit": "m/m"
+  },
+  "EKF2_TERR_NOISE": {
+    "unit": "m/s"
+  },
+  "EKF2_VEL_LIM": {
+    "unit": "m/s"
+  },
+  "EKF2_WIND_NSD": {
+    "unit": "m/s^2/sqrt(Hz)"
   },
   "EV_TSK_RC_LOSS": {
     "kind": "boolean"
@@ -6128,11 +6956,35 @@
   "FD_ACT_EN": {
     "kind": "boolean"
   },
+  "FD_ACT_MOT_C2T": {
+    "unit": "A/%"
+  },
+  "FD_ACT_MOT_THR": {
+    "unit": "norm"
+  },
+  "FD_ACT_MOT_TOUT": {
+    "unit": "ms"
+  },
   "FD_ESCS_EN": {
     "kind": "boolean"
   },
   "FD_EXT_ATS_EN": {
     "kind": "boolean"
+  },
+  "FD_EXT_ATS_TRIG": {
+    "unit": "us"
+  },
+  "FD_FAIL_P": {
+    "unit": "deg"
+  },
+  "FD_FAIL_P_TTRI": {
+    "unit": "s"
+  },
+  "FD_FAIL_R": {
+    "unit": "deg"
+  },
+  "FD_FAIL_R_TTRI": {
+    "unit": "s"
   },
   "FLW_TGT_ALT_M": {
     "kind": "enum",
@@ -6151,8 +7003,35 @@
       }
     ]
   },
+  "FLW_TGT_DST": {
+    "unit": "m"
+  },
+  "FLW_TGT_HT": {
+    "unit": "m"
+  },
+  "FW_ACRO_X_MAX": {
+    "unit": "deg"
+  },
   "FW_ACRO_YAW_EN": {
     "kind": "boolean"
+  },
+  "FW_ACRO_Y_MAX": {
+    "unit": "deg"
+  },
+  "FW_ACRO_Z_MAX": {
+    "unit": "deg"
+  },
+  "FW_AIRSPD_MAX": {
+    "unit": "m/s"
+  },
+  "FW_AIRSPD_MIN": {
+    "unit": "m/s"
+  },
+  "FW_AIRSPD_STALL": {
+    "unit": "m/s"
+  },
+  "FW_AIRSPD_TRIM": {
+    "unit": "m/s"
   },
   "FW_ARSP_SCALE_EN": {
     "kind": "boolean"
@@ -6160,8 +7039,32 @@
   "FW_BAT_SCALE_EN": {
     "kind": "boolean"
   },
+  "FW_FLAPS_LND_SCL": {
+    "unit": "norm"
+  },
+  "FW_FLAPS_TO_SCL": {
+    "unit": "norm"
+  },
+  "FW_GND_SPD_MIN": {
+    "unit": "m/s"
+  },
+  "FW_GPSF_LT": {
+    "unit": "s"
+  },
+  "FW_GPSF_R": {
+    "unit": "deg"
+  },
+  "FW_LAUN_AC_T": {
+    "unit": "s"
+  },
+  "FW_LAUN_AC_THLD": {
+    "unit": "m/s^2"
+  },
   "FW_LAUN_DETCN_ON": {
     "kind": "boolean"
+  },
+  "FW_LAUN_MOT_DEL": {
+    "unit": "s"
   },
   "FW_LND_ABORT": {
     "bits": [
@@ -6176,8 +7079,29 @@
     ],
     "kind": "bitmask"
   },
+  "FW_LND_AIRSPD": {
+    "unit": "m/s"
+  },
+  "FW_LND_ANG": {
+    "unit": "deg"
+  },
   "FW_LND_EARLYCFG": {
     "kind": "boolean"
+  },
+  "FW_LND_FLALT": {
+    "unit": "m"
+  },
+  "FW_LND_FL_PMAX": {
+    "unit": "deg"
+  },
+  "FW_LND_FL_PMIN": {
+    "unit": "deg"
+  },
+  "FW_LND_FL_SINK": {
+    "unit": "m/s"
+  },
+  "FW_LND_FL_TIME": {
+    "unit": "s"
   },
   "FW_LND_NUDGE": {
     "kind": "enum",
@@ -6196,6 +7120,12 @@
       }
     ]
   },
+  "FW_LND_TD_OFF": {
+    "unit": "m"
+  },
+  "FW_LND_TD_TIME": {
+    "unit": "s"
+  },
   "FW_LND_USETER": {
     "kind": "enum",
     "options": [
@@ -6213,6 +7143,27 @@
       }
     ]
   },
+  "FW_MAN_P_MAX": {
+    "unit": "deg"
+  },
+  "FW_MAN_P_SC": {
+    "unit": "norm"
+  },
+  "FW_MAN_R_MAX": {
+    "unit": "deg"
+  },
+  "FW_MAN_R_SC": {
+    "unit": "norm"
+  },
+  "FW_MAN_YR_MAX": {
+    "unit": "deg/s"
+  },
+  "FW_MAN_Y_SC": {
+    "unit": "norm"
+  },
+  "FW_PN_R_SLEW_MAX": {
+    "unit": "deg/s"
+  },
   "FW_POS_STK_CONF": {
     "bits": [
       {
@@ -6225,6 +7176,63 @@
       }
     ],
     "kind": "bitmask"
+  },
+  "FW_PR_D": {
+    "unit": "%/rad/s"
+  },
+  "FW_PR_FF": {
+    "unit": "%/rad/s"
+  },
+  "FW_PR_I": {
+    "unit": "%/rad"
+  },
+  "FW_PR_P": {
+    "unit": "%/rad/s"
+  },
+  "FW_PSP_OFF": {
+    "unit": "deg"
+  },
+  "FW_P_LIM_MAX": {
+    "unit": "deg"
+  },
+  "FW_P_LIM_MIN": {
+    "unit": "deg"
+  },
+  "FW_P_RMAX_NEG": {
+    "unit": "deg/s"
+  },
+  "FW_P_RMAX_POS": {
+    "unit": "deg/s"
+  },
+  "FW_P_TC": {
+    "unit": "s"
+  },
+  "FW_RR_D": {
+    "unit": "%/rad/s"
+  },
+  "FW_RR_FF": {
+    "unit": "%/rad/s"
+  },
+  "FW_RR_I": {
+    "unit": "%/rad"
+  },
+  "FW_RR_P": {
+    "unit": "%/rad/s"
+  },
+  "FW_R_LIM": {
+    "unit": "deg"
+  },
+  "FW_R_RMAX": {
+    "unit": "deg/s"
+  },
+  "FW_R_TC": {
+    "unit": "s"
+  },
+  "FW_SERVICE_CEIL": {
+    "unit": "m"
+  },
+  "FW_SPOILERS_LND": {
+    "unit": "norm"
   },
   "FW_SPOILERS_MAN": {
     "kind": "enum",
@@ -6243,11 +7251,92 @@
       }
     ]
   },
+  "FW_THR_IDLE": {
+    "unit": "norm"
+  },
+  "FW_THR_MAX": {
+    "unit": "norm"
+  },
+  "FW_THR_MIN": {
+    "unit": "norm"
+  },
+  "FW_THR_TRIM": {
+    "unit": "norm"
+  },
+  "FW_TKO_AIRSPD": {
+    "unit": "m/s"
+  },
+  "FW_TKO_PITCH_MIN": {
+    "unit": "deg"
+  },
+  "FW_T_CLMB_MAX": {
+    "unit": "m/s"
+  },
+  "FW_T_CLMB_R_SP": {
+    "unit": "m/s"
+  },
+  "FW_T_SINK_MAX": {
+    "unit": "m/s"
+  },
+  "FW_T_SINK_MIN": {
+    "unit": "m/s"
+  },
+  "FW_T_SINK_R_SP": {
+    "unit": "m/s"
+  },
+  "FW_T_SPD_DEV_STD": {
+    "unit": "m/s^2"
+  },
+  "FW_T_SPD_PRC_STD": {
+    "unit": "m/s^2"
+  },
+  "FW_T_SPD_STD": {
+    "unit": "m/s"
+  },
+  "FW_T_THR_LOW_HGT": {
+    "unit": "m"
+  },
+  "FW_T_VERT_ACC": {
+    "unit": "m/s^2"
+  },
   "FW_USE_AIRSPD": {
     "kind": "boolean"
   },
+  "FW_WING_HEIGHT": {
+    "unit": "m"
+  },
+  "FW_WING_SPAN": {
+    "unit": "m"
+  },
+  "FW_WR_FF": {
+    "unit": "%/rad/s"
+  },
+  "FW_WR_I": {
+    "unit": "%/rad"
+  },
+  "FW_WR_P": {
+    "unit": "%/rad/s"
+  },
   "FW_W_EN": {
     "kind": "boolean"
+  },
+  "FW_W_RMAX": {
+    "unit": "deg/s"
+  },
+  "FW_YR_D": {
+    "unit": "%/rad/s"
+  },
+  "FW_YR_FF": {
+    "unit": "%/rad/s"
+  },
+  "FW_YR_I": {
+    "unit": "%/rad"
+  },
+  "FW_YR_P": {
+    "unit": "%/rad/s"
+  },
+  "FW_Y_RMAX": {
+    "unit": "deg/s"
   },
   "GF_ACTION": {
     "kind": "enum",
@@ -6277,6 +7366,12 @@
         "value": 5
       }
     ]
+  },
+  "GF_MAX_HOR_DIST": {
+    "unit": "m"
+  },
+  "GF_MAX_VER_DIST": {
+    "unit": "m"
   },
   "GF_PREDICT": {
     "kind": "boolean"
@@ -6507,6 +7602,9 @@
   "GPS_SAT_INFO": {
     "kind": "boolean"
   },
+  "GPS_UBX_BAUD2": {
+    "unit": "B/s"
+  },
   "GPS_UBX_CFG_INTF": {
     "bits": [
       {
@@ -6594,8 +7692,41 @@
       }
     ]
   },
+  "GPS_YAW_OFFSET": {
+    "unit": "deg"
+  },
+  "HTE_ACC_GATE": {
+    "unit": "SD"
+  },
+  "HTE_HT_ERR_INIT": {
+    "unit": "normalized_thrust"
+  },
+  "HTE_HT_NOISE": {
+    "unit": "normalized_thrust/s"
+  },
+  "HTE_THR_RANGE": {
+    "unit": "normalized_thrust"
+  },
+  "HTE_VXY_THR": {
+    "unit": "m/s"
+  },
+  "HTE_VZ_THR": {
+    "unit": "m/s"
+  },
+  "IMU_ACCEL_CUTOFF": {
+    "unit": "Hz"
+  },
+  "IMU_DGYRO_CUTOFF": {
+    "unit": "Hz"
+  },
   "IMU_GYRO_CAL_EN": {
     "kind": "boolean"
+  },
+  "IMU_GYRO_CUTOFF": {
+    "unit": "Hz"
+  },
+  "IMU_GYRO_DNF_BW": {
+    "unit": "Hz"
   },
   "IMU_GYRO_DNF_EN": {
     "bits": [
@@ -6609,6 +7740,9 @@
       }
     ],
     "kind": "bitmask"
+  },
+  "IMU_GYRO_DNF_MIN": {
+    "unit": "Hz"
   },
   "IMU_GYRO_FFT_EN": {
     "kind": "boolean"
@@ -6632,7 +7766,26 @@
         "label": "4096",
         "value": 4096
       }
-    ]
+    ],
+    "unit": "Hz"
+  },
+  "IMU_GYRO_FFT_MAX": {
+    "unit": "Hz"
+  },
+  "IMU_GYRO_FFT_MIN": {
+    "unit": "Hz"
+  },
+  "IMU_GYRO_NF0_BW": {
+    "unit": "Hz"
+  },
+  "IMU_GYRO_NF0_FRQ": {
+    "unit": "Hz"
+  },
+  "IMU_GYRO_NF1_BW": {
+    "unit": "Hz"
+  },
+  "IMU_GYRO_NF1_FRQ": {
+    "unit": "Hz"
   },
   "IMU_GYRO_RATEMAX": {
     "kind": "enum",
@@ -6661,7 +7814,8 @@
         "label": "2000 Hz",
         "value": 2000
       }
-    ]
+    ],
+    "unit": "Hz"
   },
   "IMU_INTEG_RATE": {
     "kind": "enum",
@@ -6682,10 +7836,74 @@
         "label": "400 Hz",
         "value": 400
       }
-    ]
+    ],
+    "unit": "Hz"
+  },
+  "LNDFW_AIRSPD_MAX": {
+    "unit": "m/s"
+  },
+  "LNDFW_ROT_MAX": {
+    "unit": "deg/s"
+  },
+  "LNDFW_TRIG_TIME": {
+    "unit": "s"
+  },
+  "LNDFW_VEL_XY_MAX": {
+    "unit": "m/s"
+  },
+  "LNDFW_VEL_Z_MAX": {
+    "unit": "m/s"
+  },
+  "LNDFW_XYACC_MAX": {
+    "unit": "m/s^2"
+  },
+  "LNDMC_ALT_GND": {
+    "unit": "m"
+  },
+  "LNDMC_ROT_MAX": {
+    "unit": "deg/s"
+  },
+  "LNDMC_TRIG_TIME": {
+    "unit": "s"
+  },
+  "LNDMC_XY_VEL_MAX": {
+    "unit": "m/s"
+  },
+  "LNDMC_Z_VEL_MAX": {
+    "unit": "m/s"
+  },
+  "LPE_ACC_XY": {
+    "unit": "m/s^2/sqrt(Hz)"
+  },
+  "LPE_ACC_Z": {
+    "unit": "m/s^2/sqrt(Hz)"
+  },
+  "LPE_BAR_Z": {
+    "unit": "m"
   },
   "LPE_EN": {
     "kind": "boolean"
+  },
+  "LPE_EPH_MAX": {
+    "unit": "m"
+  },
+  "LPE_EPV_MAX": {
+    "unit": "m"
+  },
+  "LPE_FGYRO_HP": {
+    "unit": "Hz"
+  },
+  "LPE_FLW_OFF_Z": {
+    "unit": "m"
+  },
+  "LPE_FLW_R": {
+    "unit": "m/s/rad"
+  },
+  "LPE_FLW_RR": {
+    "unit": "m/rad"
+  },
+  "LPE_FLW_SCALE": {
+    "unit": "m"
   },
   "LPE_FUSION": {
     "bits": [
@@ -6724,6 +7942,90 @@
     ],
     "kind": "bitmask"
   },
+  "LPE_GPS_DELAY": {
+    "unit": "s"
+  },
+  "LPE_GPS_VXY": {
+    "unit": "m/s"
+  },
+  "LPE_GPS_VZ": {
+    "unit": "m/s"
+  },
+  "LPE_GPS_XY": {
+    "unit": "m"
+  },
+  "LPE_GPS_Z": {
+    "unit": "m"
+  },
+  "LPE_LAND_VXY": {
+    "unit": "m/s"
+  },
+  "LPE_LAND_Z": {
+    "unit": "m"
+  },
+  "LPE_LAT": {
+    "unit": "deg"
+  },
+  "LPE_LDR_OFF_Z": {
+    "unit": "m"
+  },
+  "LPE_LDR_Z": {
+    "unit": "m"
+  },
+  "LPE_LON": {
+    "unit": "deg"
+  },
+  "LPE_LT_COV": {
+    "unit": "m^2"
+  },
+  "LPE_PN_B": {
+    "unit": "m/s^3/sqrt(Hz)"
+  },
+  "LPE_PN_P": {
+    "unit": "m/s/sqrt(Hz)"
+  },
+  "LPE_PN_T": {
+    "unit": "m/s/sqrt(Hz)"
+  },
+  "LPE_PN_V": {
+    "unit": "m/s^2/sqrt(Hz)"
+  },
+  "LPE_SNR_OFF_Z": {
+    "unit": "m"
+  },
+  "LPE_SNR_Z": {
+    "unit": "m"
+  },
+  "LPE_T_MAX_GRADE": {
+    "unit": "%"
+  },
+  "LPE_VIC_P": {
+    "unit": "m"
+  },
+  "LPE_VIS_DELAY": {
+    "unit": "s"
+  },
+  "LPE_VIS_XY": {
+    "unit": "m"
+  },
+  "LPE_VIS_Z": {
+    "unit": "m"
+  },
+  "LPE_VXY_PUB": {
+    "unit": "m/s"
+  },
+  "LPE_X_LP": {
+    "unit": "Hz"
+  },
+  "LPE_Z_PUB": {
+    "unit": "m"
+  },
+  "LTEST_ACC_UNC": {
+    "unit": "(m/s^2)^2"
+  },
+  "LTEST_MEAS_UNC": {
+    "unit": "tan(rad)^2"
+  },
   "LTEST_MODE": {
     "kind": "enum",
     "options": [
@@ -6736,6 +8038,18 @@
         "value": 1
       }
     ]
+  },
+  "LTEST_POS_UNC_IN": {
+    "unit": "m^2"
+  },
+  "LTEST_SENS_POS_X": {
+    "unit": "m"
+  },
+  "LTEST_SENS_POS_Y": {
+    "unit": "m"
+  },
+  "LTEST_SENS_POS_Z": {
+    "unit": "m"
   },
   "LTEST_SENS_ROT": {
     "kind": "enum",
@@ -6774,8 +8088,14 @@
       }
     ]
   },
+  "LTEST_VEL_UNC_IN": {
+    "unit": "(m/s)^2"
+  },
   "MAN_ARM_GESTURE": {
     "kind": "boolean"
+  },
+  "MAN_KILL_GEST_T": {
+    "unit": "s"
   },
   "MAV_0_CONFIG": {
     "kind": "enum",
@@ -6829,6 +8149,9 @@
   },
   "MAV_0_FORWARD": {
     "kind": "boolean"
+  },
+  "MAV_0_HL_FREQ": {
+    "unit": "Hz"
   },
   "MAV_0_MODE": {
     "kind": "enum",
@@ -6886,6 +8209,9 @@
   "MAV_0_RADIO_CTL": {
     "kind": "boolean"
   },
+  "MAV_0_RATE": {
+    "unit": "B/s"
+  },
   "MAV_1_CONFIG": {
     "kind": "enum",
     "options": [
@@ -6938,6 +8264,9 @@
   },
   "MAV_1_FORWARD": {
     "kind": "boolean"
+  },
+  "MAV_1_HL_FREQ": {
+    "unit": "Hz"
   },
   "MAV_1_MODE": {
     "kind": "enum",
@@ -6995,6 +8324,9 @@
   "MAV_1_RADIO_CTL": {
     "kind": "boolean"
   },
+  "MAV_1_RATE": {
+    "unit": "B/s"
+  },
   "MAV_2_CONFIG": {
     "kind": "enum",
     "options": [
@@ -7047,6 +8379,9 @@
   },
   "MAV_2_FORWARD": {
     "kind": "boolean"
+  },
+  "MAV_2_HL_FREQ": {
+    "unit": "Hz"
   },
   "MAV_2_MODE": {
     "kind": "enum",
@@ -7104,6 +8439,9 @@
   "MAV_2_RADIO_CTL": {
     "kind": "boolean"
   },
+  "MAV_2_RATE": {
+    "unit": "B/s"
+  },
   "MAV_FWDEXTSP": {
     "kind": "boolean"
   },
@@ -7125,6 +8463,9 @@
         "value": 2
       }
     ]
+  },
+  "MAV_RADIO_TOUT": {
+    "unit": "s"
   },
   "MAV_S_FORWARD": {
     "kind": "boolean"
@@ -7241,6 +8582,15 @@
   "MBE_ENABLE": {
     "kind": "boolean"
   },
+  "MC_ACRO_P_MAX": {
+    "unit": "deg/s"
+  },
+  "MC_ACRO_R_MAX": {
+    "unit": "deg/s"
+  },
+  "MC_ACRO_Y_MAX": {
+    "unit": "deg/s"
+  },
   "MC_AIRMODE": {
     "kind": "enum",
     "options": [
@@ -7260,6 +8610,12 @@
   },
   "MC_BAT_SCALE_EN": {
     "kind": "boolean"
+  },
+  "MC_MAN_TILT_TAU": {
+    "unit": "s"
+  },
+  "MC_ORBIT_RAD_MAX": {
+    "unit": "m"
   },
   "MC_ORBIT_YAW_MOD": {
     "kind": "enum",
@@ -7285,6 +8641,21 @@
         "value": 4
       }
     ]
+  },
+  "MC_PITCHRATE_MAX": {
+    "unit": "deg/s"
+  },
+  "MC_ROLLRATE_MAX": {
+    "unit": "deg/s"
+  },
+  "MC_SLOW_DEF_HVEL": {
+    "unit": "m/s"
+  },
+  "MC_SLOW_DEF_VVEL": {
+    "unit": "m/s"
+  },
+  "MC_SLOW_DEF_YAWR": {
+    "unit": "deg/s"
   },
   "MC_SLOW_MAP_HVEL": {
     "kind": "enum",
@@ -7418,6 +8789,30 @@
       }
     ]
   },
+  "MC_SLOW_MIN_HVEL": {
+    "unit": "m/s"
+  },
+  "MC_SLOW_MIN_VVEL": {
+    "unit": "m/s"
+  },
+  "MC_SLOW_MIN_YAWR": {
+    "unit": "deg/s"
+  },
+  "MC_YAWRATE_MAX": {
+    "unit": "deg/s"
+  },
+  "MC_YAW_TQ_CUTOFF": {
+    "unit": "Hz"
+  },
+  "MIS_COMMAND_TOUT": {
+    "unit": "s"
+  },
+  "MIS_DIST_1WP": {
+    "unit": "m"
+  },
+  "MIS_LND_ABRT_ALT": {
+    "unit": "m"
+  },
   "MIS_MNT_YAW_CTL": {
     "kind": "enum",
     "options": [
@@ -7430,6 +8825,9 @@
         "value": 1
       }
     ]
+  },
+  "MIS_TAKEOFF_ALT": {
+    "unit": "m"
   },
   "MIS_TKO_LAND_REQ": {
     "kind": "enum",
@@ -7460,8 +8858,26 @@
       }
     ]
   },
+  "MIS_YAW_ERR": {
+    "unit": "deg"
+  },
+  "MIS_YAW_TMT": {
+    "unit": "s"
+  },
   "MPC_ACC_DECOUPLE": {
     "kind": "boolean"
+  },
+  "MPC_ACC_DOWN_MAX": {
+    "unit": "m/s^2"
+  },
+  "MPC_ACC_HOR": {
+    "unit": "m/s^2"
+  },
+  "MPC_ACC_HOR_MAX": {
+    "unit": "m/s^2"
+  },
+  "MPC_ACC_UP_MAX": {
+    "unit": "m/s^2"
   },
   "MPC_ALT_MODE": {
     "kind": "enum",
@@ -7480,6 +8896,33 @@
       }
     ]
   },
+  "MPC_HOLD_MAX_XY": {
+    "unit": "m/s"
+  },
+  "MPC_HOLD_MAX_Z": {
+    "unit": "m/s"
+  },
+  "MPC_JERK_AUTO": {
+    "unit": "m/s^3"
+  },
+  "MPC_JERK_MAX": {
+    "unit": "m/s^3"
+  },
+  "MPC_LAND_ALT1": {
+    "unit": "m"
+  },
+  "MPC_LAND_ALT2": {
+    "unit": "m"
+  },
+  "MPC_LAND_ALT3": {
+    "unit": "m"
+  },
+  "MPC_LAND_CRWL": {
+    "unit": "m/s"
+  },
+  "MPC_LAND_RADIUS": {
+    "unit": "m"
+  },
   "MPC_LAND_RC_HELP": {
     "kind": "enum",
     "options": [
@@ -7492,6 +8935,21 @@
         "value": 1
       }
     ]
+  },
+  "MPC_LAND_SPEED": {
+    "unit": "m/s"
+  },
+  "MPC_MANTHR_MIN": {
+    "unit": "norm"
+  },
+  "MPC_MAN_TILT_MAX": {
+    "unit": "deg"
+  },
+  "MPC_MAN_Y_MAX": {
+    "unit": "deg/s"
+  },
+  "MPC_MAN_Y_TAU": {
+    "unit": "s"
   },
   "MPC_POS_MODE": {
     "kind": "enum",
@@ -7523,8 +8981,65 @@
       }
     ]
   },
+  "MPC_THR_HOVER": {
+    "unit": "norm"
+  },
+  "MPC_THR_MAX": {
+    "unit": "norm"
+  },
+  "MPC_THR_MIN": {
+    "unit": "norm"
+  },
+  "MPC_THR_XY_MARG": {
+    "unit": "norm"
+  },
+  "MPC_TILTMAX_AIR": {
+    "unit": "deg"
+  },
+  "MPC_TILTMAX_LND": {
+    "unit": "deg"
+  },
+  "MPC_TKO_RAMP_T": {
+    "unit": "s"
+  },
+  "MPC_TKO_SPEED": {
+    "unit": "m/s"
+  },
   "MPC_USE_HTE": {
     "kind": "boolean"
+  },
+  "MPC_VELD_LP": {
+    "unit": "Hz"
+  },
+  "MPC_VEL_LP": {
+    "unit": "Hz"
+  },
+  "MPC_VEL_MANUAL": {
+    "unit": "m/s"
+  },
+  "MPC_VEL_MAN_BACK": {
+    "unit": "m/s"
+  },
+  "MPC_VEL_MAN_SIDE": {
+    "unit": "m/s"
+  },
+  "MPC_VEL_NF_BW": {
+    "unit": "Hz"
+  },
+  "MPC_VEL_NF_FRQ": {
+    "unit": "Hz"
+  },
+  "MPC_XY_CRUISE": {
+    "unit": "m/s"
+  },
+  "MPC_XY_VEL_MAX": {
+    "unit": "m/s"
+  },
+  "MPC_YAWRAUTO_ACC": {
+    "unit": "deg/s^2"
+  },
+  "MPC_YAWRAUTO_MAX": {
+    "unit": "deg/s"
   },
   "MPC_YAW_MODE": {
     "kind": "enum",
@@ -7554,6 +9069,21 @@
         "value": 5
       }
     ]
+  },
+  "MPC_Z_VEL_MAX_DN": {
+    "unit": "m/s"
+  },
+  "MPC_Z_VEL_MAX_UP": {
+    "unit": "m/s"
+  },
+  "MPC_Z_V_AUTO_DN": {
+    "unit": "m/s"
+  },
+  "MPC_Z_V_AUTO_UP": {
+    "unit": "m/s"
+  },
+  "NAV_ACC_RAD": {
+    "unit": "m"
   },
   "NAV_DLL_ACT": {
     "kind": "enum",
@@ -7586,6 +9116,24 @@
   },
   "NAV_FORCE_VT": {
     "kind": "boolean"
+  },
+  "NAV_FW_ALTL_RAD": {
+    "unit": "m"
+  },
+  "NAV_FW_ALT_RAD": {
+    "unit": "m"
+  },
+  "NAV_LOITER_RAD": {
+    "unit": "m"
+  },
+  "NAV_MC_ALT_RAD": {
+    "unit": "m"
+  },
+  "NAV_MIN_GND_DIST": {
+    "unit": "m"
+  },
+  "NAV_MIN_LTR_ALT": {
+    "unit": "m"
   },
   "NAV_RCL_ACT": {
     "kind": "enum",
@@ -7637,11 +9185,47 @@
       }
     ]
   },
+  "NAV_TRAFF_A_HOR": {
+    "unit": "m"
+  },
+  "NAV_TRAFF_A_VER": {
+    "unit": "m"
+  },
+  "NAV_TRAFF_COLL_T": {
+    "unit": "s"
+  },
   "NPFG_LB_PERIOD": {
     "kind": "boolean"
   },
+  "NPFG_PERIOD": {
+    "unit": "s"
+  },
+  "NPFG_ROLL_TC": {
+    "unit": "s"
+  },
   "NPFG_UB_PERIOD": {
     "kind": "boolean"
+  },
+  "PLD_BTOUT": {
+    "unit": "s"
+  },
+  "PLD_FAPPR_ALT": {
+    "unit": "m"
+  },
+  "PLD_HACC_RAD": {
+    "unit": "m"
+  },
+  "PLD_SRCH_ALT": {
+    "unit": "m"
+  },
+  "PLD_SRCH_TOUT": {
+    "unit": "s"
+  },
+  "PP_LOOKAHD_MAX": {
+    "unit": "m"
+  },
+  "PP_LOOKAHD_MIN": {
+    "unit": "m"
   },
   "PWM_MAIN_FUNC1": {
     "kind": "enum",
@@ -10532,6 +12116,12 @@
       }
     ]
   },
+  "RC10_MAX": {
+    "unit": "us"
+  },
+  "RC10_MIN": {
+    "unit": "us"
+  },
   "RC10_REV": {
     "kind": "enum",
     "options": [
@@ -10544,6 +12134,15 @@
         "value": 1
       }
     ]
+  },
+  "RC10_TRIM": {
+    "unit": "us"
+  },
+  "RC11_MAX": {
+    "unit": "us"
+  },
+  "RC11_MIN": {
+    "unit": "us"
   },
   "RC11_REV": {
     "kind": "enum",
@@ -10558,6 +12157,15 @@
       }
     ]
   },
+  "RC11_TRIM": {
+    "unit": "us"
+  },
+  "RC12_MAX": {
+    "unit": "us"
+  },
+  "RC12_MIN": {
+    "unit": "us"
+  },
   "RC12_REV": {
     "kind": "enum",
     "options": [
@@ -10570,6 +12178,15 @@
         "value": 1
       }
     ]
+  },
+  "RC12_TRIM": {
+    "unit": "us"
+  },
+  "RC13_MAX": {
+    "unit": "us"
+  },
+  "RC13_MIN": {
+    "unit": "us"
   },
   "RC13_REV": {
     "kind": "enum",
@@ -10584,6 +12201,15 @@
       }
     ]
   },
+  "RC13_TRIM": {
+    "unit": "us"
+  },
+  "RC14_MAX": {
+    "unit": "us"
+  },
+  "RC14_MIN": {
+    "unit": "us"
+  },
   "RC14_REV": {
     "kind": "enum",
     "options": [
@@ -10596,6 +12222,15 @@
         "value": 1
       }
     ]
+  },
+  "RC14_TRIM": {
+    "unit": "us"
+  },
+  "RC15_MAX": {
+    "unit": "us"
+  },
+  "RC15_MIN": {
+    "unit": "us"
   },
   "RC15_REV": {
     "kind": "enum",
@@ -10610,6 +12245,15 @@
       }
     ]
   },
+  "RC15_TRIM": {
+    "unit": "us"
+  },
+  "RC16_MAX": {
+    "unit": "us"
+  },
+  "RC16_MIN": {
+    "unit": "us"
+  },
   "RC16_REV": {
     "kind": "enum",
     "options": [
@@ -10622,6 +12266,15 @@
         "value": 1
       }
     ]
+  },
+  "RC16_TRIM": {
+    "unit": "us"
+  },
+  "RC17_MAX": {
+    "unit": "us"
+  },
+  "RC17_MIN": {
+    "unit": "us"
   },
   "RC17_REV": {
     "kind": "enum",
@@ -10636,6 +12289,15 @@
       }
     ]
   },
+  "RC17_TRIM": {
+    "unit": "us"
+  },
+  "RC18_MAX": {
+    "unit": "us"
+  },
+  "RC18_MIN": {
+    "unit": "us"
+  },
   "RC18_REV": {
     "kind": "enum",
     "options": [
@@ -10648,6 +12310,15 @@
         "value": 1
       }
     ]
+  },
+  "RC18_TRIM": {
+    "unit": "us"
+  },
+  "RC1_MAX": {
+    "unit": "us"
+  },
+  "RC1_MIN": {
+    "unit": "us"
   },
   "RC1_REV": {
     "kind": "enum",
@@ -10662,6 +12333,15 @@
       }
     ]
   },
+  "RC1_TRIM": {
+    "unit": "us"
+  },
+  "RC2_MAX": {
+    "unit": "us"
+  },
+  "RC2_MIN": {
+    "unit": "us"
+  },
   "RC2_REV": {
     "kind": "enum",
     "options": [
@@ -10674,6 +12354,15 @@
         "value": 1
       }
     ]
+  },
+  "RC2_TRIM": {
+    "unit": "us"
+  },
+  "RC3_MAX": {
+    "unit": "us"
+  },
+  "RC3_MIN": {
+    "unit": "us"
   },
   "RC3_REV": {
     "kind": "enum",
@@ -10688,6 +12377,15 @@
       }
     ]
   },
+  "RC3_TRIM": {
+    "unit": "us"
+  },
+  "RC4_MAX": {
+    "unit": "us"
+  },
+  "RC4_MIN": {
+    "unit": "us"
+  },
   "RC4_REV": {
     "kind": "enum",
     "options": [
@@ -10700,6 +12398,15 @@
         "value": 1
       }
     ]
+  },
+  "RC4_TRIM": {
+    "unit": "us"
+  },
+  "RC5_MAX": {
+    "unit": "us"
+  },
+  "RC5_MIN": {
+    "unit": "us"
   },
   "RC5_REV": {
     "kind": "enum",
@@ -10714,6 +12421,15 @@
       }
     ]
   },
+  "RC5_TRIM": {
+    "unit": "us"
+  },
+  "RC6_MAX": {
+    "unit": "us"
+  },
+  "RC6_MIN": {
+    "unit": "us"
+  },
   "RC6_REV": {
     "kind": "enum",
     "options": [
@@ -10726,6 +12442,15 @@
         "value": 1
       }
     ]
+  },
+  "RC6_TRIM": {
+    "unit": "us"
+  },
+  "RC7_MAX": {
+    "unit": "us"
+  },
+  "RC7_MIN": {
+    "unit": "us"
   },
   "RC7_REV": {
     "kind": "enum",
@@ -10740,6 +12465,15 @@
       }
     ]
   },
+  "RC7_TRIM": {
+    "unit": "us"
+  },
+  "RC8_MAX": {
+    "unit": "us"
+  },
+  "RC8_MIN": {
+    "unit": "us"
+  },
   "RC8_REV": {
     "kind": "enum",
     "options": [
@@ -10753,6 +12487,15 @@
       }
     ]
   },
+  "RC8_TRIM": {
+    "unit": "us"
+  },
+  "RC9_MAX": {
+    "unit": "us"
+  },
+  "RC9_MIN": {
+    "unit": "us"
+  },
   "RC9_REV": {
     "kind": "enum",
     "options": [
@@ -10765,6 +12508,9 @@
         "value": 1
       }
     ]
+  },
+  "RC9_TRIM": {
+    "unit": "us"
   },
   "RC_CRSF_PRT_CFG": {
     "kind": "enum",
@@ -10801,6 +12547,9 @@
   },
   "RC_CRSF_TEL_EN": {
     "kind": "boolean"
+  },
+  "RC_FAILS_THR": {
+    "unit": "us"
   },
   "RC_MAP_ARM_SW": {
     "kind": "enum",
@@ -13147,6 +14896,36 @@
       }
     ]
   },
+  "RO_ACCEL_LIM": {
+    "unit": "m/s^2"
+  },
+  "RO_DECEL_LIM": {
+    "unit": "m/s^2"
+  },
+  "RO_JERK_LIM": {
+    "unit": "m/s^3"
+  },
+  "RO_MAX_THR_SPEED": {
+    "unit": "m/s"
+  },
+  "RO_SPEED_LIM": {
+    "unit": "m/s"
+  },
+  "RO_SPEED_TH": {
+    "unit": "m/s"
+  },
+  "RO_YAW_ACCEL_LIM": {
+    "unit": "deg/s^2"
+  },
+  "RO_YAW_DECEL_LIM": {
+    "unit": "deg/s^2"
+  },
+  "RO_YAW_RATE_LIM": {
+    "unit": "deg/s"
+  },
+  "RO_YAW_RATE_TH": {
+    "unit": "deg/s"
+  },
   "RTL_APPR_FORCE": {
     "kind": "boolean"
   },
@@ -13177,7 +14956,20 @@
         "label": "Only climb to at least RTL_DESCEND_ALT above destination.",
         "value": 90
       }
-    ]
+    ],
+    "unit": "deg"
+  },
+  "RTL_DESCEND_ALT": {
+    "unit": "m"
+  },
+  "RTL_LAND_DELAY": {
+    "unit": "s"
+  },
+  "RTL_LOITER_RAD": {
+    "unit": "m"
+  },
+  "RTL_MIN_DIST": {
+    "unit": "m"
   },
   "RTL_PLD_MD": {
     "kind": "enum",
@@ -13195,6 +14987,12 @@
         "value": 2
       }
     ]
+  },
+  "RTL_RETURN_ALT": {
+    "unit": "m"
+  },
+  "RTL_TIME_MARGIN": {
+    "unit": "s"
   },
   "RTL_TYPE": {
     "kind": "enum",
@@ -13221,8 +15019,23 @@
       }
     ]
   },
+  "RWTO_MAX_THR": {
+    "unit": "norm"
+  },
   "RWTO_NUDGE": {
     "kind": "boolean"
+  },
+  "RWTO_PSP": {
+    "unit": "deg"
+  },
+  "RWTO_RAMP_TIME": {
+    "unit": "s"
+  },
+  "RWTO_ROT_AIRSPD": {
+    "unit": "m/s"
+  },
+  "RWTO_ROT_TIME": {
+    "unit": "s"
   },
   "RWTO_TKOFF": {
     "kind": "boolean"
@@ -13338,8 +15151,17 @@
     ],
     "kind": "bitmask"
   },
+  "SDLOG_UTC_OFFSET": {
+    "unit": "min"
+  },
   "SDLOG_UUID": {
     "kind": "boolean"
+  },
+  "SENS_BARO_QNH": {
+    "unit": "hPa"
+  },
+  "SENS_BARO_RATE": {
+    "unit": "Hz"
   },
   "SENS_BAR_AUTOCAL": {
     "kind": "boolean"
@@ -13513,6 +15335,15 @@
       }
     ]
   },
+  "SENS_BOARD_X_OFF": {
+    "unit": "deg"
+  },
+  "SENS_BOARD_Y_OFF": {
+    "unit": "deg"
+  },
+  "SENS_BOARD_Z_OFF": {
+    "unit": "deg"
+  },
   "SENS_DPRES_REV": {
     "kind": "boolean"
   },
@@ -13648,6 +15479,18 @@
   "SENS_EXT_I2C_PRB": {
     "kind": "boolean"
   },
+  "SENS_FLOW_MAXHGT": {
+    "unit": "m"
+  },
+  "SENS_FLOW_MAXR": {
+    "unit": "rad/s"
+  },
+  "SENS_FLOW_MINHGT": {
+    "unit": "m"
+  },
+  "SENS_FLOW_RATE": {
+    "unit": "Hz"
+  },
   "SENS_FLOW_ROT": {
     "kind": "enum",
     "options": [
@@ -13702,6 +15545,9 @@
     ],
     "kind": "bitmask"
   },
+  "SENS_GPS_TAU": {
+    "unit": "s"
+  },
   "SENS_IMU_AUTOCAL": {
     "kind": "boolean"
   },
@@ -13742,6 +15588,9 @@
         "value": 1
       }
     ]
+  },
+  "SENS_MAG_RATE": {
+    "unit": "Hz"
   },
   "SENS_MAG_SIDES": {
     "kind": "enum",
@@ -14596,6 +16445,15 @@
   "SYS_BL_UPDATE": {
     "kind": "boolean"
   },
+  "SYS_CAL_TDEL": {
+    "unit": "celcius"
+  },
+  "SYS_CAL_TMAX": {
+    "unit": "celcius"
+  },
+  "SYS_CAL_TMIN": {
+    "unit": "celcius"
+  },
   "SYS_DM_BACKEND": {
     "kind": "enum",
     "options": [
@@ -14659,6 +16517,9 @@
         "value": 2
       }
     ]
+  },
+  "SYS_RGB_MAXBRT": {
+    "unit": "%"
   },
   "SYS_STCK_EN": {
     "kind": "boolean"
@@ -14749,6 +16610,9 @@
       }
     ]
   },
+  "UAVCAN_BITRATE": {
+    "unit": "bit/s"
+  },
   "UAVCAN_ECU_FUELT": {
     "kind": "enum",
     "options": [
@@ -14765,6 +16629,9 @@
         "value": 2
       }
     ]
+  },
+  "UAVCAN_ECU_MAXF": {
+    "unit": "liters"
   },
   "UAVCAN_EC_FUNC1": {
     "kind": "enum",
@@ -16625,6 +18492,12 @@
   },
   "UAVCAN_PUB_RTCM": {
     "kind": "boolean"
+  },
+  "UAVCAN_RNG_MAX": {
+    "unit": "m"
+  },
+  "UAVCAN_RNG_MIN": {
+    "unit": "m"
   },
   "UAVCAN_SUB_ASPD": {
     "kind": "boolean"
@@ -18502,13 +20375,37 @@
       }
     ]
   },
+  "UXRCE_DDS_RX_TO": {
+    "unit": "s"
+  },
   "UXRCE_DDS_SYNCC": {
     "kind": "boolean"
   },
   "UXRCE_DDS_SYNCT": {
     "kind": "boolean"
   },
+  "UXRCE_DDS_TX_TO": {
+    "unit": "s"
+  },
+  "VTO_LOITER_ALT": {
+    "unit": "m"
+  },
+  "WEIGHT_BASE": {
+    "unit": "kg"
+  },
+  "WEIGHT_GROSS": {
+    "unit": "kg"
+  },
   "WV_EN": {
     "kind": "boolean"
+  },
+  "WV_GAIN": {
+    "unit": "Hz"
+  },
+  "WV_ROLL_MIN": {
+    "unit": "deg"
+  },
+  "WV_YRATE_MAX": {
+    "unit": "deg/s"
   }
 }

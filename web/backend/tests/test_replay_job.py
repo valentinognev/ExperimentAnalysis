@@ -413,6 +413,28 @@ def test_default_preflight_before_params_when_runner_none(tmp_path, monkeypatch)
     assert inspect[:2] == ["docker", "inspect"]
 
 
+def test_default_preflight_marks_px4_git_safe():
+    from ea.replay.replay_job import DOCKER_CONTAINER, _default_preflight
+
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(list(argv))
+        cmd = " ".join(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return subprocess.CompletedProcess(argv, 0, "true\n", "")
+        if argv[:2] == ["docker", "exec"] and "test" in argv and "-d" in argv:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if "safe.directory" in cmd:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        raise AssertionError(argv)
+
+    _default_preflight(run=run)
+    joined = [" ".join(c) for c in calls]
+    assert any("safe.directory" in j and "*" in j.split() for j in joined)
+    assert any(DOCKER_CONTAINER in j and "git" in j for j in joined)
+
+
 def test_default_popen_start_new_session_merges_stderr(monkeypatch):
     from ea.replay.replay_job import _default_popen
 

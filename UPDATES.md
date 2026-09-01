@@ -1,5 +1,27 @@
 # Updates
 
+## 0.80.2 - Replay success refreshes Sources and Analysis
+- After a successful replay, reload the experiment so `Di_rj` appears in the Sources and Analysis lists without reopening
+
+## 0.80.1 - Replay container volume and rootfs write
+- Firmware `compose.yaml` binds this repo at `/home/valentin/ExperimentAnalysis` (replaces PX4Replay); recreate `px4-noetic-firm`
+- Pre-flight treats a stopped container as missing; `test_compose_mount.py` locks the bind
+- `write_replay_params` uses `docker exec tee` when the SITL `replay_params.txt` is root-owned
+- Pre-flight marks git `safe.directory *` in the container (process is root; PX4 submodules fail `make` otherwise)
+
+## 0.80.0 - Replay param units from QGC
+- Compact `paramMeta.json` now includes QGC `<unit>` (plain numeric params kept when they have a unit)
+- Param table shows the unit beside the number when present; empty/missing units stay omitted
+
+## 0.79.3 - Wider replay enum dropdowns
+- Enum/boolean select sizes to the label (`w-max`, up to `max-w-xl`) so QGC descriptions are not clipped
+
+## 0.79.2 - Replay bitmask checkboxes beside the number
+- Bitmask checkboxes sit to the right of the integer field (wrap), same row as enum/boolean dropdowns
+
+## 0.79.1 - Replay enum select beside the number
+- Enum and boolean dropdowns sit to the right of the integer field (`max-w-40`); bitmask checkboxes stay under the number
+
 ## 0.79.0 - Replay param enum and bitmask editors
 - Replay param table keeps the number field and adds QGC-backed enum dropdowns, bitmask checkboxes, and boolean On/Off
 - Compact `paramMeta.json` generated from QGroundControl ParameterFactMetaData; unmatched numbers stay legal (`custom (n)`)

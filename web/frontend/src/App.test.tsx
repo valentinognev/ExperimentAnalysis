@@ -41,6 +41,10 @@ import {
   patchManifest,
   patchMarkers,
   deleteReplayDrone,
+  inspectReplay,
+  startReplay,
+  getReplay,
+  getReplaySeries,
 } from "./api";
 import App from "./App";
 import { SkinProvider } from "./SkinContext";
@@ -81,6 +85,7 @@ describe("App analysis layout", () => {
       slug: "foo",
       manifest: {},
     });
+    vi.mocked(getReplaySeries).mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -350,6 +355,96 @@ describe("App analysis layout", () => {
       screen.getByText("2.ulog.vehicle_local_position.x"),
     ).toBeInTheDocument();
     vi.unstubAllGlobals();
+  });
+
+  it("lists D2_r1 on Sources and Analysis after a successful replay", async () => {
+    const withoutReplay = {
+      slug: "foo",
+      manifest: {
+        name: "Foo",
+        drones: [
+          { id: 1 },
+          { id: 2, sources: { ulg: ["raw/drone_2/d2.ulg"] } },
+        ],
+      },
+    };
+    const withReplay = {
+      slug: "foo",
+      manifest: {
+        name: "Foo",
+        drones: [
+          { id: 1 },
+          { id: 2, sources: { ulg: ["raw/drone_2/d2.ulg"] } },
+          {
+            id: "2_r1",
+            kind: "replay",
+            sources: { ulg: ["raw/drone_2_r1/replayed_r1.ulg"] },
+          },
+        ],
+        ui: { visible_drone_ids: [1, 2, "2_r1"] },
+      },
+    };
+    vi.mocked(listExperiments).mockResolvedValue([
+      { slug: "foo", name: "Foo", drone_ids: ["1", "2"], missing: [] },
+    ]);
+    vi.mocked(openExperiment).mockResolvedValue(withoutReplay);
+    vi.mocked(inspectReplay).mockResolvedValue({
+      run_id: "abc",
+      params: [],
+      topics: [],
+      duration_s: 1,
+      warnings: [],
+    });
+    vi.mocked(startReplay).mockImplementation(async () => {
+      vi.mocked(listExperiments).mockResolvedValue([
+        { slug: "foo", name: "Foo", drone_ids: ["1", "2", "2_r1"], missing: [] },
+      ]);
+      vi.mocked(openExperiment).mockResolvedValue(withReplay);
+      return { ok: true, run_id: "abc" };
+    });
+    vi.mocked(getReplay).mockResolvedValue({
+      status: "success",
+      results_dir: "/tmp/results",
+      replay_id: "2_r1",
+      error: null,
+    });
+
+    const user = userEvent.setup();
+    renderApp();
+    const picker = screen.getByRole("combobox", { name: "Experiment" });
+    await waitFor(() => {
+      expect(within(picker).getByRole("option", { name: "foo" })).toBeInTheDocument();
+    });
+    await user.selectOptions(picker, "foo");
+    await waitFor(() => {
+      expect(screen.getByText("D2")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("D2_r1")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Replay" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Replay drone" }),
+      "2",
+    );
+    await waitFor(() => {
+      expect(inspectReplay).toHaveBeenCalledWith("foo", 2);
+    });
+    await user.click(screen.getByRole("button", { name: "Replay" }));
+    await waitFor(() => {
+      expect(screen.getByText("success")).toBeInTheDocument();
+      expect(screen.getByText("2_r1")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Sources" }));
+    await waitFor(() => {
+      expect(screen.getByText("D2_r1")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "Delete D2_r1" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Analysis" }));
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox", { name: /^D2_r1$/ })).toBeInTheDocument();
+    });
   });
 
   it("shows Replay tabpanel when Replay is clicked", async () => {

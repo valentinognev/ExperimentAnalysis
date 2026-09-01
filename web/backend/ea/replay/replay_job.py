@@ -151,6 +151,24 @@ def _default_preflight(*, run: Callable | None = None) -> None:
             f"{_CONTAINER_MOUNT} is not mounted in {DOCKER_CONTAINER}; "
             "recreate compose with the new volume"
         )
+    git_safe = run_fn(
+        [
+            "docker",
+            "exec",
+            DOCKER_CONTAINER,
+            "git",
+            "config",
+            "--global",
+            "--add",
+            "safe.directory",
+            "*",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if git_safe.returncode != 0:
+        err = (git_safe.stderr or git_safe.stdout or "").strip()
+        raise RuntimeError(f"could not mark git safe.directory *: {err}")
 
 
 def _combined_output(proc) -> str:

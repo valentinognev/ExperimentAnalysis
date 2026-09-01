@@ -3,23 +3,29 @@ import {
   asNumber,
   bitOn,
   enumOptionValues,
+  paramKind,
   paramMeta,
   setBit,
 } from "./paramMeta";
 
+it("paramKind is undefined for unit-only meta", () => {
+  expect(paramKind(paramMeta("EKF2_RNG_NOISE"))).toBeUndefined();
+  expect(paramKind(paramMeta("EKF2_HGT_REF"))).toBe("enum");
+});
+
 it("looks up QGC enum bitmask and boolean", () => {
   const hgt = paramMeta("EKF2_HGT_REF");
-  expect(hgt?.kind).toBe("enum");
-  if (hgt?.kind === "enum") {
+  expect(paramKind(hgt)).toBe("enum");
+  if (hgt && "options" in hgt) {
     expect(hgt.options).toContainEqual({ value: 1, label: "GPS" });
   }
   const gps = paramMeta("EKF2_GPS_CTRL");
-  expect(gps?.kind).toBe("bitmask");
-  if (gps?.kind === "bitmask") {
+  expect(paramKind(gps)).toBe("bitmask");
+  if (gps && "bits" in gps) {
     expect(gps.bits).toContainEqual({ index: 0, label: "Lon/lat" });
   }
   expect(paramMeta("EKF2_BARO_CTRL")).toEqual({ kind: "boolean" });
-  expect(paramMeta("EKF2_RNG_NOISE")).toBeUndefined();
+  expect(paramMeta("EKF2_RNG_NOISE")).toEqual({ unit: "m" });
 });
 
 it("toggles bitmask bits", () => {
@@ -36,7 +42,9 @@ it("asNumber coerces strings", () => {
 
 it("enumOptionValues lists codes", () => {
   const hgt = paramMeta("EKF2_HGT_REF");
-  if (hgt?.kind !== "enum") throw new Error("expected enum");
+  if (!hgt || paramKind(hgt) !== "enum" || !("options" in hgt)) {
+    throw new Error("expected enum");
+  }
   expect(enumOptionValues(hgt)).toContain(0);
   expect(enumOptionValues(hgt)).toContain(1);
 });

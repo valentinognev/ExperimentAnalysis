@@ -6,6 +6,7 @@ import {
   asNumber,
   bitOn,
   enumOptionValues,
+  paramKind,
   paramMeta,
   setBit,
 } from "./paramMeta";
@@ -29,14 +30,16 @@ function ParamValueEditor({
 }) {
   const meta = paramMeta(name);
   const n = asNumber(value);
+  const kind = paramKind(meta);
+  const unit = meta?.unit;
 
   let extra: ReactNode = null;
-  if (meta?.kind === "enum") {
+  if (kind === "enum" && meta && "options" in meta) {
     const codes = enumOptionValues(meta);
     const known = codes.includes(n);
     extra = (
       <select
-        className={INPUT}
+        className={`${INPUT} min-w-min w-max max-w-xl shrink-0`}
         aria-label={`${name} enum`}
         value={String(n)}
         onChange={(e) => onChange(e.target.value)}
@@ -51,11 +54,11 @@ function ParamValueEditor({
         )}
       </select>
     );
-  } else if (meta?.kind === "boolean") {
+  } else if (kind === "boolean") {
     const known = n === 0 || n === 1;
     extra = (
       <select
-        className={INPUT}
+        className={`${INPUT} min-w-min w-max max-w-xl shrink-0`}
         aria-label={`${name} boolean`}
         value={String(n)}
         onChange={(e) => onChange(e.target.value)}
@@ -67,9 +70,9 @@ function ParamValueEditor({
         )}
       </select>
     );
-  } else if (meta?.kind === "bitmask") {
+  } else if (kind === "bitmask" && meta && "bits" in meta) {
     extra = (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex min-w-0 flex-wrap gap-2">
         {meta.bits.map((b) => (
           <label key={b.index} className={`${LABEL} inline-flex items-center gap-1`}>
             <input
@@ -87,15 +90,21 @@ function ParamValueEditor({
     );
   }
 
+  const beside = extra !== null || Boolean(unit);
   return (
-    <div className="flex flex-col gap-1">
+    <div className={beside ? "flex min-w-0 items-center gap-2" : undefined}>
       <input
-        className={`${INPUT} w-full`}
+        className={`${INPUT} ${beside ? "w-24 shrink-0" : "w-full"}`}
         name={name}
         type={typeof value === "number" ? "number" : "text"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
+      {unit ? (
+        <span className={`${LABEL} shrink-0`} aria-label={`${name} unit`}>
+          {unit}
+        </span>
+      ) : null}
       {extra}
     </div>
   );

@@ -262,3 +262,17 @@ it("params without metadata have no extra combobox", () => {
   expect(paramInput("EKF2_RNG_NOISE")).toBeInTheDocument();
   expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
 });
+
+it("shows QGC unit beside the number when present", () => {
+  render(
+    <ParamTable
+      params={[
+        { name: "EKF2_RNG_NOISE", value: 0.1 },
+        { name: "EKF2_HGT_REF", value: 1 },
+      ]}
+      onOverrides={() => {}}
+    />,
+  );
+  expect(screen.getByLabelText("EKF2_RNG_NOISE unit")).toHaveTextContent("m");
+  expect(screen.queryByLabelText("EKF2_HGT_REF unit")).not.toBeInTheDocument();
+});

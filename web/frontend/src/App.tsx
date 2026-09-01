@@ -763,7 +763,7 @@ export default function App() {
               Open an experiment on the Sources tab to replay.
             </p>
           ) : (
-            <ReplayTab slug={slug} manifest={manifest} />
+            <ReplayTab slug={slug} manifest={manifest} onPulled={handlePulled} />
           )}
         </div>
       )}

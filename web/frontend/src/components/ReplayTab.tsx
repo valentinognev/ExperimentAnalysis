@@ -47,9 +47,11 @@ export function physicalUlgIds(manifest: Record<string, unknown>): number[] {
 export default function ReplayTab({
   slug,
   manifest,
+  onPulled,
 }: {
   slug: string;
   manifest: Record<string, unknown>;
+  onPulled?: () => void;
 }) {
   const { skin } = useSkin();
   const ids = physicalUlgIds(manifest);
@@ -141,7 +143,10 @@ export default function ReplayTab({
         droneId={droneId}
         overrides={overrides}
         busy={busy}
-        onJob={(job) => setStatus(job?.status)}
+        onJob={(job) => {
+          setStatus(job?.status);
+          if (job?.status === "success") onPulled?.();
+        }}
       />
       <OverlayPlots slug={slug} runId={runId} status={status} skin={skin} />
     </div>
