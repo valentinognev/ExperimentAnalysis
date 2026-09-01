@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
@@ -68,4 +68,73 @@ it("selecting D2 calls inspectReplay", async () => {
     "2",
   );
   expect(inspectReplay).toHaveBeenCalledWith("foo", 2);
+});
+
+it("failed inspect on D3 does not keep D2's run_id", async () => {
+  vi.mocked(inspectReplay)
+    .mockResolvedValueOnce({
+      run_id: "abc",
+      params: [],
+      topics: [],
+      duration_s: 1,
+      warnings: [],
+    })
+    .mockRejectedValueOnce(new Error("inspect failed"));
+  renderTab();
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "Replay drone" }),
+    "2",
+  );
+  expect(await screen.findByText("abc")).toBeInTheDocument();
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "Replay drone" }),
+    "3",
+  );
+  expect(await screen.findByText(/inspect failed/)).toBeInTheDocument();
+  expect(screen.queryByText("abc")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Replay" })).toBeDisabled();
+});
+
+it("overlapping inspect ignores the older response", async () => {
+  let resolveD2!: (value: {
+    run_id: string;
+    params: unknown[];
+    topics: unknown[];
+    duration_s: number;
+    warnings: string[];
+  }) => void;
+  const d2Inspect = new Promise<Parameters<typeof resolveD2>[0]>((resolve) => {
+    resolveD2 = resolve;
+  });
+  vi.mocked(inspectReplay).mockImplementation((_slug, droneId) => {
+    if (droneId === 2) return d2Inspect as ReturnType<typeof inspectReplay>;
+    return Promise.resolve({
+      run_id: "d3-run",
+      params: [],
+      topics: [],
+      duration_s: 2,
+      warnings: [],
+    });
+  });
+  renderTab();
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "Replay drone" }),
+    "2",
+  );
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "Replay drone" }),
+    "3",
+  );
+  expect(await screen.findByText("d3-run")).toBeInTheDocument();
+  await act(async () => {
+    resolveD2({
+      run_id: "d2-run",
+      params: [],
+      topics: [],
+      duration_s: 1,
+      warnings: [],
+    });
+  });
+  expect(screen.queryByText("d2-run")).not.toBeInTheDocument();
+  expect(screen.getByText("d3-run")).toBeInTheDocument();
 });

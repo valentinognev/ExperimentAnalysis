@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { inspectReplay } from "../api";
 import { isReplayId } from "../replayId";
 import { OverlayPlots } from "../replay/OverlayPlots";
@@ -63,23 +63,34 @@ export default function ReplayTab({
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<InspectInfo | null>(null);
   const [busy, setBusy] = useState(false);
+  const inspectGen = useRef(0);
+
+  function clearInspect() {
+    setRunId(null);
+    setParams([]);
+    setOverrides({});
+    setStatus(undefined);
+    setInfo(null);
+    setError(null);
+  }
 
   async function onSelect(raw: string) {
+    inspectGen.current += 1;
+    const gen = inspectGen.current;
     if (raw === "") {
       setDroneId(null);
-      setRunId(null);
-      setParams([]);
-      setOverrides({});
-      setStatus(undefined);
-      setInfo(null);
+      clearInspect();
+      setBusy(false);
       return;
     }
     const id = Number(raw);
     if (!Number.isInteger(id)) return;
     setDroneId(id);
+    clearInspect();
     setBusy(true);
     try {
       const result = (await inspectReplay(slug, id)) as InspectInfo;
+      if (gen !== inspectGen.current) return;
       setError(null);
       setInfo(result);
       setRunId(result.run_id);
@@ -87,9 +98,10 @@ export default function ReplayTab({
       setOverrides({});
       setStatus(undefined);
     } catch (e) {
+      if (gen !== inspectGen.current) return;
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      if (gen === inspectGen.current) setBusy(false);
     }
   }
 
