@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Plot from "react-plotly.js";
 import type { Dash, Data, Layout } from "plotly.js";
 import { getSeries, type SeriesResponse } from "../api";
-import { experimentTimeAxis } from "../channelPlotAxis";
+import { PLOT_TIME_MARGIN, experimentTimeAxis } from "../channelPlotAxis";
 import { droneColor } from "../droneColor";
 import { plotTheme, type Skin } from "../skin";
 
@@ -100,9 +100,13 @@ export default function ChannelPlot({
       paper_bgcolor: theme.paper_bgcolor,
       plot_bgcolor: theme.plot_bgcolor,
       font: { color: theme.font_color },
-      margin: { l: 48, r: 16, t: 24, b: 40 },
+      margin: { ...PLOT_TIME_MARGIN },
       xaxis: { ...experimentTimeAxis(tMax), gridcolor: theme.gridcolor },
-      yaxis: { title: { text: "NED (m)" }, gridcolor: theme.gridcolor },
+      yaxis: {
+        title: { text: "NED (m)" },
+        gridcolor: theme.gridcolor,
+        automargin: false,
+      },
       showlegend: true,
       legend: { orientation: "h", y: 1.1 },
       shapes: [

@@ -60,5 +60,5 @@ test("Baseball reconstruction in the UI", async ({ page }) => {
   await expect(page.getByRole("checkbox", { name: "D3" })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "D4" })).toBeVisible();
   await expect(page.locator(".js-plotly-plot").first()).toBeVisible();
-  await expect(page.getByRole("slider")).toBeVisible();
+  await expect(page.getByRole("slider").first()).toBeVisible();
 });

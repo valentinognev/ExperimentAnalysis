@@ -5,7 +5,7 @@ import { groundPlaneExtent, groundPlaneTrace } from "../groundPlane";
 import { triadTraces, type EnuPos } from "../triad";
 import { sceneLayout } from "../view3dLayout";
 import type { Origin } from "../markers";
-import type { Skin } from "../skin";
+import { plotTheme, type Skin } from "../skin";
 import {
   groundClickToLla,
   isPlotDoubleClick,
@@ -17,6 +17,7 @@ import {
 } from "../markers";
 import { droneColor } from "../droneColor";
 import { avatarMarkerStyle } from "../avatarMarker";
+import { dashesForColors } from "../plotBoard";
 
 type QuatXyzw = [number, number, number, number];
 
@@ -49,7 +50,7 @@ export function avatarBodyOutline(
   return avatarMarkerStyle(label).outline;
 }
 
-type MarkerEnu = EnuPos & { id: string };
+type MarkerEnu = EnuPos & { id: string; label?: string };
 
 type View3DProps = {
   drones: DronePose[];
@@ -65,6 +66,7 @@ function trailTrace(
   id: string,
   trail: EnuPos[],
   color: string,
+  dash: string,
   label?: string,
 ): Data {
   return {
@@ -74,7 +76,7 @@ function trailTrace(
     x: trail.map((p) => p.e),
     y: trail.map((p) => p.n),
     z: trail.map((p) => p.u),
-    line: { color, width: 2 },
+    line: { color, width: 2, dash },
     marker: { size: 2, color },
     showlegend: true,
   };
@@ -167,6 +169,8 @@ function View3D({
     const ys = markerPositions.map((p) => p.n);
     const zs = markerPositions.map((p) => p.u);
     const ids = markerPositions.map((p) => p.id);
+    const labels = markerPositions.map((p) => p.label ?? "");
+    const theme = plotTheme(skin);
     traces.push({
       type: "scatter3d",
       mode: "markers",
@@ -181,13 +185,16 @@ function View3D({
     });
     traces.push({
       type: "scatter3d",
-      mode: "markers",
+      mode: "markers+text",
       name: MARKERS_TRACE_NAME,
       legendgroup: MARKERS_TRACE_NAME,
       x: xs,
       y: ys,
       z: zs,
       customdata: ids,
+      text: labels,
+      textposition: "top center",
+      textfont: { size: 10, color: theme.font_color },
       marker: {
         size: 5,
         color: MARKER_COLOR,
@@ -198,11 +205,21 @@ function View3D({
     });
   }
 
+  const trailDashes = dashesForColors(
+    drones
+      .filter((d) => d.trail && d.trail.length > 0)
+      .map((d) => droneColor(d.id)),
+  );
+  let trailI = 0;
+
   drones.forEach((drone) => {
     const color = droneColor(drone.id);
     const name = avatarLegendName(drone.id, drone.label);
     if (drone.trail && drone.trail.length > 0) {
-      traces.push(trailTrace(drone.id, drone.trail, color, drone.label));
+      traces.push(
+        trailTrace(drone.id, drone.trail, color, trailDashes[trailI] ?? "solid", drone.label),
+      );
+      trailI += 1;
     }
     if (drone.style !== "point" && drone.attitude_q_xyzw) {
       for (const trace of triadTraces(

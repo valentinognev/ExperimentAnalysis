@@ -1,5 +1,27 @@
 # Updates
 
+## 0.77.0 - Map trail dashes and 2D marker legend
+- 2D/3D (Plotly and Cesium) trails use the same color-collision dashes as extra plots: solid when unique, distinct dash per same-color trail
+- 2D legend lists each current-T drone marker (per-source symbol) as well as trajectories; ground diamonds stay under Markers
+
+## 0.76.0 - Time scrubber every three figures
+- Matching time-axis scrubber repeats before every third channel plot (NED counts as the first figure)
+- Extra panes after 3, 6, … get their own thumb aligned to `[0, tMax]`; play / speeds stay on the first bar
+
+## 0.75.0 - Time scrubber matches plot x-axis
+- Analysis timeline sits above the channel plots (not under 3D); play / speeds / numeric T on a row above a full-width scrubber
+- Scrubber track uses the same left/right Plotly insets (`l: 48`, `r: 16`); thumb at `t/tMax`, centered on the value
+- NED and extra panes share `PLOT_TIME_MARGIN` and `automargin: false` so stacked time axes line up with the thumb
+
+## 0.74.0 - Unique dash when extra-plot colors collide
+- Extra Plotly panes keep a solid line when a color is unique; same-color traces get distinct dashes (solid / dash / dot / dashdot / longdash / longdashdot, then custom lists)
+
+## 0.73.0 - Plot edit placement, reorder, map legend, marker names
+- Edit plot opens the channel picker under that pane; Add plot still opens it above the extra plots
+- Up / Down on each extra pane reorder `ui.plots` (disabled at the ends)
+- 2D map legend gets more top margin and wraps; zoom/pan sit at the bottom so legend items stay clickable
+- Ground marker names are drawn on Plotly 2D and 3D (Cesium already had labels)
+
 ## 0.72.0 - Day/night skin
 - Night/Day switch in the header; night darkens 3D scene and 2D/Cesium basemap; preference in `localStorage` (`ea-skin`).
 

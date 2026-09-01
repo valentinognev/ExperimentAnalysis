@@ -10,6 +10,7 @@ type PlotTrace = {
   showlegend?: boolean;
   legendgroup?: string;
   mode?: string;
+  text?: string | string[];
   marker?: {
     size?: number;
     color?: string;
@@ -124,6 +125,17 @@ describe("View3D marker gestures", () => {
     expect(halo?.marker?.color).toBe(MARKER_OUTLINE_COLOR);
     expect(halo?.marker?.symbol).toBe("diamond");
     expect(halo?.marker?.size).toBeGreaterThan(fill?.marker?.size ?? 0);
+  });
+
+  it("shows ground marker names next to the diamonds", () => {
+    renderView({
+      markerPositions: [{ id: "m-1", e: 1, n: 2, u: 0, label: "Pad" }],
+    });
+    const fill = lastPlot?.data?.find(
+      (t) => t.name === "Markers" && t.showlegend !== false,
+    );
+    expect(fill?.mode).toContain("text");
+    expect(fill?.text).toEqual(["Pad"]);
   });
 });
 
@@ -252,6 +264,47 @@ describe("View3D triad legend", () => {
     expect(legendTraces().map((t) => t.name)).toEqual(["D2 ekf trail", "D2 ekf"]);
     const trail = lastPlot?.data?.find((t) => t.name === "D2 ekf trail");
     expect(trail?.legendgroup).not.toBe("D2 ekf");
+  });
+
+  it("gives same-color trails distinct dashes", () => {
+    const trail = [
+      { e: 0, n: 0, u: 0 },
+      { e: 1, n: 1, u: 1 },
+    ];
+    renderView({
+      drones: [
+        { ...ekf, style: "point" as const, trail },
+        { ...ekf, label: "gps", style: "point" as const, trail },
+      ],
+      markerPositions: [],
+    });
+    const trails = (lastPlot?.data ?? []).filter((t) => t.name?.includes("trail"));
+    expect(trails).toHaveLength(2);
+    expect(trails[0]?.line?.color).toBe(trails[1]?.line?.color);
+    expect(trails[0]?.line?.dash).toBe("solid");
+    expect(trails[1]?.line?.dash).toBe("dash");
+  });
+
+  it("keeps unique-color trails solid", () => {
+    const trail = [
+      { e: 0, n: 0, u: 0 },
+      { e: 1, n: 1, u: 1 },
+    ];
+    renderView({
+      drones: [
+        { ...ekf, style: "point" as const, trail },
+        {
+          ...ekf,
+          id: "3",
+          label: "ekf_ned",
+          style: "point" as const,
+          trail,
+        },
+      ],
+      markerPositions: [],
+    });
+    const trails = (lastPlot?.data ?? []).filter((t) => t.name?.includes("trail"));
+    expect(trails.map((t) => t.line?.dash)).toEqual(["solid", "solid"]);
   });
 
   it("hides the velocity arrow with the body via the same legendgroup", () => {

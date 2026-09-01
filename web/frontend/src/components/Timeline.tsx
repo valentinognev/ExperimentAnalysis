@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PLOT_TIME_MARGIN, scrubberFraction } from "../channelPlotAxis";
 import {
   advance,
   type Direction,
@@ -50,6 +51,41 @@ type Props = {
   tMax: number;
   onTChange: (t: number) => void;
 };
+
+export function TimeScrubber({ t, tMax, onTChange }: Props) {
+  const thumbPct = `${scrubberFraction(t, tMax) * 100}%`;
+
+  return (
+    <div className="border border-transparent">
+      <div
+        data-testid="time-scrubber-track"
+        style={{
+          paddingLeft: PLOT_TIME_MARGIN.l,
+          paddingRight: PLOT_TIME_MARGIN.r,
+        }}
+      >
+        <div className="relative h-6">
+          <div className="absolute top-1/2 right-0 left-0 h-1 -translate-y-1/2 rounded bg-zinc-700" />
+          <div
+            data-testid="time-scrubber-thumb"
+            className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-400"
+            style={{ left: thumbPct }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={tMax}
+            step={0.01}
+            value={t}
+            onChange={(e) => onTChange(Number.parseFloat(e.target.value))}
+            className="absolute inset-0 w-full cursor-pointer opacity-0"
+            aria-label="Time scrubber"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Timeline({ t, tMax, onTChange }: Props) {
   const [direction, setDirection] = useState<Direction>(0);
@@ -112,65 +148,60 @@ export default function Timeline({ t, tMax, onTChange }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 border-t border-zinc-800 bg-zinc-900 px-4 py-3">
-      <div className="flex gap-1">
-        {transportButtons(direction).map((btn, slot) => (
-          <button
-            key={slot}
-            type="button"
-            aria-label={btn.label}
-            disabled={btn.disabled}
-            onClick={() => handleAction(btn.action)}
-            className="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-zinc-800"
-          >
-            {btn.label}
-          </button>
-        ))}
+    <div className="border-t border-zinc-800 bg-zinc-900 py-3">
+      <div className="flex flex-wrap items-center gap-3 px-4">
+        <div className="flex gap-1">
+          {transportButtons(direction).map((btn, slot) => (
+            <button
+              key={slot}
+              type="button"
+              aria-label={btn.label}
+              disabled={btn.disabled}
+              onClick={() => handleAction(btn.action)}
+              className="rounded bg-zinc-800 px-3 py-1 text-sm hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-zinc-800"
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-1">
+          {SPEEDS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-label={`${s}×`}
+              aria-pressed={speed === s}
+              onClick={() => setSpeed(s)}
+              className={`rounded px-2 py-1 text-sm ${
+                speed === s
+                  ? "bg-sky-700 text-white"
+                  : "bg-zinc-800 hover:bg-zinc-700"
+              }`}
+            >
+              {s}×
+            </button>
+          ))}
+        </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          T
+          <input
+            type="number"
+            min={0}
+            max={tMax}
+            step={0.01}
+            value={Number.isFinite(t) ? t : 0}
+            onChange={(e) => handleNumericInput(e.target.value)}
+            className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1"
+          />
+        </label>
+        <span className="text-xs text-zinc-500">/ {tMax.toFixed(1)} s</span>
       </div>
 
-      <div className="flex gap-1">
-        {SPEEDS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            aria-label={`${s}×`}
-            aria-pressed={speed === s}
-            onClick={() => setSpeed(s)}
-            className={`rounded px-2 py-1 text-sm ${
-              speed === s
-                ? "bg-sky-700 text-white"
-                : "bg-zinc-800 hover:bg-zinc-700"
-            }`}
-          >
-            {s}×
-          </button>
-        ))}
+      <div className="mt-2 px-4">
+        <TimeScrubber t={t} tMax={tMax} onTChange={handleSlider} />
       </div>
-
-      <label className="flex items-center gap-2 text-sm">
-        T
-        <input
-          type="number"
-          min={0}
-          max={tMax}
-          step={0.01}
-          value={Number.isFinite(t) ? t : 0}
-          onChange={(e) => handleNumericInput(e.target.value)}
-          className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1"
-        />
-      </label>
-
-      <input
-        type="range"
-        min={0}
-        max={tMax}
-        step={0.01}
-        value={t}
-        onChange={(e) => handleSlider(Number.parseFloat(e.target.value))}
-        className="min-w-[12rem] flex-1"
-        aria-label="Time scrubber"
-      />
-      <span className="text-xs text-zinc-500">/ {tMax.toFixed(1)} s</span>
     </div>
   );
 }

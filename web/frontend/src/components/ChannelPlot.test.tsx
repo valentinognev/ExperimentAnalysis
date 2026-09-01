@@ -11,8 +11,14 @@ type PlotTrace = {
 type PlotProps = {
   data?: PlotTrace[];
   layout?: {
-    xaxis?: { range?: [number, number]; autorange?: boolean; gridcolor?: string };
-    yaxis?: { gridcolor?: string };
+    margin?: { l?: number; r?: number; t?: number; b?: number };
+    xaxis?: {
+      range?: [number, number];
+      autorange?: boolean;
+      automargin?: boolean;
+      gridcolor?: string;
+    };
+    yaxis?: { gridcolor?: string; automargin?: boolean };
     paper_bgcolor?: string;
     plot_bgcolor?: string;
     shapes?: Array<{ line?: { color?: string } }>;
@@ -33,6 +39,7 @@ vi.mock("../api", () => ({
 }));
 
 import { getSeries } from "../api";
+import { PLOT_TIME_MARGIN } from "../channelPlotAxis";
 import { droneColor } from "../droneColor";
 import ChannelPlot from "./ChannelPlot";
 
@@ -96,6 +103,9 @@ describe("ChannelPlot NED traces", () => {
       expect(lastPlot?.layout?.xaxis?.range).toEqual([0, 160]);
     });
     expect(lastPlot?.layout?.xaxis?.autorange).toBe(false);
+    expect(lastPlot?.layout?.xaxis?.automargin).toBe(false);
+    expect(lastPlot?.layout?.yaxis?.automargin).toBe(false);
+    expect(lastPlot?.layout?.margin).toEqual(PLOT_TIME_MARGIN);
     expect(lastPlot?.layout?.paper_bgcolor).toBe("#09090b");
     expect(lastPlot?.layout?.shapes?.[0]?.line?.color).toBe("#fafafa");
   });

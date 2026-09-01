@@ -30,6 +30,22 @@ export function setPlotChannels(
   );
 }
 
+/** Swap plot `id` with its neighbor. `delta` is -1 (up) or 1 (down). No-op at ends. */
+export function movePlot(
+  plots: PlotDef[],
+  id: string,
+  delta: -1 | 1,
+): PlotDef[] {
+  const i = plots.findIndex((p) => p.id === id);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= plots.length) return plots;
+  const next = [...plots];
+  const tmp = next[i];
+  next[i] = next[j];
+  next[j] = tmp;
+  return next;
+}
+
 /** Returns [] when slug changes; null when unchanged (no plot reset). */
 export function plotsOnSlugChange(
   prevSlug: string | null,
@@ -178,4 +194,49 @@ export function leafSelectionState(
   if (n === 0) return "none";
   if (n === leaves.length) return "all";
   return "some";
+}
+
+const NAMED_DASHES = [
+  "solid",
+  "dash",
+  "dot",
+  "dashdot",
+  "longdash",
+  "longdashdot",
+] as const;
+
+function dashAt(indexInGroup: number): string {
+  if (indexInGroup < NAMED_DASHES.length) return NAMED_DASHES[indexInGroup];
+  const i = indexInGroup - NAMED_DASHES.length;
+  return `${8 + i * 2}px,${3 + (i % 4)}px,${2 + i}px,${4 + (i % 3)}px`;
+}
+
+/** Solid when a color is unique; otherwise a distinct dash per curve of that color. */
+export function dashesForColors(colors: readonly string[]): string[] {
+  const groupSize = new Map<string, number>();
+  for (const color of colors) {
+    groupSize.set(color, (groupSize.get(color) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
+  return colors.map((color) => {
+    const size = groupSize.get(color) ?? 1;
+    const i = seen.get(color) ?? 0;
+    seen.set(color, i + 1);
+    if (size === 1) return "solid";
+    return dashAt(i);
+  });
+}
+
+const CESIUM_DASH_PATTERN: Record<string, number> = {
+  dash: 0xff00,
+  dot: 0x1111,
+  dashdot: 0xff18,
+  longdash: 0xfff0,
+  longdashdot: 0xf0f8,
+};
+
+/** Cesium `dashPattern` (16-bit), or undefined for a solid polyline. */
+export function cesiumDashPattern(dash: string): number | undefined {
+  if (dash === "solid") return undefined;
+  return CESIUM_DASH_PATTERN[dash] ?? 0xaaaa;
 }

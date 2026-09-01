@@ -20,6 +20,7 @@ import { avatarLegendName, type DronePose } from "./View3D";
 import { droneColor } from "../droneColor";
 import { avatarMarkerStyle, avatarSymbolDataUri } from "../avatarMarker";
 import { cesiumImageryUrl, type Skin } from "../skin";
+import { cesiumDashPattern, dashesForColors } from "../plotBoard";
 
 type View3DCesiumProps = {
   drones: DronePose[];
@@ -70,6 +71,13 @@ function updateEntities(
   scale: number,
 ) {
   viewer.entities.removeAll();
+
+  const trailDashes = dashesForColors(
+    drones
+      .filter((d) => d.trail && d.trail.length > 1)
+      .map((d) => droneColor(d.id)),
+  );
+  let trailI = 0;
 
   for (const marker of markers) {
     const { lon, lat, alt_m } = markerEntity(marker);
@@ -141,11 +149,21 @@ function updateEntities(
     }
 
     if (drone.trail && drone.trail.length > 1) {
+      const color = droneColor(drone.id);
+      const dash = trailDashes[trailI] ?? "solid";
+      trailI += 1;
+      const pattern = cesiumDashPattern(dash);
       viewer.entities.add({
         polyline: {
           positions: drone.trail.map((p) => enuToCartesian(p, origin, Cesium)),
           width: 2,
-          material: Cesium.Color.fromCssColorString(droneColor(drone.id)),
+          material:
+            pattern === undefined
+              ? Cesium.Color.fromCssColorString(color)
+              : new Cesium.PolylineDashMaterialProperty({
+                  color: Cesium.Color.fromCssColorString(color),
+                  dashPattern: pattern,
+                }),
         },
       });
     }

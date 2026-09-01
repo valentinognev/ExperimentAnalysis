@@ -43,9 +43,47 @@ describe("mapFigure", () => {
 
   it("traces include lat and lon arrays", () => {
     const { data } = mapFigure(samplePoints);
-    const main = data[0] as { lat?: number[]; lon?: number[] };
-    expect(main.lat).toEqual(samplePoints.map((p) => p.lat));
-    expect(main.lon).toEqual(samplePoints.map((p) => p.lon));
+    const lats = data.flatMap((t) => (t as { lat?: number[] }).lat ?? []);
+    const lons = data.flatMap((t) => (t as { lon?: number[] }).lon ?? []);
+    expect(lats).toEqual(expect.arrayContaining(samplePoints.map((p) => p.lat)));
+    expect(lons).toEqual(expect.arrayContaining(samplePoints.map((p) => p.lon)));
+  });
+
+  it("lists each drone marker in the legend, not only trajectories", () => {
+    const { data } = mapFigure(
+      [
+        {
+          lat: 32,
+          lon: 35,
+          name: "D2 ekf",
+          color: "#f00",
+          symbol: "circle",
+          halo: true,
+        },
+        { lat: 32.1, lon: 35.1, name: "D2 gps", color: "#f00", symbol: "square" },
+      ],
+      [
+        {
+          lat: [32, 32.01],
+          lon: [35, 35.01],
+          name: "D2 ekf",
+          color: "#f00",
+        },
+      ],
+    );
+    type T = { name?: string; mode?: string; showlegend?: boolean };
+    const legend = data.filter((t) => (t as T).showlegend !== false) as T[];
+    const names = legend.map((t) => t.name);
+    expect(names).not.toContain("Map");
+    expect(legend.some((t) => t.name === "D2 ekf" && t.mode?.includes("lines"))).toBe(
+      true,
+    );
+    expect(
+      legend.some((t) => t.name === "D2 ekf" && t.mode?.includes("markers")),
+    ).toBe(true);
+    expect(
+      legend.some((t) => t.name === "D2 gps" && t.mode?.includes("markers")),
+    ).toBe(true);
   });
 
   it("draws each track as a scattermap line", () => {
@@ -70,6 +108,19 @@ describe("mapFigure", () => {
     expect(line?.lat).toEqual([47.37, 47.371]);
     expect(line?.lon).toEqual([8.54, 8.541]);
     expect(line?.line?.dash).toBe("dash");
+  });
+
+  it("shows ground marker names as labels on the map", () => {
+    const { data } = mapFigure([
+      { lat: 32, lon: 35, name: "D2 ekf", color: "#f00", symbol: "circle" },
+      { lat: 32.1, lon: 35.1, name: "M1", color: "#FFFFFF", symbol: "diamond" },
+    ]);
+    type T = { mode?: string; text?: string[]; marker?: { symbol?: string } };
+    const diamond = data.find((t) => (t as T).marker?.symbol === "diamond") as T;
+    const circle = data.find((t) => (t as T).marker?.symbol === "circle") as T;
+    expect(diamond?.mode).toContain("text");
+    expect(diamond?.text).toEqual(["M1"]);
+    expect(circle?.mode ?? "markers").not.toContain("text");
   });
 
   it("draws current pose points with per-source symbols", () => {
@@ -118,10 +169,12 @@ describe("mapFigure", () => {
     expect(halo?.marker?.size ?? 0).toBeGreaterThan(fill?.marker?.size ?? 0);
   });
 
-  it("keeps the legend inside the map so it cannot cover the 3D plot", () => {
+  it("gives the legend enough top margin to wrap away from the modebar", () => {
     const { layout } = mapFigure(samplePoints);
+    expect(layout.margin?.t ?? 0).toBeGreaterThanOrEqual(72);
+    expect(layout.legend?.entrywidth).toBeGreaterThan(0);
     expect(layout.legend?.y).toBeLessThanOrEqual(1);
-    expect((layout.margin?.t ?? 0) >= 24).toBe(true);
+    expect(layout.legend?.x).toBe(0);
   });
 
   it("fills the host instead of pinning a pixel height", () => {
@@ -205,5 +258,53 @@ describe("mapFigure", () => {
     );
     expect(atEnd[0].lat).toHaveLength(3);
     expect(atStart[0].lat).toHaveLength(1);
+  });
+
+  it("gives same-color tracks distinct dashes and unique-color tracks a solid line", () => {
+    const origin = { lat: 32, lon: 35, alt_m: 50 };
+    const series = {
+      t: [0, 1],
+      e: [0, 10],
+      n: [0, 0],
+      u: [0, 0],
+    };
+    const poseAvatars = {
+      ekf_ned: { e: 0, n: 0, u: 0 },
+      gps: { e: 0, n: 0, u: 0 },
+    };
+    const sameColor = stableMapTracks(
+      {
+        drones: {
+          "2": { ekf_ned: series, gps: series },
+        },
+      },
+      origin,
+      { "2": poseAvatars },
+      {},
+      ["2"],
+      1,
+    );
+    expect(sameColor).toHaveLength(2);
+    expect(sameColor[0].color).toBe(sameColor[1].color);
+    expect(sameColor[0].dash).toBe("solid");
+    expect(sameColor[1].dash).toBe("dash");
+
+    const unique = stableMapTracks(
+      {
+        drones: {
+          "2": { ekf_ned: series },
+          "3": { ekf_ned: series },
+        },
+      },
+      origin,
+      {
+        "2": { ekf_ned: { e: 0, n: 0, u: 0 } },
+        "3": { ekf_ned: { e: 0, n: 0, u: 0 } },
+      },
+      {},
+      ["2", "3"],
+      1,
+    );
+    expect(unique.map((t) => t.dash)).toEqual(["solid", "solid"]);
   });
 });

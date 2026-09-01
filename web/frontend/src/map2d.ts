@@ -1,13 +1,13 @@
 import type { Data, Layout } from "plotly.js";
 import {
-  avatarLineDash,
   avatarShortLabel,
   enabledAvatarKeys,
   type AvatarKey,
   type PoseAvatars,
 } from "./avatars";
 import { droneColor, DRONE_COLORS } from "./droneColor";
-import { enuToLla, type Origin } from "./markers";
+import { enuToLla, MARKERS_TRACE_NAME, type Origin } from "./markers";
+import { dashesForColors } from "./plotBoard";
 import { mapTileStyle, plotTheme, type Skin } from "./skin";
 import { sliceTrail } from "./trail";
 
@@ -55,7 +55,7 @@ export function mapLayout(opts?: MapLayoutOpts): Partial<Layout> {
     paper_bgcolor: theme.paper_bgcolor,
     font: { color: theme.font_color },
     map: { style: mapTileStyle(skin), uirevision: "map" },
-    margin: { l: 0, r: 0, t: 48, b: 0 },
+    margin: { l: 0, r: 0, t: 88, b: 0 },
     showlegend: true,
     legend: {
       orientation: "h",
@@ -64,11 +64,18 @@ export function mapLayout(opts?: MapLayoutOpts): Partial<Layout> {
       x: 0,
       xanchor: "left",
       font: { size: 10, color: theme.legend_font_color },
+      bgcolor: theme.legend_bgcolor,
+      entrywidth: 72,
+      entrywidthmode: "pixels",
     },
   };
 }
 
-export function mapTraces(points: MapPoint[], tracks: MapTrack[] = []): Data[] {
+export function mapTraces(
+  points: MapPoint[],
+  tracks: MapTrack[] = [],
+  textColor?: string,
+): Data[] {
   const traces: Data[] = [];
 
   for (const track of tracks) {
@@ -84,73 +91,76 @@ export function mapTraces(points: MapPoint[], tracks: MapTrack[] = []): Data[] {
         dash: track.dash,
       },
       marker: { size: 4, color: track.color },
+      legendgroup: track.name,
       showlegend: true,
     });
   }
 
-  traces.push(...currentPointTraces(points));
+  traces.push(...currentPointTraces(points, textColor));
   return traces;
 }
 
 const MAP_MARKER_SIZE = 10;
 
-function currentPointTraces(points: MapPoint[]): Data[] {
-  if (points.length === 0) return [];
+function currentPointTraces(points: MapPoint[], textColor?: string): Data[] {
   const traces: Data[] = [];
+  const drones = points.filter((p) => (p.symbol ?? "circle") !== "diamond");
+  const grounds = points.filter((p) => p.symbol === "diamond");
 
-  const haloPts = points.filter(
-    (p) => p.halo && (p.symbol ?? "circle") === "circle",
-  );
-  if (haloPts.length > 0) {
-    traces.push({
-      type: "scattermap",
-      mode: "markers",
-      name: "ekf-halo",
-      lat: haloPts.map((p) => p.lat),
-      lon: haloPts.map((p) => p.lon),
-      marker: {
-        size: MAP_MARKER_SIZE + 2,
-        color: "black",
-        symbol: "circle",
-      },
-      showlegend: false,
-      hoverinfo: "skip",
-    });
-  }
-
-  const groups = new Map<string, MapPoint[]>();
-  for (const p of points) {
+  for (const p of drones) {
     const symbol = p.symbol ?? "circle";
-    const key =
-      symbol === "circle" ? "circle" : `${symbol}:${p.color ?? ""}`;
-    const list = groups.get(key);
-    if (list) list.push(p);
-    else groups.set(key, [p]);
-  }
-
-  let mapped = false;
-  for (const group of groups.values()) {
-    const symbol = group[0].symbol ?? "circle";
-    const isCircle = symbol === "circle";
+    const name = p.name ?? "drone";
+    const color = p.color ?? DRONE_COLORS[0];
+    if (p.halo && symbol === "circle") {
+      traces.push({
+        type: "scattermap",
+        mode: "markers",
+        name,
+        legendgroup: name,
+        lat: [p.lat],
+        lon: [p.lon],
+        marker: {
+          size: MAP_MARKER_SIZE + 2,
+          color: "black",
+          symbol: "circle",
+        },
+        showlegend: false,
+        hoverinfo: "skip",
+      });
+    }
     traces.push({
       type: "scattermap",
       mode: "markers",
-      name: "Map",
-      lat: group.map((p) => p.lat),
-      lon: group.map((p) => p.lon),
-      text: group.map((p) => p.name ?? ""),
+      name,
+      legendgroup: name,
+      lat: [p.lat],
+      lon: [p.lon],
       marker: {
         size: MAP_MARKER_SIZE,
-        color: isCircle
-          ? group.map(
-              (p, i) => p.color ?? DRONE_COLORS[i % DRONE_COLORS.length],
-            )
-          : (group[0].color ?? DRONE_COLORS[0]),
+        color,
         symbol,
       },
-      showlegend: !mapped,
+      showlegend: true,
     });
-    mapped = true;
+  }
+
+  if (grounds.length > 0) {
+    traces.push({
+      type: "scattermap",
+      mode: "markers+text",
+      name: MARKERS_TRACE_NAME,
+      lat: grounds.map((p) => p.lat),
+      lon: grounds.map((p) => p.lon),
+      text: grounds.map((p) => p.name ?? ""),
+      textposition: "top right",
+      textfont: textColor ? { size: 10, color: textColor } : { size: 10 },
+      marker: {
+        size: MAP_MARKER_SIZE,
+        color: grounds[0].color ?? DRONE_COLORS[0],
+        symbol: "diamond",
+      },
+      showlegend: true,
+    });
   }
   return traces;
 }
@@ -160,8 +170,9 @@ export function mapFigure(
   tracks: MapTrack[] = [],
   opts?: MapLayoutOpts,
 ): MapFigure {
+  const theme = plotTheme(opts?.skin ?? "night");
   return {
-    data: mapTraces(points, tracks),
+    data: mapTraces(points, tracks, theme.font_color),
     layout: mapLayout(opts),
   };
 }
@@ -205,9 +216,9 @@ export function stableMapTracks(
         lon,
         name: `D${id} ${avatarShortLabel(key as AvatarKey)}`,
         color: droneColor(id),
-        dash: avatarLineDash(key as AvatarKey),
       });
     }
   }
-  return tracks;
+  const dashes = dashesForColors(tracks.map((t) => t.color ?? ""));
+  return tracks.map((t, i) => ({ ...t, dash: dashes[i] }));
 }

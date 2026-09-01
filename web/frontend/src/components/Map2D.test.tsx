@@ -8,6 +8,7 @@ import type { PoseResponse, TrajectoryResponse } from "../api";
 type PlotProps = {
   layout?: { height?: number; autosize?: boolean; map?: { style?: string } };
   style?: CSSProperties;
+  config?: { displayModeBar?: boolean | string };
 };
 
 let lastPlot: PlotProps | null = null;
@@ -82,6 +83,20 @@ describe("Map2D height", () => {
     expect(lastPlot?.layout?.height).toBeUndefined();
     expect(lastPlot?.layout?.autosize).toBe(true);
     expect(lastPlot?.style?.height).toBe("100%");
+  });
+
+  it("pins zoom/pan controls to the bottom of the map", () => {
+    const { container } = render(
+      <Map2D
+        pose={poseAt(0)}
+        markers={[]}
+        visibleDroneIds={["2"]}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+    const host = container.querySelector("[data-testid=plotly]")?.parentElement;
+    expect(host?.className).toMatch(/modebar-container/);
   });
 });
 

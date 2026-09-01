@@ -460,6 +460,7 @@ export default function App() {
     const { lat, lon, alt_m } = pose.origin;
     return markers.map((m) => ({
       id: m.id,
+      label: m.label,
       ...llaToEnu(m.lat, m.lon, m.alt_m, lat, lon, alt_m),
     }));
   }, [markers, pose?.origin]);
@@ -615,7 +616,6 @@ export default function App() {
                         )}
                       </div>
                     </div>
-                    <Timeline t={t} tMax={tMax} onTChange={setT} />
                   </div>
                   <div className="flex h-[min(70vh,640px)] min-h-0">
                     <Map2D
@@ -640,6 +640,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
+              <Timeline t={t} tMax={tMax} onTChange={setT} />
               <ChannelPlot
                 slug={slug}
                 visibleDroneIds={visibleDroneIds}
@@ -655,6 +656,7 @@ export default function App() {
                 refreshToken={refreshToken}
                 plots={plots}
                 onPlotsChange={setPlots}
+                onTChange={setT}
                 skin={skin}
               />
             </>

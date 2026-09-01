@@ -137,7 +137,7 @@ function Map2D({
         <span className="text-zinc-500">{open ? "▾" : "▸"}</span>
       </button>
       {open && (
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden [&_.modebar-container]:!top-auto [&_.modebar-container]:!bottom-2">
           <Plot
             data={data}
             layout={layout}

@@ -6,11 +6,19 @@ import {
   addPlot,
   removePlot,
   setPlotChannels,
+  movePlot,
   topicsToChannelTree,
+  dashesForColors,
   type PlotDef,
   type TopicsTree,
 } from "../plotBoard";
-import { experimentTimeAxis } from "../channelPlotAxis";
+import {
+  LEADING_TIME_FIGURES,
+  PLOT_TIME_MARGIN,
+  experimentTimeAxis,
+  sliderBeforeFigure,
+} from "../channelPlotAxis";
+import { TimeScrubber } from "./Timeline";
 import { plotTheme, type Skin } from "../skin";
 import ChannelPicker from "./ChannelPicker";
 
@@ -39,6 +47,9 @@ type PlotPaneProps = {
   refreshToken: number;
   onEdit: (plot: PlotDef) => void;
   onRemove: (id: string) => void;
+  onMove: (id: string, delta: -1 | 1) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   skin?: Skin;
 };
 
@@ -50,6 +61,9 @@ function PlotPane({
   refreshToken,
   onEdit,
   onRemove,
+  onMove,
+  canMoveUp,
+  canMoveDown,
   skin = "night",
 }: PlotPaneProps) {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
@@ -82,20 +96,26 @@ function PlotPane({
 
   const traces = useMemo((): Data[] => {
     if (!series) return [];
-    return plot.channels
+    const visible = plot.channels
       .map((ch, index) => {
         const data = series[ch];
         if (!data || data.t.length === 0) return null;
         return {
-          type: "scatter" as const,
-          mode: "lines" as const,
-          name: ch,
-          x: data.t,
-          y: data.y,
-          line: { color: TRACE_COLORS[index % TRACE_COLORS.length], width: 1.5 },
+          ch,
+          data,
+          color: TRACE_COLORS[index % TRACE_COLORS.length],
         };
       })
-      .filter((trace): trace is NonNullable<typeof trace> => trace !== null);
+      .filter((row): row is NonNullable<typeof row> => row !== null);
+    const dashes = dashesForColors(visible.map((row) => row.color));
+    return visible.map((row, i) => ({
+      type: "scatter" as const,
+      mode: "lines" as const,
+      name: row.ch,
+      x: row.data.t,
+      y: row.data.y,
+      line: { color: row.color, width: 1.5, dash: dashes[i] },
+    }));
   }, [series, plot.channels]);
 
   const layout = useMemo((): Partial<Layout> => {
@@ -104,9 +124,9 @@ function PlotPane({
       paper_bgcolor: theme.paper_bgcolor,
       plot_bgcolor: theme.plot_bgcolor,
       font: { color: theme.font_color },
-      margin: { l: 48, r: 16, t: 24, b: 40 },
+      margin: { ...PLOT_TIME_MARGIN },
       xaxis: { ...experimentTimeAxis(tMax), gridcolor: theme.gridcolor },
-      yaxis: { gridcolor: theme.gridcolor },
+      yaxis: { gridcolor: theme.gridcolor, automargin: false },
       showlegend: true,
       legend: { orientation: "h", y: 1.1 },
       shapes: [tCursorShape(t, theme.cursor_color)],
@@ -114,12 +134,30 @@ function PlotPane({
   }, [t, tMax, skin]);
 
   return (
-    <div className="rounded border border-zinc-800 p-2">
-      <div className="mb-2 flex items-center justify-between gap-2">
+    <div className="rounded border border-zinc-800 py-2">
+      <div className="mb-2 flex items-center justify-between gap-2 px-2">
         <span className="truncate text-xs text-zinc-400">
           {plot.channels.join(", ") || "(no channels)"}
         </span>
         <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-zinc-800"
+            aria-label="Move up"
+            disabled={!canMoveUp}
+            onClick={() => onMove(plot.id, -1)}
+          >
+            Up
+          </button>
+          <button
+            type="button"
+            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-zinc-800"
+            aria-label="Move down"
+            disabled={!canMoveDown}
+            onClick={() => onMove(plot.id, 1)}
+          >
+            Down
+          </button>
           <button
             type="button"
             className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
@@ -156,6 +194,7 @@ type Props = {
   refreshToken?: number;
   plots: PlotDef[];
   onPlotsChange: (plots: PlotDef[]) => void;
+  onTChange?: (t: number) => void;
   skin?: Skin;
 };
 
@@ -166,6 +205,7 @@ export default function PlotBoard({
   refreshToken = 0,
   plots,
   onPlotsChange,
+  onTChange = () => {},
   skin = "night",
 }: Props) {
   const [topics, setTopics] = useState<TopicsTree>({});
@@ -233,7 +273,21 @@ export default function PlotBoard({
     onPlotsChange(removePlot(plots, id));
   };
 
+  const handleMove = (id: string, delta: -1 | 1) => {
+    onPlotsChange(movePlot(plots, id, delta));
+  };
+
   if (!slug) return null;
+
+  const picker = pickerOpen ? (
+    <ChannelPicker
+      nodes={topicsToChannelTree(topics)}
+      selected={selected}
+      onSelectedChange={setSelected}
+      onApply={handleApply}
+      onCancel={closePicker}
+    />
+  ) : null;
 
   return (
     <div className="space-y-3 px-4 pb-4">
@@ -254,28 +308,28 @@ export default function PlotBoard({
         )}
       </div>
 
-      {pickerOpen && (
-        <ChannelPicker
-          nodes={topicsToChannelTree(topics)}
-          selected={selected}
-          onSelectedChange={setSelected}
-          onApply={handleApply}
-          onCancel={closePicker}
-        />
-      )}
+      {!editingId && picker}
 
-      {plots.map((plot) => (
-        <PlotPane
-          key={plot.id}
-          slug={slug}
-          plot={plot}
-          t={t}
-          tMax={tMax}
-          refreshToken={refreshToken}
-          onEdit={handleEdit}
-          onRemove={handleRemove}
-          skin={skin}
-        />
+      {plots.map((plot, index) => (
+        <div key={plot.id} className="space-y-3">
+          {sliderBeforeFigure(index + LEADING_TIME_FIGURES) && (
+            <TimeScrubber t={t} tMax={tMax} onTChange={onTChange} />
+          )}
+          <PlotPane
+            slug={slug}
+            plot={plot}
+            t={t}
+            tMax={tMax}
+            refreshToken={refreshToken}
+            onEdit={handleEdit}
+            onRemove={handleRemove}
+            onMove={handleMove}
+            canMoveUp={index > 0}
+            canMoveDown={index < plots.length - 1}
+            skin={skin}
+          />
+          {editingId === plot.id && picker}
+        </div>
       ))}
     </div>
   );

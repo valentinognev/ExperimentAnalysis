@@ -4,6 +4,7 @@ import {
   addPlot,
   removePlot,
   setPlotChannels,
+  movePlot,
   flattenTopics,
   plotsForSlug,
   plotsOnSlugChange,
@@ -12,6 +13,8 @@ import {
   channelLeaves,
   selectionAfterToggle,
   leafSelectionState,
+  dashesForColors,
+  cesiumDashPattern,
   type PlotDef,
   type ChannelNode,
 } from "./plotBoard";
@@ -53,6 +56,29 @@ describe("setPlotChannels", () => {
     const next = setPlotChannels(plots, id, ["x.y.z.w"]);
     expect(next[0].channels).toEqual(["x.y.z.w"]);
     expect(next[0].id).toBe(id);
+  });
+});
+
+describe("movePlot", () => {
+  it("moves a plot up by swapping with the previous one", () => {
+    const a = addPlot([], ["a"]);
+    const b = addPlot(a, ["b"]);
+    const next = movePlot(b, b[1].id, -1);
+    expect(next.map((p) => p.id)).toEqual([b[1].id, b[0].id]);
+  });
+
+  it("moves a plot down by swapping with the next one", () => {
+    const a = addPlot([], ["a"]);
+    const b = addPlot(a, ["b"]);
+    const next = movePlot(b, b[0].id, 1);
+    expect(next.map((p) => p.id)).toEqual([b[1].id, b[0].id]);
+  });
+
+  it("does not move past the ends", () => {
+    const a = addPlot([], ["a"]);
+    const b = addPlot(a, ["b"]);
+    expect(movePlot(b, b[0].id, -1)).toEqual(b);
+    expect(movePlot(b, b[1].id, 1)).toEqual(b);
   });
 });
 
@@ -228,4 +254,50 @@ it("leafSelectionState reports none / some / all", () => {
       topic,
     ),
   ).toBe("all");
+});
+
+describe("dashesForColors", () => {
+  it("keeps solid when every color is unique", () => {
+    expect(dashesForColors(["#f97316", "#22d3ee", "#a78bfa"])).toEqual([
+      "solid",
+      "solid",
+      "solid",
+    ]);
+  });
+
+  it("assigns a distinct dash to each curve that shares a color", () => {
+    expect(dashesForColors(["#f97316", "#22d3ee", "#f97316"])).toEqual([
+      "solid",
+      "solid",
+      "dash",
+    ]);
+  });
+
+  it("gives three same-color curves three distinct dashes", () => {
+    const dashes = dashesForColors(["#aaa", "#aaa", "#aaa"]);
+    expect(dashes).toEqual(["solid", "dash", "dot"]);
+    expect(new Set(dashes).size).toBe(3);
+  });
+
+  it("stays unique past the named Plotly dashes", () => {
+    const dashes = dashesForColors(Array(8).fill("#aaa"));
+    expect(new Set(dashes).size).toBe(8);
+    expect(dashes[0]).toBe("solid");
+    expect(dashes[1]).toBe("dash");
+    expect(dashes[6]).not.toBe(dashes[7]);
+  });
+});
+
+describe("cesiumDashPattern", () => {
+  it("returns undefined for a solid line", () => {
+    expect(cesiumDashPattern("solid")).toBeUndefined();
+  });
+
+  it("returns distinct 16-bit patterns for named dashes", () => {
+    const patterns = ["dash", "dot", "dashdot", "longdash", "longdashdot"].map(
+      cesiumDashPattern,
+    );
+    expect(patterns.every((p) => p !== undefined)).toBe(true);
+    expect(new Set(patterns).size).toBe(5);
+  });
 });

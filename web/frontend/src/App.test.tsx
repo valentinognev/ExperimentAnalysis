@@ -116,6 +116,21 @@ describe("App analysis layout", () => {
     expect(follows(play, addPlot)).toBe(true);
   });
 
+  it("keeps play and the scrubber out of the 3D card, above the plots", async () => {
+    const panel = await openAnalysis();
+    const engine = within(panel).getByText("3D engine");
+    const play = within(panel).getByRole("button", { name: "Play" });
+    const slider = within(panel).getByRole("slider", { name: "Time scrubber" });
+    const addPlot = within(panel).getByRole("button", { name: "Add plot" });
+    const threeDCard = engine.closest(".overflow-hidden");
+
+    expect(threeDCard?.contains(play)).toBe(false);
+    expect(threeDCard?.contains(slider)).toBe(false);
+    expect(follows(engine, play)).toBe(true);
+    expect(follows(play, slider)).toBe(true);
+    expect(follows(slider, addPlot)).toBe(true);
+  });
+
   it("shows Night and Day skin buttons", () => {
     renderApp();
     const group = screen.getByRole("group", { name: "Skin" });

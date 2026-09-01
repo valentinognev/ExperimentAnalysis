@@ -54,13 +54,6 @@ export function avatarShortLabel(key: AvatarKey): string {
   return key;
 }
 
-export function avatarLineDash(key: AvatarKey): string | undefined {
-  if (key === "gps") return "dash";
-  if (key === "sm_ned") return "dot";
-  if (key === "sm_lla") return "dashdot";
-  return undefined;
-}
-
 export function primaryAvatarPos(
   avatars: PoseAvatars | undefined,
   enabled: AvatarKey[],

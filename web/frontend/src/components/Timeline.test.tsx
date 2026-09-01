@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
+import { PLOT_TIME_MARGIN } from "../channelPlotAxis";
 import Timeline, { nextDirection, transportButtons } from "./Timeline";
 
 describe("nextDirection", () => {
@@ -129,5 +130,28 @@ describe("Timeline", () => {
     expect(screen.queryByRole("button", { name: "Reverse" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Play" })).toBeDisabled();
+  });
+
+  it("insets the scrubber track to the plot time-axis margins", () => {
+    render(<Timeline t={0} tMax={60} onTChange={() => {}} />);
+    const track = screen.getByTestId("time-scrubber-track");
+    expect(track).toHaveStyle({
+      paddingLeft: `${PLOT_TIME_MARGIN.l}px`,
+      paddingRight: `${PLOT_TIME_MARGIN.r}px`,
+    });
+  });
+
+  it("places the thumb at t/tMax of the track", () => {
+    render(<Timeline t={80} tMax={160} onTChange={() => {}} />);
+    expect(screen.getByTestId("time-scrubber-thumb")).toHaveStyle({ left: "50%" });
+  });
+
+  it("puts the scrubber on its own row below Play", () => {
+    render(<Timeline t={0} tMax={60} onTChange={() => {}} />);
+    const play = screen.getByRole("button", { name: "Play" });
+    const slider = screen.getByRole("slider", { name: "Time scrubber" });
+    expect(
+      play.compareDocumentPosition(slider) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
