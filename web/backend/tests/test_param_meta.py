@@ -38,3 +38,21 @@ def test_write_json_roundtrip(tmp_path):
     data = write_param_meta_json(FIXTURE, dest)
     assert dest.is_file()
     assert data == parse_param_meta(FIXTURE)
+
+
+def test_empty_bitmask_falls_through_to_values():
+    meta = parse_param_meta(FIXTURE)
+    assert meta["EMPTY_BITMASK_WITH_VALUES"] == {
+        "kind": "enum",
+        "options": [{"value": 0, "label": "Fallback enum"}],
+    }
+
+
+def test_empty_values_falls_through_to_boolean():
+    meta = parse_param_meta(FIXTURE)
+    assert meta["EMPTY_VALUES_BOOLEAN"] == {"kind": "boolean"}
+
+
+def test_empty_bitmask_and_values_omitted():
+    meta = parse_param_meta(FIXTURE)
+    assert "EMPTY_BOTH_OMIT" not in meta

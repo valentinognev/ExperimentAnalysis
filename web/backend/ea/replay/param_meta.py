@@ -23,8 +23,9 @@ def parse_param_meta(xml: str | Path) -> dict[str, dict]:
                 if index is None:
                     continue
                 bits.append({"index": int(index), "label": (bit.text or "").strip()})
-            meta[name] = {"kind": "bitmask", "bits": bits}
-            continue
+            if bits:
+                meta[name] = {"kind": "bitmask", "bits": bits}
+                continue
 
         values_el = param.find("values")
         if values_el is not None:
@@ -36,8 +37,9 @@ def parse_param_meta(xml: str | Path) -> dict[str, dict]:
                 options.append(
                     {"value": int(float(code)), "label": (value.text or "").strip()}
                 )
-            meta[name] = {"kind": "enum", "options": options}
-            continue
+            if options:
+                meta[name] = {"kind": "enum", "options": options}
+                continue
 
         if param.get("boolean") == "true":
             meta[name] = {"kind": "boolean"}

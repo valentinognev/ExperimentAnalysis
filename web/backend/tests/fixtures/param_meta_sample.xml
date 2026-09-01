@@ -24,4 +24,21 @@
       <bit index="2">Win</bit>
     </bitmask>
   </parameter>
+  <parameter name="EMPTY_BITMASK_WITH_VALUES" type="INT32">
+    <bitmask>
+    </bitmask>
+    <values>
+      <value code="0">Fallback enum</value>
+    </values>
+  </parameter>
+  <parameter name="EMPTY_VALUES_BOOLEAN" type="INT32" boolean="true">
+    <values>
+    </values>
+  </parameter>
+  <parameter name="EMPTY_BOTH_OMIT" type="INT32">
+    <bitmask>
+    </bitmask>
+    <values>
+    </values>
+  </parameter>
 </parameters>
