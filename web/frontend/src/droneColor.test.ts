@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { DRONE_COLORS, droneColor } from "./droneColor";
+import { DRONE_COLORS, droneColor, replayColor } from "./droneColor";
 
 /** Observation Board `web/frontend/src/utils/droneColors.ts` */
 const OB_COLORS = [
@@ -32,5 +32,14 @@ describe("droneColor", () => {
   it("falls back to the first swatch for invalid ids", () => {
     expect(droneColor(0)).toBe("#FF2D00");
     expect(droneColor("x")).toBe("#FF2D00");
+  });
+});
+
+describe("replayColor", () => {
+  it("replayColor lightens odd j and darkens even j from the parent hue", () => {
+    expect(droneColor("2")).toBe("#008CFF");
+    expect(replayColor("2_r1")).toBe("#2EA1FF");
+    expect(replayColor("2_r2")).toBe("#0073D1");
+    expect(replayColor(2)).toBe("#008CFF");
   });
 });
