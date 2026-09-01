@@ -1,6 +1,6 @@
 from pathlib import Path
 
-_HOST_PX4 = Path("/home/valentin/PX4-Autopilot")
+_HOST_PX4 = Path("/home/valentin/Projects/GambitonBiut/docker_firm/PX4-Autopilot")
 
 DOCKER_CONTAINER = "dockerfiles_firm-px4-noetic-firm-1"
 

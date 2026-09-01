@@ -85,7 +85,7 @@ def _physical_ulog(exp_path: Path, manifest: dict, drone_id) -> tuple[Path, int]
 
 
 def _sitl_log_root() -> Path:
-    return host_px4_root() / "build/px4_sitl_default_replay/rootfs/fs/microsd/log"
+    return host_px4_root() / "build/px4_sitl_default_replay/rootfs"
 
 app = FastAPI()
 

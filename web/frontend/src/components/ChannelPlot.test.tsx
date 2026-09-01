@@ -94,6 +94,21 @@ describe("ChannelPlot NED traces", () => {
     expect(new Set(styles).size).toBe(3);
   });
 
+  it("replay NED traces are not D1 red", async () => {
+    vi.mocked(getSeries).mockResolvedValue({
+      "2_r1.ulog.vehicle_local_position.x": { t: [0, 1], y: [1, 2] },
+      "2_r1.ulog.vehicle_local_position.y": { t: [0, 1], y: [3, 4] },
+      "2_r1.ulog.vehicle_local_position.z": { t: [0, 1], y: [5, 6] },
+    });
+    render(
+      <ChannelPlot slug="exp" visibleDroneIds={["2_r1"]} t={0} tMax={1} />,
+    );
+    await waitFor(() => {
+      expect(tracesByName().size).toBe(3);
+    });
+    expect(tracesByName().get("D2_r1 x")?.line?.color).not.toBe("#FF2D00");
+  });
+
   it("pins x-axis to experiment duration so stacked panes share ticks", async () => {
     render(
       <ChannelPlot slug="exp" visibleDroneIds={["2"]} t={0} tMax={160} />,

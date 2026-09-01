@@ -5,6 +5,8 @@
 - Replay workspace tab (Sources | Analysis | Replay) on the open experiment; still two processes (`:6400` / `:6473`)
 - Sources/Analysis list `Di_rj` after the parent (indent, `replayColor`, ULG summary, no host/Import/SSH/MAVLink); Delete confirms then `DELETE /api/experiments/{slug}/drones/{id}`
 - Docker bind `/home/valentin/RL/CatSwarm/ExperimentAnalysis:/home/valentin/ExperimentAnalysis`; recreate `px4-noetic-firm`; do not bind 6500/6573
+- Host PX4 is `/home/valentin/Projects/GambitonBiut/docker_firm/PX4-Autopilot`; SITL logs collected from `…/rootfs` (not `fs/microsd/log`); stale `*_replayed.ulg` ignored
+- Analysis plots/map/3D use `replayColor` for `Di_rj`; Stop disabled after success/fail; Delete no longer restores that drone's plot panes
 
 ## 0.77.0 - Map trail dashes and 2D marker legend
 - 2D/3D (Plotly and Cesium) trails use the same color-collision dashes as extra plots: solid when unique, distinct dash per same-color trail

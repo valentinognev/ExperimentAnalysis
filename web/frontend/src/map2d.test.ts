@@ -307,4 +307,29 @@ describe("mapFigure", () => {
     );
     expect(unique.map((t) => t.dash)).toEqual(["solid", "solid"]);
   });
+
+  it("replay track is not D1 red", () => {
+    const origin = { lat: 32, lon: 35, alt_m: 50 };
+    const tracks = stableMapTracks(
+      {
+        drones: {
+          "2_r1": {
+            ekf_ned: {
+              t: [0, 1],
+              e: [0, 10],
+              n: [0, 0],
+              u: [0, 0],
+            },
+          },
+        },
+      },
+      origin,
+      { "2_r1": { ekf_ned: { e: 0, n: 0, u: 0 } } },
+      {},
+      ["2_r1"],
+      1,
+    );
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0].color).not.toBe("#FF2D00");
+  });
 });

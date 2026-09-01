@@ -180,6 +180,15 @@ describe("View3D triad legend", () => {
     expect(shown[0]?.marker?.color).toBe(droneColor("2"));
   });
 
+  it("replay body is not D1 red", () => {
+    renderView({
+      drones: [{ ...ekf, id: "2_r1" }],
+      markerPositions: [],
+    });
+    const shown = legendTraces();
+    expect(shown[0]?.marker?.color).not.toBe("#FF2D00");
+  });
+
   it("keeps RGB axes off the legend but in the same legendgroup as the body", () => {
     renderView({ drones: [ekf], markerPositions: [] });
     const grouped = (lastPlot?.data ?? []).filter(

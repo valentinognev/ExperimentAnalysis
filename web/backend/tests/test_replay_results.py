@@ -28,6 +28,21 @@ def test_collect_success(tmp_path):
     assert (results / "r1" / "px4.log").read_text() == "hello\n"
 
 
+def test_find_newest_ignores_mtime_before_since(tmp_path):
+    d1 = tmp_path / "2026-01-01"
+    d1.mkdir()
+    old = d1 / "old_replayed.ulg"
+    new = d1 / "new_replayed.ulg"
+    old.write_bytes(b"old")
+    new.write_bytes(b"new")
+    import os
+
+    os.utime(old, (1, 1))
+    os.utime(new, (100, 100))
+    assert find_newest_replayed(tmp_path, since=50) == new
+    assert find_newest_replayed(tmp_path, since=150) is None
+
+
 def test_collect_missing_replayed(tmp_path):
     log_root = tmp_path / "log"
     log_root.mkdir()

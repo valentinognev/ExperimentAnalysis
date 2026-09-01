@@ -113,7 +113,12 @@ export function RunPanel({
         >
           Replay
         </button>
-        <button type="button" className={BTN} onClick={onStop}>
+        <button
+          type="button"
+          className={BTN}
+          disabled={isTerminal(job?.status)}
+          onClick={onStop}
+        >
           Stop
         </button>
       </div>

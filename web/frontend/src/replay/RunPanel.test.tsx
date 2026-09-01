@@ -125,6 +125,28 @@ it("failed status shows error", async () => {
   expect(screen.getByText("px4 crashed")).toBeInTheDocument();
 });
 
+it("Stop is disabled when job status is success", async () => {
+  vi.mocked(startReplay).mockResolvedValue({ ok: true, run_id: "abc" });
+  vi.mocked(getReplay).mockResolvedValue({
+    status: "success",
+    results_dir: "/tmp/results",
+    replay_id: "2_r1",
+    error: null,
+  });
+  render(
+    <RunPanel
+      slug="foo"
+      runId="abc"
+      droneId={2}
+      overrides={overrides}
+      busy={false}
+    />,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Replay" }));
+  expect(await screen.findByText("success")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Stop" })).toBeDisabled();
+});
+
 it("Stop calls stopReplay(slug, runId)", async () => {
   vi.mocked(stopReplay).mockResolvedValue({ ok: true });
   render(

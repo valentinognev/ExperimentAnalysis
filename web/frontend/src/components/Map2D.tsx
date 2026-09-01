@@ -9,7 +9,7 @@ import {
 } from "../avatars";
 import { enuToLla, MARKER_COLOR, type Marker } from "../markers";
 import { mapFigure, stableMapTracks, type MapPoint } from "../map2d";
-import { droneColor } from "../droneColor";
+import { replayColor } from "../droneColor";
 import { avatarMarkerStyle } from "../avatarMarker";
 import type { Skin } from "../skin";
 
@@ -58,7 +58,7 @@ function currentPoints(
           lat: lla.lat,
           lon: lla.lon,
           name: `D${id} ${avatarShortLabel(key)}`,
-          color: droneColor(id),
+          color: replayColor(id),
           symbol: avatarMarkerStyle(key).mapSymbol,
           halo: avatarMarkerStyle(key).halo,
         });

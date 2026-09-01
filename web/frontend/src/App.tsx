@@ -88,6 +88,17 @@ function dropStaleReplayKeys<T>(
   return changed ? next : map;
 }
 
+function dropStaleReplayPlots(plots: PlotDef[], live: Set<string>): PlotDef[] {
+  const next = plots.filter((plot) => {
+    const channels = plot.channels ?? [];
+    return !channels.some((ch) => {
+      const id = ch.split(".")[0] ?? "";
+      return isReplayId(id) && !live.has(id);
+    });
+  });
+  return next.length === plots.length ? plots : next;
+}
+
 export default function App() {
   const { skin } = useSkin();
   const [slug, setSlug] = useState<string | null>(null);
@@ -260,6 +271,7 @@ export default function App() {
           });
           setAvatars((prev) => dropStaleReplayKeys(prev, liveReplays));
           setVectorConfigs((prev) => dropStaleReplayKeys(prev, liveReplays));
+          setPlots((prev) => dropStaleReplayPlots(prev, liveReplays));
         }
 
         uiHydratedRef.current = true;

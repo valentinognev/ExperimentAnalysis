@@ -3,7 +3,7 @@ import Plot from "react-plotly.js";
 import type { Dash, Data, Layout } from "plotly.js";
 import { getSeries, type SeriesResponse } from "../api";
 import { PLOT_TIME_MARGIN, experimentTimeAxis } from "../channelPlotAxis";
-import { droneColor } from "../droneColor";
+import { replayColor } from "../droneColor";
 import { plotTheme, type Skin } from "../skin";
 
 const COMPONENTS = ["x", "y", "z"] as const;
@@ -75,7 +75,7 @@ export default function ChannelPlot({
     const out: Data[] = [];
 
     visibleDroneIds.forEach((id) => {
-      const color = droneColor(id);
+      const color = replayColor(id);
       for (const comp of COMPONENTS) {
         const ch = `${id}.ulog.vehicle_local_position.${comp}`;
         const data = series[ch];

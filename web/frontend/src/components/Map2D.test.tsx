@@ -5,7 +5,13 @@ import "@testing-library/jest-dom/vitest";
 import type { CSSProperties } from "react";
 import type { PoseResponse, TrajectoryResponse } from "../api";
 
+type PlotTrace = {
+  marker?: { color?: string };
+  name?: string;
+};
+
 type PlotProps = {
+  data?: PlotTrace[];
   layout?: { height?: number; autosize?: boolean; map?: { style?: string } };
   style?: CSSProperties;
   config?: { displayModeBar?: boolean | string };
@@ -117,6 +123,34 @@ describe("Map2D skin", () => {
       />,
     );
     expect(lastPlot?.layout?.map?.style).toBe("carto-darkmatter");
+  });
+
+  it("replay marker is not D1 red", () => {
+    render(
+      <Map2D
+        pose={{
+          t: 0,
+          origin: ORIGIN,
+          drones: {
+            "2_r1": {
+              present: true,
+              synced: true,
+              avatars: { ekf_ned: { e: 0, n: 0, u: 0 } },
+            },
+          },
+        }}
+        markers={[]}
+        visibleDroneIds={["2_r1"]}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+    const colors = (lastPlot?.data ?? []).flatMap((t) =>
+      t.marker?.color ? [t.marker.color] : [],
+    );
+    const droneColors = colors.filter((c) => c !== "black");
+    expect(droneColors.length).toBeGreaterThan(0);
+    expect(droneColors).not.toContain("#FF2D00");
   });
 
   it("uses open-street-map tiles when skin is day", () => {

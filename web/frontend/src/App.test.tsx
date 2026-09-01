@@ -273,6 +273,85 @@ describe("App analysis layout", () => {
     vi.unstubAllGlobals();
   });
 
+  it("drops plot panes for a deleted replay id on refresh", async () => {
+    const withReplay = {
+      slug: "foo",
+      manifest: {
+        name: "Foo",
+        drones: [
+          { id: 1 },
+          { id: 2, sources: { ulg: ["raw/drone_2/d2.ulg"] } },
+          {
+            id: "2_r1",
+            kind: "replay",
+            sources: { ulg: ["raw/drone_2_r1/replayed_r1.ulg"] },
+          },
+        ],
+        ui: {
+          visible_drone_ids: [1, 2, "2_r1"],
+          plots: [
+            { id: "keep", channels: ["2.ulog.vehicle_local_position.x"] },
+            { id: "gone", channels: ["2_r1.ulog.vehicle_local_position.x"] },
+          ],
+        },
+      },
+    };
+    const withoutReplay = {
+      slug: "foo",
+      manifest: {
+        name: "Foo",
+        drones: [
+          { id: 1 },
+          { id: 2, sources: { ulg: ["raw/drone_2/d2.ulg"] } },
+        ],
+        ui: {
+          visible_drone_ids: [1, 2],
+          plots: [{ id: "keep", channels: ["2.ulog.vehicle_local_position.x"] }],
+        },
+      },
+    };
+    vi.mocked(listExperiments).mockResolvedValue([
+      { slug: "foo", name: "Foo", drone_ids: ["1", "2", "2_r1"], missing: [] },
+    ]);
+    vi.mocked(openExperiment).mockResolvedValue(withReplay);
+    vi.mocked(deleteReplayDrone).mockImplementation(async () => {
+      vi.mocked(listExperiments).mockResolvedValue([
+        { slug: "foo", name: "Foo", drone_ids: ["1", "2"], missing: [] },
+      ]);
+      vi.mocked(openExperiment).mockResolvedValue(withoutReplay);
+      return withoutReplay;
+    });
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+    const user = userEvent.setup();
+    renderApp();
+    const picker = screen.getByRole("combobox", { name: "Experiment" });
+    await waitFor(() => {
+      expect(within(picker).getByRole("option", { name: "foo" })).toBeInTheDocument();
+    });
+    await user.selectOptions(picker, "foo");
+    await waitFor(() => {
+      expect(screen.getByText("D2_r1")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Delete D2_r1" }));
+    await waitFor(() => {
+      expect(deleteReplayDrone).toHaveBeenCalledWith("foo", "2_r1");
+      expect(screen.queryByText("D2_r1")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Analysis" }));
+    await waitFor(() => {
+      expect(
+        screen.queryByText("2_r1.ulog.vehicle_local_position.x"),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("2.ulog.vehicle_local_position.x"),
+    ).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("shows Replay tabpanel when Replay is clicked", async () => {
     const user = userEvent.setup();
     renderApp();

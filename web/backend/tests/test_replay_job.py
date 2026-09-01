@@ -1,3 +1,4 @@
+import os
 import subprocess
 import threading
 
@@ -72,13 +73,13 @@ def test_success_attaches_into_open_experiment(tmp_path, monkeypatch):
     orig = _orig(tmp_path)
     sitl = tmp_path / "sitl"
     sitl.mkdir()
-    (sitl / "x_replayed.ulg").write_bytes(b"r")
     params = tmp_path / "replay_params.txt"
     seen = []
     rebuilt = []
 
     def runner(argv):
         seen.append(argv)
+        (sitl / "x_replayed.ulg").write_bytes(b"r")
         return subprocess.CompletedProcess(argv, 0, "ok", "")
 
     job = start_replay(
@@ -233,15 +234,18 @@ def test_container_ulg_must_be_under_experiment_analysis(tmp_path, monkeypatch):
 def test_rebuild_error_keeps_success_and_replay_id(tmp_path, monkeypatch):
     _setup_experiment(tmp_path, monkeypatch)
     kw = _base_kw(tmp_path)
-    (kw["sitl_log_root"] / "x_replayed.ulg").write_bytes(b"r")
 
     def boom(slug):
         raise RuntimeError("rebuild boom")
 
+    def runner(argv):
+        (kw["sitl_log_root"] / "x_replayed.ulg").write_bytes(b"r")
+        return subprocess.CompletedProcess(argv, 0, "ok", "")
+
     job = start_replay(
         "r1",
         {"EKF2_X": 1},
-        runner=lambda argv: subprocess.CompletedProcess(argv, 0, "ok", ""),
+        runner=runner,
         rebuild=boom,
         **kw,
     )
@@ -428,6 +432,79 @@ def test_default_popen_start_new_session_merges_stderr(monkeypatch):
     _default_popen(["true"])
     assert seen["kwargs"]["start_new_session"] is True
     assert seen["kwargs"]["stderr"] == subprocess.STDOUT
+
+
+def test_stale_replayed_ulg_not_attached(tmp_path, monkeypatch):
+    _setup_experiment(tmp_path, monkeypatch)
+    sitl = tmp_path / "sitl"
+    sitl.mkdir()
+    stale = sitl / "old_replayed.ulg"
+    stale.write_bytes(b"old")
+    os.utime(stale, (1, 1))
+    start_replay(
+        "r1",
+        {},
+        runner=lambda argv: subprocess.CompletedProcess(argv, 0, "ok", ""),
+        rebuild=lambda slug: (_ for _ in ()).throw(AssertionError("no rebuild")),
+        **_base_kw(tmp_path),
+    )
+    job = get_job("r1")
+    assert job["status"] == "failed"
+    assert job["error"] == "no replayed ulg"
+    assert job["replay_id"] is None
+    assert not (tmp_path / "S" / "raw" / "drone_2_r1").exists()
+
+
+def test_request_stop_on_success_does_not_kill_or_rewrite():
+    killed = []
+    testing_put_running("r1", pid=99)
+    job = get_job("r1")
+    job["status"] = "success"
+    job["replay_id"] = "2_r1"
+    request_stop("r1", killer=lambda pid: killed.append(pid))
+    assert killed == []
+    assert get_job("r1")["status"] == "success"
+    assert get_job("r1")["replay_id"] == "2_r1"
+    assert get_job("r1")["error"] is None
+
+
+def test_request_stop_on_failed_does_not_kill_or_rewrite():
+    killed = []
+    testing_put_running("r1", pid=99)
+    job = get_job("r1")
+    job["status"] = "failed"
+    job["error"] = "no replayed ulg"
+    request_stop("r1", killer=lambda pid: killed.append(pid))
+    assert killed == []
+    assert get_job("r1")["status"] == "failed"
+    assert get_job("r1")["error"] == "no replayed ulg"
+
+
+def test_pid_cleared_when_child_exits(tmp_path, monkeypatch):
+    _setup_experiment(tmp_path, monkeypatch)
+    sitl = tmp_path / "sitl"
+    sitl.mkdir()
+
+    class FakePopen:
+        pid = 4242
+        returncode = 0
+
+        def communicate(self):
+            (sitl / "x_replayed.ulg").write_bytes(b"r")
+            return ("ok", None)
+
+    start_replay(
+        "r1",
+        {},
+        runner=None,
+        popen_factory=lambda argv: FakePopen(),
+        preflight=lambda: None,
+        rebuild=lambda slug: {"ok": True},
+        **_base_kw(tmp_path),
+    )
+    stored = get_job("r1")
+    assert stored["status"] == "success"
+    assert stored["pid"] is None
 
 
 def test_stop_kills_pid():

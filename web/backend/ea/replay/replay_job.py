@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Callable
 
@@ -75,10 +76,15 @@ def testing_put_running(run_id: str, pid: int | None = None) -> None:
 testing_put_running.__test__ = False
 
 
+_TERMINAL = frozenset({"success", "failed"})
+
+
 def request_stop(run_id: str, killer: Callable | None = None) -> None:
     if run_id not in _jobs:
         raise KeyError(run_id)
     job = _jobs[run_id]
+    if job.get("status") in _TERMINAL:
+        return
     pid = job.get("pid")
     if pid is not None:
         kill_fn = _default_killer if killer is None else killer
@@ -183,6 +189,7 @@ def start_replay(
             _default_preflight()
         write_replay_params(Path(replay_params_path), overrides)
         argv = build_replay_argv(container_ulg)
+        started_at = time.time()
         if runner is not None:
             proc = runner(argv)
             px4_log = _combined_output(proc)
@@ -192,6 +199,7 @@ def start_replay(
             child = factory(argv)
             job["pid"] = getattr(child, "pid", None)
             stdout, stderr = child.communicate()
+            job["pid"] = None
             px4_log = stdout if stdout is not None else ""
             if stderr:
                 px4_log = f"{px4_log}{stderr}"
@@ -199,7 +207,7 @@ def start_replay(
         if job.get("error") == "stopped":
             return job
         collected = collect_results(
-            run_id, Path(sitl_log_root), Path(results_root), px4_log
+            run_id, Path(sitl_log_root), Path(results_root), px4_log, since=started_at
         )
         job["results_dir"] = collected["results_dir"]
         job["replayed_ulg"] = collected["replayed_ulg"]

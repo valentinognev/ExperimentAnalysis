@@ -5,7 +5,7 @@ import {
   type AvatarKey,
   type PoseAvatars,
 } from "./avatars";
-import { droneColor, DRONE_COLORS } from "./droneColor";
+import { replayColor, DRONE_COLORS } from "./droneColor";
 import { enuToLla, MARKERS_TRACE_NAME, type Origin } from "./markers";
 import { dashesForColors } from "./plotBoard";
 import { mapTileStyle, plotTheme, type Skin } from "./skin";
@@ -215,7 +215,7 @@ export function stableMapTracks(
         lat,
         lon,
         name: `D${id} ${avatarShortLabel(key as AvatarKey)}`,
-        color: droneColor(id),
+        color: replayColor(id),
       });
     }
   }

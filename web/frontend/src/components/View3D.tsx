@@ -15,7 +15,7 @@ import {
   MARKERS_TRACE_NAME,
   type PlotlyGroundClick,
 } from "../markers";
-import { droneColor } from "../droneColor";
+import { replayColor } from "../droneColor";
 import { avatarMarkerStyle } from "../avatarMarker";
 import { dashesForColors } from "../plotBoard";
 
@@ -208,12 +208,12 @@ function View3D({
   const trailDashes = dashesForColors(
     drones
       .filter((d) => d.trail && d.trail.length > 0)
-      .map((d) => droneColor(d.id)),
+      .map((d) => replayColor(d.id)),
   );
   let trailI = 0;
 
   drones.forEach((drone) => {
-    const color = droneColor(drone.id);
+    const color = replayColor(drone.id);
     const name = avatarLegendName(drone.id, drone.label);
     if (drone.trail && drone.trail.length > 0) {
       traces.push(

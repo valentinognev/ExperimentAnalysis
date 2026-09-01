@@ -17,7 +17,7 @@ import {
 import { enuToLla, type Marker, type Origin } from "../markers";
 import { triadSegments, type EnuPos } from "../triad";
 import { avatarLegendName, type DronePose } from "./View3D";
-import { droneColor } from "../droneColor";
+import { replayColor } from "../droneColor";
 import { avatarMarkerStyle, avatarSymbolDataUri } from "../avatarMarker";
 import { cesiumImageryUrl, type Skin } from "../skin";
 import { cesiumDashPattern, dashesForColors } from "../plotBoard";
@@ -62,7 +62,7 @@ function frameOrigin(
   });
 }
 
-function updateEntities(
+export function updateEntities(
   viewer: Viewer,
   Cesium: CesiumModule,
   drones: DronePose[],
@@ -75,7 +75,7 @@ function updateEntities(
   const trailDashes = dashesForColors(
     drones
       .filter((d) => d.trail && d.trail.length > 1)
-      .map((d) => droneColor(d.id)),
+      .map((d) => replayColor(d.id)),
   );
   let trailI = 0;
 
@@ -106,7 +106,7 @@ function updateEntities(
 
   for (const drone of drones) {
     const style = avatarMarkerStyle(drone.label);
-    const fill = droneColor(drone.id);
+    const fill = replayColor(drone.id);
     viewer.entities.add({
       position: enuToCartesian(drone.pos, origin, Cesium),
       billboard: {
@@ -149,7 +149,7 @@ function updateEntities(
     }
 
     if (drone.trail && drone.trail.length > 1) {
-      const color = droneColor(drone.id);
+      const color = replayColor(drone.id);
       const dash = trailDashes[trailI] ?? "solid";
       trailI += 1;
       const pattern = cesiumDashPattern(dash);
