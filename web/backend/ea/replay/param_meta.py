@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+DEFAULT_QGC_META = Path("/home/valentin/.config/QGroundControl/ParameterFactMetaData.json")
 
 
 def parse_param_meta(xml: str | Path) -> dict[str, dict]:
@@ -54,3 +57,11 @@ def write_param_meta_json(src: Path, dest: Path) -> dict:
         json.dump(data, f, indent=2, sort_keys=True)
         f.write("\n")
     return data
+
+
+if __name__ == "__main__":
+    dest = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    if dest is None:
+        print(f"usage: python -m ea.replay.param_meta <dest>", file=sys.stderr)
+        sys.exit(1)
+    write_param_meta_json(DEFAULT_QGC_META, dest)

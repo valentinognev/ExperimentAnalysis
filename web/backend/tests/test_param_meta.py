@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from ea.replay.param_meta import parse_param_meta, write_param_meta_json
@@ -37,6 +38,8 @@ def test_write_json_roundtrip(tmp_path):
     dest = tmp_path / "paramMeta.json"
     data = write_param_meta_json(FIXTURE, dest)
     assert dest.is_file()
+    assert json.loads(dest.read_text(encoding="utf-8")) == data
+    assert dest.read_text(encoding="utf-8").endswith("}\n")
     assert data == parse_param_meta(FIXTURE)
 
 

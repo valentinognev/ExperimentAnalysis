@@ -3,6 +3,7 @@
 ## 0.79.0 - Replay param enum and bitmask editors
 - Replay param table keeps the number field and adds QGC-backed enum dropdowns, bitmask checkboxes, and boolean On/Off
 - Compact `paramMeta.json` generated from QGroundControl ParameterFactMetaData; unmatched numbers stay legal (`custom (n)`)
+- Regenerate: source `/home/valentin/.config/QGroundControl/ParameterFactMetaData.json`; `cd web/backend && .venv/bin/python -m ea.replay.param_meta ../../web/frontend/src/replay/paramMeta.json`
 
 ## 0.78.0 - Di_rj replay rows and Replay tab
 - `ea.replay_id` / `replayId.ts`: parse `2_r1` (parent + index), `physical_id`, monotonic `next_replay_index` (mixed int/string ids)
