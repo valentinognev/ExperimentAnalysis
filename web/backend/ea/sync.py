@@ -5,6 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ea.replay_id import is_replay_id, parent_id
+
+
+def manual_offset_s(manifest: dict, drone_id: object) -> float:
+    offsets = manifest.get("sync", {}).get("manual_offsets_s", {})
+    key = str(parent_id(drone_id)) if is_replay_id(drone_id) else str(drone_id)
+    return float(offsets.get(key, 0))
+
 
 def t_ulog(
     t_us: float, arm_us: int | None, first_us: int, offset_s: float = 0.0

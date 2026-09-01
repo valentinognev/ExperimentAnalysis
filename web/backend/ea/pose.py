@@ -12,8 +12,9 @@ import pandas as pd
 from ea.geo import lla_to_enu, mean_origin, ned_to_enu
 from ea.interp import interp_scalar, slerp_xyzw
 from ea.manifest import load_manifest
+from ea.replay_id import is_replay_id
 from ea.series import channel_value_at_t
-from ea.sync import t_sm
+from ea.sync import manual_offset_s as _manual_offset_s, t_sm
 
 _GPS_TOPICS = ("vehicle_gps_position", "vehicle_global_position")
 _ARM_T0_SLACK_S = 0.5
@@ -79,11 +80,6 @@ def _gps_parquet(derived: Path) -> Path | None:
         if path is not None:
             return path
     return None
-
-
-def _manual_offset_s(manifest: dict, drone_id: str) -> float:
-    offsets = manifest.get("sync", {}).get("manual_offsets_s", {})
-    return float(offsets.get(str(drone_id), 0))
 
 
 def _experiment_times(
@@ -504,6 +500,8 @@ def _compute_origin(
 ) -> dict:
     llas: list[tuple[float, float, float]] = []
     for drone_id in drone_ids:
+        if is_replay_id(drone_id):
+            continue
         derived = _drone_derived(experiment_dir, drone_id)
         sync_info = sync_drones.get(drone_id, {})
         arm_us = sync_info.get("ulog_arm_us")

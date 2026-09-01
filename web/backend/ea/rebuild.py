@@ -11,6 +11,7 @@ from ea.arm import sm_arm_local_ts, ulog_arm_us
 from ea.extract_ha import extract_ha
 from ea.extract_sm import extract_sm
 from ea.extract_ulog import extract_ulog
+from ea.replay_id import is_replay_id, parent_id
 from ea.store import open_experiment
 from ea.duration import experiment_t_max_s
 from ea.sync import write_sync
@@ -118,6 +119,11 @@ def rebuild(slug: str) -> dict:
                 status_path if status_path.is_file() else None,
                 actuator_path if actuator_path.is_file() else None,
             )
+            if is_replay_id(drone_id):
+                parent = parent_id(drone_id)
+                parent_info = per_drone.get(str(parent), per_drone.get(parent))
+                if parent_info is not None:
+                    arm_us = parent_info.get("ulog_arm_us")
             per_drone[drone_id] = {
                 "ulog_arm_us": arm_us,
                 "sm_arm_local_ts": sm_arm,

@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from ea.manifest import load_manifest
-from ea.sync import t_sm, t_ulog
+from ea.sync import manual_offset_s as _manual_offset_s, t_sm, t_ulog
 
 _POSE_TOPICS = (
     "vehicle_local_position",
@@ -27,11 +27,6 @@ def _read_sync(experiment_dir: Path) -> dict:
     with open(sync_path) as f:
         data = json.load(f)
     return data.get("drones", {})
-
-
-def _manual_offset_s(manifest: dict, drone_id: str) -> float:
-    offsets = manifest.get("sync", {}).get("manual_offsets_s", {})
-    return float(offsets.get(str(drone_id), 0))
 
 
 def _max_ulog_t(

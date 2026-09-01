@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from ea.sync import t_sm, t_ulog, write_sync
+from ea.sync import manual_offset_s, t_sm, t_ulog, write_sync
 
 
 def test_t_ulog_two_drones_arm_at_t_zero():
@@ -112,3 +112,19 @@ def test_write_sync_sm_present_without_ulog_arm_synced_false(tmp_path):
     assert result["drones"]["2"]["synced"] is False
     assert result["drones"]["2"]["ulog_arm_us"] is None
     assert result["drones"]["2"]["sm_arm_local_ts"] == 11412.04
+
+
+def test_manual_offset_s_replay_inherits_parent():
+    manifest = {"sync": {"manual_offsets_s": {"2": 1.5}}}
+    assert manual_offset_s(manifest, "2_r1") == 1.5
+    assert manual_offset_s(manifest, 2) == 1.5
+
+
+def test_manual_offset_s_replay_ignores_own_key():
+    manifest = {"sync": {"manual_offsets_s": {"2": 1.5, "2_r1": 9.0}}}
+    assert manual_offset_s(manifest, "2_r1") == 1.5
+
+
+def test_manual_offset_s_missing_is_zero():
+    assert manual_offset_s({"sync": {"manual_offsets_s": {}}}, "2_r1") == 0.0
+    assert manual_offset_s({}, 3) == 0.0
