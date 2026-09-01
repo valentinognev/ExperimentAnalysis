@@ -37,7 +37,7 @@ import {
   mergeDroneIds,
 } from "./visibleDrones";
 import { orderedDroneIds } from "./droneRows";
-import { physicalId } from "./replayId";
+import { isReplayId, physicalId } from "./replayId";
 
 const View3DCesium = lazy(() => import("./components/View3DCesium"));
 
@@ -64,6 +64,28 @@ function idFitsCount(id: string, cap: number): boolean {
   if (phys === null) return false;
   if (cap < 1) return true;
   return phys >= 1 && phys <= cap;
+}
+
+/** Replay ids come from combined/manifest only; prev may keep extra physical slots. */
+function rowsForRefresh(combined: string[], prev: string[], cap: number): string[] {
+  const prevPhysical = prev.filter((id) => !isReplayId(id));
+  return rowsForPhysicalCount(mergeDroneIds(combined, prevPhysical), cap);
+}
+
+function dropStaleReplayKeys<T>(
+  map: Record<string, T>,
+  live: Set<string>,
+): Record<string, T> {
+  let changed = false;
+  const next: Record<string, T> = {};
+  for (const [key, value] of Object.entries(map)) {
+    if (isReplayId(key) && !live.has(key)) {
+      changed = true;
+      continue;
+    }
+    next[key] = value;
+  }
+  return changed ? next : map;
 }
 
 export default function App() {
@@ -203,32 +225,41 @@ export default function App() {
           setMarkers(Array.isArray(ui.markers) ? ui.markers : []);
           setSelectedMarkerIds([]);
         } else {
+          const listedMax = droneCountFromIds(combined);
+          const liveReplays = new Set(combined.filter((id) => isReplayId(id)));
           setDroneIds((prev) => {
-            const listedMax = droneCountFromIds(combined);
             const prevMax = droneCountFromIds(prev);
             const cap =
               listedMax > 0 && listedMax < prevMax
                 ? listedMax
                 : Math.max(listedMax, prevMax);
-            const merged = rowsForPhysicalCount(
-              mergeDroneIds(combined, prev),
-              cap,
-            );
+            const merged = rowsForRefresh(combined, prev, cap);
             return idsChanged(prev, merged) ? merged : prev;
           });
           setVisibleIds((prev) => {
-            const next = new Set(prev);
-            let changed = false;
-            const cap = droneCountFromIds(combined);
+            const cap =
+              listedMax > 0 ? listedMax : droneCountFromIds(combined);
             const rows = rowsForPhysicalCount(combined, cap);
+            const rowSet = new Set(rows);
+            const next = new Set<string>();
+            let changed = false;
+            for (const id of prev) {
+              if (isReplayId(id) && !rowSet.has(id)) {
+                changed = true;
+                continue;
+              }
+              next.add(id);
+            }
             for (const id of rows) {
-              if (!prev.has(id)) {
+              if (!next.has(id)) {
                 next.add(id);
                 changed = true;
               }
             }
             return changed ? next : prev;
           });
+          setAvatars((prev) => dropStaleReplayKeys(prev, liveReplays));
+          setVectorConfigs((prev) => dropStaleReplayKeys(prev, liveReplays));
         }
 
         uiHydratedRef.current = true;
@@ -337,8 +368,14 @@ export default function App() {
     setDroneIds((prev) => {
       const cap = droneCountFromIds(prev);
       const allowed = poseIds.filter((id) => idFitsCount(id, cap));
+      const allowedPhysical = allowed.filter((id) => !isReplayId(id));
+      const prevPhysical = prev.filter((id) => !isReplayId(id));
+      const prevReplays = prev.filter((id) => isReplayId(id));
       const merged = rowsForPhysicalCount(
-        mergeDroneIds(prev, allowed),
+        mergeDroneIds(
+          mergeDroneIds(prevPhysical, allowedPhysical),
+          prevReplays,
+        ),
         cap,
       );
       return idsChanged(prev, merged) ? merged : prev;
@@ -347,7 +384,9 @@ export default function App() {
       const next = new Set(prev);
       let changed = false;
       const cap = droneCountFromIds([...prev]);
+      const liveReplays = new Set([...prev].filter((id) => isReplayId(id)));
       for (const id of poseIds) {
+        if (isReplayId(id) && !liveReplays.has(id)) continue;
         if (!idFitsCount(id, cap) && cap >= 1) continue;
         if (!prev.has(id)) {
           next.add(id);
