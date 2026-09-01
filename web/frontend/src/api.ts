@@ -429,3 +429,62 @@ export type TopicsTree = Record<
 export function getTopics(slug: string): Promise<TopicsTree> {
   return json(`/api/experiments/${slug}/topics`);
 }
+
+export type ReplayInspect = {
+  run_id: string;
+  params: { name: string; value: number | string }[];
+  topics: string[];
+  duration_s: number;
+  warnings: string[];
+};
+
+export function inspectReplay(
+  slug: string,
+  droneId: number,
+): Promise<ReplayInspect> {
+  return json(`/api/experiments/${slug}/replay/inspect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ drone_id: droneId }),
+  });
+}
+
+export type ReplayStartBody = {
+  run_id: string;
+  drone_id: number | string;
+  overrides: Record<string, number | string>;
+};
+
+export function startReplay(
+  slug: string,
+  body: ReplayStartBody,
+): Promise<{ ok: boolean; run_id: string }> {
+  return json(`/api/experiments/${slug}/replay`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function getReplay(
+  slug: string,
+  runId: string,
+): Promise<Record<string, unknown>> {
+  return json(`/api/experiments/${slug}/replay/${runId}`);
+}
+
+export function stopReplay(
+  slug: string,
+  runId: string,
+): Promise<{ ok: boolean }> {
+  return json(`/api/experiments/${slug}/replay/${runId}/stop`, {
+    method: "POST",
+  });
+}
+
+export function getReplaySeries(
+  slug: string,
+  runId: string,
+): Promise<unknown> {
+  return json(`/api/experiments/${slug}/replay/${runId}/series`);
+}

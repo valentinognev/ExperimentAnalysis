@@ -17,6 +17,7 @@ import PlotBoard from "./components/PlotBoard";
 import DroneList from "./components/DroneList";
 import ExperimentBar from "./components/ExperimentBar";
 import Timeline from "./components/Timeline";
+import ReplayTab from "./components/ReplayTab";
 import WorkspaceTabs from "./components/WorkspaceTabs";
 import { DEFAULT_TAB, type WorkspaceTab } from "./workspaceTab";
 import Map2D from "./components/Map2D";
@@ -44,6 +45,7 @@ export default function App() {
   const { skin } = useSkin();
   const [slug, setSlug] = useState<string | null>(null);
   const [tab, setTab] = useState<WorkspaceTab>(DEFAULT_TAB);
+  const [manifest, setManifest] = useState<Record<string, unknown>>({});
   const [experimentName, setExperimentName] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
   const [t, setT] = useState(0);
@@ -97,6 +99,7 @@ export default function App() {
   useEffect(() => {
     if (!slug) {
       setExperimentName("");
+      setManifest({});
       setDroneIds([]);
       setHosts({});
       setSshReady({});
@@ -144,6 +147,7 @@ export default function App() {
 
         const manifestName = detail.manifest.name;
         setExperimentName(typeof manifestName === "string" ? manifestName : "");
+        setManifest(detail.manifest ?? {});
         setHosts(hostsFromManifest(detail.manifest.drones));
         setSshReady(sshReadyFromManifest(detail.manifest.drones));
         setSummaries(summariesFromManifest(detail.manifest.drones));
@@ -203,6 +207,7 @@ export default function App() {
         if (cancelled) return;
         if (slugChanged) {
           setExperimentName("");
+          setManifest({});
           setDroneIds([]);
           setHosts({});
           setSshReady({});
@@ -673,7 +678,9 @@ export default function App() {
             <p className="px-4 py-8 text-sm text-zinc-400">
               Open an experiment on the Sources tab to replay.
             </p>
-          ) : null}
+          ) : (
+            <ReplayTab slug={slug} manifest={manifest} />
+          )}
         </div>
       )}
     </div>

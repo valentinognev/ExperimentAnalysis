@@ -22,6 +22,11 @@ vi.mock("./api", () => ({
   patchMarkers: vi.fn(),
   createExperiment: vi.fn(),
   setDroneCount: vi.fn(),
+  inspectReplay: vi.fn(),
+  startReplay: vi.fn(),
+  getReplay: vi.fn(),
+  stopReplay: vi.fn(),
+  getReplaySeries: vi.fn(),
 }));
 
 import {

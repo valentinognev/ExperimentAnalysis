@@ -19,6 +19,11 @@ import {
   getSeries,
   getDuration,
   patchManifest,
+  inspectReplay,
+  startReplay,
+  getReplay,
+  stopReplay,
+  getReplaySeries,
 } from "./api";
 
 describe("api", () => {
@@ -459,6 +464,92 @@ describe("api", () => {
     const result = await getTrajectory("foo");
 
     expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/trajectory");
+    expect(result).toEqual(body);
+  });
+
+  it("inspectReplay POSTs {drone_id}", async () => {
+    const body = {
+      run_id: "abc",
+      params: [],
+      topics: [],
+      duration_s: 1,
+      warnings: [],
+    };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await inspectReplay("foo", 2);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/replay/inspect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ drone_id: 2 }),
+    });
+    expect(result).toEqual(body);
+  });
+
+  it("startReplay POSTs {run_id, drone_id, overrides}", async () => {
+    const payload = {
+      run_id: "abc",
+      drone_id: 2,
+      overrides: { EKF2_RNG_NOISE: 0.2 },
+    };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, run_id: "abc" }),
+    } as Response);
+
+    const result = await startReplay("foo", payload);
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/replay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    expect(result).toEqual({ ok: true, run_id: "abc" });
+  });
+
+  it("getReplay GETs /api/experiments/{slug}/replay/{runId}", async () => {
+    const body = { status: "success", replay_id: "2_r1" };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await getReplay("foo", "abc");
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/replay/abc");
+    expect(result).toEqual(body);
+  });
+
+  it("stopReplay POSTs /api/experiments/{slug}/replay/{runId}/stop", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true }),
+    } as Response);
+
+    const result = await stopReplay("foo", "abc");
+
+    expect(fetch).toHaveBeenCalledWith("/api/experiments/foo/replay/abc/stop", {
+      method: "POST",
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("getReplaySeries GETs /api/experiments/{slug}/replay/{runId}/series", async () => {
+    const body = { vehicle_attitude: {} };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => body,
+    } as Response);
+
+    const result = await getReplaySeries("foo", "abc");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/experiments/foo/replay/abc/series",
+    );
     expect(result).toEqual(body);
   });
 });
