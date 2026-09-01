@@ -1,5 +1,8 @@
 # Updates
 
+## 0.78.0 - Di_rj replay id helpers
+- `ea.replay_id` / `replayId.ts`: parse `2_r1` (parent + index), `physical_id`, monotonic `next_replay_index` (mixed int/string ids)
+
 ## 0.77.0 - Map trail dashes and 2D marker legend
 - 2D/3D (Plotly and Cesium) trails use the same color-collision dashes as extra plots: solid when unique, distinct dash per same-color trail
 - 2D legend lists each current-T drone marker (per-source symbol) as well as trajectories; ground diamonds stay under Markers
