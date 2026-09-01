@@ -185,3 +185,80 @@ it("expanding a nested group reveals its params", async () => {
   expect(paramInput("EKF2_RNG_NOISE")).toBeInTheDocument();
   expect(paramInput("EKF2_RNG_AID")).toBeInTheDocument();
 });
+
+const editorParams = [
+  { name: "EKF2_HGT_REF", value: 1 },
+  { name: "EKF2_GPS_CTRL", value: 7 },
+  { name: "EKF2_BARO_CTRL", value: 1 },
+  { name: "MC_ROLL_P", value: 6 },
+];
+
+it("enum select shows QGC labels and writing a number updates the select", async () => {
+  render(<ParamTable params={editorParams} onOverrides={() => {}} />);
+  const sel = screen.getByRole("combobox", { name: "EKF2_HGT_REF enum" });
+  expect(sel).toHaveValue("1");
+  expect(screen.getByRole("option", { name: "1 — GPS" })).toBeInTheDocument();
+  await userEvent.clear(paramInput("EKF2_HGT_REF")!);
+  await userEvent.type(paramInput("EKF2_HGT_REF")!, "0");
+  expect(sel).toHaveValue("0");
+});
+
+it("choosing an enum option writes the number override", async () => {
+  const onOverrides = vi.fn();
+  render(<ParamTable params={editorParams} onOverrides={onOverrides} />);
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "EKF2_HGT_REF enum" }),
+    "0",
+  );
+  expect(onOverrides).toHaveBeenCalledWith({ EKF2_HGT_REF: 0 });
+  expect(paramInput("EKF2_HGT_REF")).toHaveValue(0);
+});
+
+it("unmatched enum value shows custom option", () => {
+  render(
+    <ParamTable
+      params={[{ name: "EKF2_HGT_REF", value: 99 }]}
+      onOverrides={() => {}}
+    />,
+  );
+  expect(
+    screen.getByRole("combobox", { name: "EKF2_HGT_REF enum" }),
+  ).toHaveValue("99");
+  expect(screen.getByRole("option", { name: "custom (99)" })).toBeInTheDocument();
+});
+
+it("bitmask checkboxes follow the number and toggling writes OR", async () => {
+  const onOverrides = vi.fn();
+  render(<ParamTable params={editorParams} onOverrides={onOverrides} />);
+  const lon = screen.getByRole("checkbox", {
+    name: "EKF2_GPS_CTRL bit 0: Lon/lat",
+  });
+  const dual = screen.getByRole("checkbox", {
+    name: "EKF2_GPS_CTRL bit 3: Dual antenna heading",
+  });
+  expect(lon).toBeChecked();
+  expect(dual).not.toBeChecked();
+  await userEvent.click(lon);
+  expect(onOverrides).toHaveBeenCalledWith({ EKF2_GPS_CTRL: 6 });
+});
+
+it("boolean select Off/On writes 0/1", async () => {
+  const onOverrides = vi.fn();
+  render(<ParamTable params={editorParams} onOverrides={onOverrides} />);
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "EKF2_BARO_CTRL boolean" }),
+    "0",
+  );
+  expect(onOverrides).toHaveBeenCalledWith({ EKF2_BARO_CTRL: 0 });
+});
+
+it("params without metadata have no extra combobox", () => {
+  render(
+    <ParamTable
+      params={[{ name: "EKF2_RNG_NOISE", value: 0.1 }]}
+      onOverrides={() => {}}
+    />,
+  );
+  expect(paramInput("EKF2_RNG_NOISE")).toBeInTheDocument();
+  expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+});

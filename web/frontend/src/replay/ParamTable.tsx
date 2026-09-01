@@ -1,7 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { filterParams } from "./paramFilter";
 import { paramDiffs } from "./paramDiffs";
 import { groupParams, paramCount, type ParamGroup } from "./paramGroup";
+import {
+  asNumber,
+  bitOn,
+  enumOptionValues,
+  paramMeta,
+  setBit,
+} from "./paramMeta";
 import { loadSession, mergeOverrides, saveSessionPartial } from "./sessionPrefs";
 import { BTN, INPUT, LABEL } from "./ui";
 
@@ -9,6 +16,89 @@ type Param = { name: string; value: number | string };
 
 function toRecord(params: Param[]): Record<string, number | string> {
   return Object.fromEntries(params.map((p) => [p.name, p.value]));
+}
+
+function ParamValueEditor({
+  name,
+  value,
+  onChange,
+}: {
+  name: string;
+  value: number | string;
+  onChange: (raw: string) => void;
+}) {
+  const meta = paramMeta(name);
+  const n = asNumber(value);
+
+  let extra: ReactNode = null;
+  if (meta?.kind === "enum") {
+    const codes = enumOptionValues(meta);
+    const known = codes.includes(n);
+    extra = (
+      <select
+        className={INPUT}
+        aria-label={`${name} enum`}
+        value={String(n)}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {meta.options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.value} — {o.label}
+          </option>
+        ))}
+        {known ? null : (
+          <option value={n}>custom ({n})</option>
+        )}
+      </select>
+    );
+  } else if (meta?.kind === "boolean") {
+    const known = n === 0 || n === 1;
+    extra = (
+      <select
+        className={INPUT}
+        aria-label={`${name} boolean`}
+        value={String(n)}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value={0}>Off</option>
+        <option value={1}>On</option>
+        {known ? null : (
+          <option value={n}>custom ({n})</option>
+        )}
+      </select>
+    );
+  } else if (meta?.kind === "bitmask") {
+    extra = (
+      <div className="flex flex-wrap gap-2">
+        {meta.bits.map((b) => (
+          <label key={b.index} className={`${LABEL} inline-flex items-center gap-1`}>
+            <input
+              type="checkbox"
+              aria-label={`${name} bit ${b.index}: ${b.label}`}
+              checked={bitOn(n, b.index)}
+              onChange={(e) =>
+                onChange(String(setBit(n, b.index, e.target.checked)))
+              }
+            />
+            {b.label}
+          </label>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <input
+        className={`${INPUT} w-full`}
+        name={name}
+        type={typeof value === "number" ? "number" : "text"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {extra}
+    </div>
+  );
 }
 
 export function ParamTable({
@@ -89,12 +179,10 @@ export function ParamTable({
                       <tr key={p.name} data-edited={changed ? "true" : undefined}>
                         <td className="px-2 py-1 font-mono text-zinc-300">{p.name}</td>
                         <td className="px-2 py-1">
-                          <input
-                            className={`${INPUT} w-full`}
+                          <ParamValueEditor
                             name={p.name}
-                            type={typeof p.value === "number" ? "number" : "text"}
                             value={p.value}
-                            onChange={(e) => onCellChange(p.name, e.target.value)}
+                            onChange={(raw) => onCellChange(p.name, raw)}
                           />
                         </td>
                       </tr>
