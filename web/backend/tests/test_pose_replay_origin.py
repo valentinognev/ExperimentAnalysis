@@ -97,10 +97,14 @@ def test_origin_ignores_replay_gps_one_degree_away(tmp_path):
 def test_replay_pose_and_series_use_parent_offset(tmp_path):
     exp_dir = _build_physical_plus_replay(tmp_path)
 
+    manifest = load_manifest(exp_dir / "manifest.json")
+    manifest["sync"]["mode"] = "manual"
+    manifest["sync"]["manual_offsets_s"] = {}
+    save_manifest(exp_dir / "manifest.json", manifest)
+
     baseline = pose_at(exp_dir, t=0.0)
     ekf_baseline = baseline["drones"]["2_r1"]["avatars"]["ekf_ned"]
 
-    manifest = load_manifest(exp_dir / "manifest.json")
     manifest["sync"]["manual_offsets_s"] = {"2": 1.5}
     save_manifest(exp_dir / "manifest.json", manifest)
 

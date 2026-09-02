@@ -14,7 +14,7 @@ from ea.interp import interp_scalar, slerp_xyzw
 from ea.manifest import load_manifest
 from ea.replay_id import is_replay_id
 from ea.series import channel_value_at_t
-from ea.sync import manual_offset_s as _manual_offset_s, t_sm
+from ea.sync import sync_mode, t_sm, time_mapping
 
 _GPS_TOPICS = ("vehicle_gps_position", "vehicle_global_position")
 _ARM_T0_SLACK_S = 0.5
@@ -125,11 +125,9 @@ def _reference_lla(derived: Path, arm_us: int | None) -> tuple[float, float, flo
     home = _home_lla(derived)
     if home is not None:
         return home
-    gps_path = _gps_parquet(derived)
-    if gps_path is None or arm_us is None:
-        return None
-    df = pd.read_parquet(gps_path)
-    return _lla_at_timestamp(df, arm_us)
+    if arm_us is None:
+        return _gps_lla_first(derived)
+    return _gps_lla_at_arm(derived, arm_us)
 
 
 def _gps_lla_at_arm(derived: Path, arm_us: int | None) -> tuple[float, float, float] | None:
@@ -138,6 +136,16 @@ def _gps_lla_at_arm(derived: Path, arm_us: int | None) -> tuple[float, float, fl
         return None
     df = pd.read_parquet(gps_path)
     return _lla_at_timestamp(df, arm_us)
+
+
+def _gps_lla_first(derived: Path) -> tuple[float, float, float] | None:
+    gps_path = _gps_parquet(derived)
+    if gps_path is None:
+        return None
+    df = pd.read_parquet(gps_path)
+    if df.empty:
+        return None
+    return _lla_from_row(df.iloc[0])
 
 
 def _interpolate_ekf_ned(
@@ -442,8 +450,8 @@ def _interpolate_sm_lla(
 
 def _sm_avatars_at(
     derived: Path,
-    sync_info: dict,
     arm_us: int | None,
+    sm_arm_local: float | None,
     t: float,
     origin_lat: float,
     origin_lon: float,
@@ -458,7 +466,6 @@ def _sm_avatars_at(
     if sm_df.empty or "local_ts" not in sm_df.columns:
         return {}, False
 
-    sm_arm_local = sync_info.get("sm_arm_local_ts")
     avatars: dict[str, dict[str, float]] = {}
     local_frame = False
 
@@ -497,15 +504,20 @@ def _compute_origin(
     experiment_dir: Path,
     drone_ids: list[str],
     sync_drones: dict,
+    manifest: dict,
 ) -> dict:
+    manual = sync_mode(manifest) == "manual"
     llas: list[tuple[float, float, float]] = []
     for drone_id in drone_ids:
         if is_replay_id(drone_id):
             continue
         derived = _drone_derived(experiment_dir, drone_id)
         sync_info = sync_drones.get(drone_id, {})
-        arm_us = sync_info.get("ulog_arm_us")
-        lla = _gps_lla_at_arm(derived, arm_us)
+        if manual:
+            lla = _gps_lla_first(derived)
+        else:
+            arm_us = sync_info.get("ulog_arm_us")
+            lla = _gps_lla_at_arm(derived, arm_us)
         if lla is not None:
             llas.append(lla)
 
@@ -521,7 +533,7 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
     sync_drones = _read_sync(experiment_dir)
     drone_ids = [str(d["id"]) for d in manifest.get("drones", [])]
     ui_vectors = manifest.get("ui", {}).get("vectors", {})
-    origin = _compute_origin(experiment_dir, drone_ids, sync_drones)
+    origin = _compute_origin(experiment_dir, drone_ids, sync_drones, manifest)
     origin_lat = origin["lat"]
     origin_lon = origin["lon"]
     origin_alt = origin["alt_m"]
@@ -530,9 +542,8 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
     for drone_id in drone_ids:
         derived = _drone_derived(experiment_dir, drone_id)
         sync_info = sync_drones.get(drone_id, {})
-        arm_us = sync_info.get("ulog_arm_us")
-        synced = sync_info.get("synced", arm_us is not None)
-        offset_s = _manual_offset_s(manifest, drone_id)
+        arm_us, sm_arm, offset_s = time_mapping(manifest, sync_info, drone_id)
+        synced = sync_info.get("synced", sync_info.get("ulog_arm_us") is not None)
 
         ekf_ned, pos_ok = _interpolate_ekf_ned(derived, arm_us, t, offset_s)
         attitude, att_ok = _interpolate_attitude(derived, arm_us, t, offset_s)
@@ -575,8 +586,8 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
 
         sm_avatars, sm_local_frame = _sm_avatars_at(
             derived,
-            sync_info,
             arm_us,
+            sm_arm,
             t,
             origin_lat,
             origin_lon,

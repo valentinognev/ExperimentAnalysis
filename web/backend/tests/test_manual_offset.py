@@ -86,19 +86,67 @@ def _build_single_drone_fixture(tmp_path) -> Path:
 def test_manual_offset_shifts_pose(tmp_path):
     exp_dir = _build_single_drone_fixture(tmp_path)
 
-    baseline = pose_at(exp_dir, t=0.0)
+    manifest = load_manifest(exp_dir / "manifest.json")
+    manifest["sync"]["mode"] = "manual"
+    manifest["sync"]["manual_offsets_s"] = {}
+    save_manifest(exp_dir / "manifest.json", manifest)
+
+    # First-sample mapping (ARM ignored): t_ulog(5000, None, 1000) = 0.004
+    baseline = pose_at(exp_dir, t=0.004)
     ekf_baseline = baseline["drones"]["2"]["avatars"]["ekf_ned"]
 
-    manifest = load_manifest(exp_dir / "manifest.json")
     manifest["sync"]["manual_offsets_s"] = {"2": 1.5}
     save_manifest(exp_dir / "manifest.json", manifest)
 
-    offset_at = pose_at(exp_dir, t=1.5)
+    # With offset 1.5, same pose at 0.004 + 1.5 = 1.504
+    offset_at = pose_at(exp_dir, t=1.504)
     ekf_offset = offset_at["drones"]["2"]["avatars"]["ekf_ned"]
 
     assert ekf_offset["e"] == pytest.approx(ekf_baseline["e"], abs=1e-6)
     assert ekf_offset["n"] == pytest.approx(ekf_baseline["n"], abs=1e-6)
     assert ekf_offset["u"] == pytest.approx(ekf_baseline["u"], abs=1e-6)
+
+
+def test_arm_mode_ignores_manual_offsets(tmp_path):
+    exp_dir = _build_single_drone_fixture(tmp_path)
+
+    baseline = pose_at(exp_dir, t=0.0)
+    ekf_baseline = baseline["drones"]["2"]["avatars"]["ekf_ned"]
+
+    manifest = load_manifest(exp_dir / "manifest.json")
+    manifest["sync"]["mode"] = "arm"
+    manifest["sync"]["manual_offsets_s"] = {"2": 1.5}
+    save_manifest(exp_dir / "manifest.json", manifest)
+
+    at_arm = pose_at(exp_dir, t=0.0)
+    ekf = at_arm["drones"]["2"]["avatars"]["ekf_ned"]
+    assert ekf["e"] == pytest.approx(ekf_baseline["e"], abs=1e-6)
+    assert ekf["n"] == pytest.approx(ekf_baseline["n"], abs=1e-6)
+    assert ekf["u"] == pytest.approx(ekf_baseline["u"], abs=1e-6)
+
+
+def test_manual_mode_pose_uses_first_sample_not_arm(tmp_path):
+    exp_dir = _build_single_drone_fixture(tmp_path)
+
+    arm_ekf = pose_at(exp_dir, t=0.0)["drones"]["2"]["avatars"]["ekf_ned"]
+
+    manifest = load_manifest(exp_dir / "manifest.json")
+    manifest["sync"]["mode"] = "manual"
+    manifest["sync"]["manual_offsets_s"] = {}
+    save_manifest(exp_dir / "manifest.json", manifest)
+
+    # Prefer present gating when first_us is earlier than LP; else EKF fallback.
+    at_zero = pose_at(exp_dir, t=0.0)
+    mapped_t = (5000 - 1000) / 1e6
+    if at_zero["drones"]["2"]["present"] is False:
+        assert pose_at(exp_dir, t=mapped_t)["drones"]["2"]["present"] is True
+    else:
+        # Per-topic first sample: LP starts at 5000 (= ARM us), so manual T=0
+        # matches ARM-mode pose at t=0 (ARM anchors dropped but same sample).
+        ekf = at_zero["drones"]["2"]["avatars"]["ekf_ned"]
+        assert ekf["e"] == pytest.approx(arm_ekf["e"], abs=1e-6)
+        assert ekf["n"] == pytest.approx(arm_ekf["n"], abs=1e-6)
+        assert ekf["u"] == pytest.approx(arm_ekf["u"], abs=1e-6)
 
 
 def test_t_ulog_offset_adds_to_arm_time():
@@ -184,6 +232,7 @@ def _sm_ned_offset_fixture(tmp_path) -> Path:
 
 
 def test_manual_offset_sm_ned_reference_lla_at_arm(tmp_path):
+    """ARM mode: offsets ignored; SM NED spatial ref still at ARM."""
     exp_dir = _sm_ned_offset_fixture(tmp_path)
 
     baseline = pose_at(exp_dir, t=0.0)
@@ -191,10 +240,12 @@ def test_manual_offset_sm_ned_reference_lla_at_arm(tmp_path):
     assert sm_ned_baseline["n"] == pytest.approx(10.0, abs=0.05)
 
     manifest = load_manifest(exp_dir / "manifest.json")
+    manifest["sync"]["mode"] = "arm"
     manifest["sync"]["manual_offsets_s"] = {"2": 1.5}
     save_manifest(exp_dir / "manifest.json", manifest)
 
-    offset_at = pose_at(exp_dir, t=1.5)
-    sm_ned_offset = offset_at["drones"]["2"]["avatars"]["sm_ned"]
-    assert sm_ned_offset["n"] == pytest.approx(sm_ned_baseline["n"], abs=0.05)
-    assert sm_ned_offset["n"] != pytest.approx(0.0, abs=0.05)
+    # Offsets ignored in ARM mode — pose at T=0 unchanged
+    at_arm = pose_at(exp_dir, t=0.0)
+    sm_ned = at_arm["drones"]["2"]["avatars"]["sm_ned"]
+    assert sm_ned["n"] == pytest.approx(sm_ned_baseline["n"], abs=0.05)
+    assert sm_ned["n"] != pytest.approx(0.0, abs=0.05)

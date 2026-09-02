@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from ea.sync import manual_offset_s, t_sm, t_ulog, write_sync
+from ea.sync import manual_offset_s, sync_mode, t_sm, t_ulog, time_mapping, write_sync
 
 
 def test_t_ulog_two_drones_arm_at_t_zero():
@@ -114,17 +114,59 @@ def test_write_sync_sm_present_without_ulog_arm_synced_false(tmp_path):
     assert result["drones"]["2"]["sm_arm_local_ts"] == 11412.04
 
 
+def test_sync_mode_defaults_to_arm():
+    assert sync_mode({}) == "arm"
+    assert sync_mode({"sync": {}}) == "arm"
+    assert sync_mode({"sync": {"mode": "arm"}}) == "arm"
+    assert sync_mode({"sync": {"mode": "manual"}}) == "manual"
+
+
+def test_manual_offset_s_ignored_in_arm_mode():
+    manifest = {"sync": {"mode": "arm", "manual_offsets_s": {"2": 1.5}}}
+    assert manual_offset_s(manifest, "2") == 0.0
+    assert manual_offset_s(manifest, "2_r1") == 0.0
+
+
+def test_manual_offset_s_applies_in_manual_mode():
+    manifest = {"sync": {"mode": "manual", "manual_offsets_s": {"2": 1.5}}}
+    assert manual_offset_s(manifest, "2") == 1.5
+    assert manual_offset_s(manifest, "2_r1") == 1.5
+
+
+def test_time_mapping_manual_drops_arm():
+    manifest = {"sync": {"mode": "manual", "manual_offsets_s": {"2": 1.5}}}
+    arm_us, sm_arm, offset = time_mapping(
+        manifest, {"ulog_arm_us": 5000, "sm_arm_local_ts": 10.0}, "2"
+    )
+    assert arm_us is None
+    assert sm_arm is None
+    assert offset == 1.5
+
+
+def test_time_mapping_arm_keeps_arm_zero_offset():
+    manifest = {"sync": {"mode": "arm", "manual_offsets_s": {"2": 9.0}}}
+    arm_us, sm_arm, offset = time_mapping(
+        manifest, {"ulog_arm_us": 5000, "sm_arm_local_ts": 10.0}, "2"
+    )
+    assert arm_us == 5000
+    assert sm_arm == 10.0
+    assert offset == 0.0
+
+
 def test_manual_offset_s_replay_inherits_parent():
-    manifest = {"sync": {"manual_offsets_s": {"2": 1.5}}}
+    manifest = {"sync": {"mode": "manual", "manual_offsets_s": {"2": 1.5}}}
     assert manual_offset_s(manifest, "2_r1") == 1.5
     assert manual_offset_s(manifest, 2) == 1.5
 
 
 def test_manual_offset_s_replay_ignores_own_key():
-    manifest = {"sync": {"manual_offsets_s": {"2": 1.5, "2_r1": 9.0}}}
+    manifest = {"sync": {"mode": "manual", "manual_offsets_s": {"2": 1.5, "2_r1": 9.0}}}
     assert manual_offset_s(manifest, "2_r1") == 1.5
 
 
 def test_manual_offset_s_missing_is_zero():
-    assert manual_offset_s({"sync": {"manual_offsets_s": {}}}, "2_r1") == 0.0
+    assert (
+        manual_offset_s({"sync": {"mode": "manual", "manual_offsets_s": {}}}, "2_r1")
+        == 0.0
+    )
     assert manual_offset_s({}, 3) == 0.0

@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from ea.manifest import load_manifest
-from ea.sync import manual_offset_s as _manual_offset_s, t_sm, t_ulog
+from ea.sync import t_sm, t_ulog, time_mapping
 
 _POSE_TOPICS = (
     "vehicle_local_position",
@@ -92,13 +92,13 @@ def experiment_t_max_s(experiment_dir: Path) -> float:
 
     max_t = 0.0
     for drone_id in drone_ids:
-        offset_s = _manual_offset_s(manifest, drone_id)
         sync_info = sync_drones.get(drone_id, {})
+        arm_us, sm_arm, offset_s = time_mapping(manifest, sync_info, drone_id)
         derived = experiment_dir / "derived" / f"drone_{drone_id}"
 
         for candidate in (
-            _max_ulog_t(derived, sync_info.get("ulog_arm_us"), offset_s),
-            _max_sm_t(derived, sync_info.get("sm_arm_local_ts"), offset_s),
+            _max_ulog_t(derived, arm_us, offset_s),
+            _max_sm_t(derived, sm_arm, offset_s),
             _max_ha_t(
                 experiment_dir / "derived" / "ha" / f"drone_{drone_id}",
                 offset_s,

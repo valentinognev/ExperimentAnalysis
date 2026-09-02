@@ -8,10 +8,28 @@ from pathlib import Path
 from ea.replay_id import is_replay_id, parent_id
 
 
+def sync_mode(manifest: dict) -> str:
+    mode = manifest.get("sync", {}).get("mode", "arm")
+    return "manual" if mode == "manual" else "arm"
+
+
 def manual_offset_s(manifest: dict, drone_id: object) -> float:
+    if sync_mode(manifest) != "manual":
+        return 0.0
     offsets = manifest.get("sync", {}).get("manual_offsets_s", {})
     key = str(parent_id(drone_id)) if is_replay_id(drone_id) else str(drone_id)
-    return float(offsets.get(key, 0))
+    return float(offsets.get(key, 0) or 0)
+
+
+def time_mapping(
+    manifest: dict, sync_info: dict, drone_id: object
+) -> tuple[int | None, float | None, float]:
+    offset_s = manual_offset_s(manifest, drone_id)
+    if sync_mode(manifest) == "manual":
+        return None, None, offset_s
+    arm_us = sync_info.get("ulog_arm_us")
+    sm_arm = sync_info.get("sm_arm_local_ts")
+    return arm_us, sm_arm, 0.0
 
 
 def t_ulog(

@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from ea.manifest import load_manifest
-from ea.sync import manual_offset_s as _manual_offset_s, t_sm, t_ulog
+from ea.sync import t_sm, t_ulog, time_mapping
 
 _POSE_TOPICS = frozenset(
     {
@@ -142,8 +142,10 @@ def channel_value_at_t(
     drone_id, source, topic, field = parsed
     manifest = load_manifest(experiment_dir / "manifest.json")
     sync_drones = _read_sync(experiment_dir)
-    sync_info = sync_drones.get(drone_id, {})
-    offset_s = _manual_offset_s(manifest, drone_id)
+    sync_info = dict(sync_drones.get(drone_id, {}))
+    arm_us, sm_arm, offset_s = time_mapping(manifest, sync_info, drone_id)
+    sync_info["ulog_arm_us"] = arm_us
+    sync_info["sm_arm_local_ts"] = sm_arm
 
     t_vals, y_vals = _load_channel_series(
         experiment_dir, drone_id, source, topic, field, sync_info, offset_s
@@ -188,8 +190,10 @@ def series(
             continue
 
         drone_id, source, topic, field = parsed
-        sync_info = sync_drones.get(drone_id, {})
-        offset_s = _manual_offset_s(manifest, drone_id)
+        sync_info = dict(sync_drones.get(drone_id, {}))
+        arm_us, sm_arm, offset_s = time_mapping(manifest, sync_info, drone_id)
+        sync_info["ulog_arm_us"] = arm_us
+        sync_info["sm_arm_local_ts"] = sm_arm
 
         t_vals, y_vals = _load_channel_series(
             experiment_dir, drone_id, source, topic, field, sync_info, offset_s

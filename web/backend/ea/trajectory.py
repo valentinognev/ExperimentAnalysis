@@ -16,7 +16,6 @@ from ea.pose import (
     _experiment_times,
     _gps_parquet,
     _lla_arrays,
-    _manual_offset_s,
     _parquet_path,
     _read_sync,
     _reference_lla,
@@ -26,6 +25,7 @@ from ea.pose import (
     _sm_parquet_path,
     _sm_pos_ned_columns,
 )
+from ea.sync import time_mapping
 
 _MAX_HZ = 20.0
 
@@ -190,7 +190,7 @@ def trajectory(experiment_dir: Path) -> dict:
     manifest = load_manifest(experiment_dir / "manifest.json")
     sync_drones = _read_sync(experiment_dir)
     drone_ids = [str(d["id"]) for d in manifest.get("drones", [])]
-    origin = _compute_origin(experiment_dir, drone_ids, sync_drones)
+    origin = _compute_origin(experiment_dir, drone_ids, sync_drones, manifest)
     origin_lat = origin["lat"]
     origin_lon = origin["lon"]
     origin_alt = origin["alt_m"]
@@ -199,8 +199,7 @@ def trajectory(experiment_dir: Path) -> dict:
     for drone_id in drone_ids:
         derived = _drone_derived(experiment_dir, drone_id)
         sync_info = sync_drones.get(drone_id, {})
-        arm_us = sync_info.get("ulog_arm_us")
-        offset_s = _manual_offset_s(manifest, drone_id)
+        arm_us, sm_arm, offset_s = time_mapping(manifest, sync_info, drone_id)
         sources: dict[str, dict] = {}
 
         ekf = _ekf_path(
@@ -219,7 +218,7 @@ def trajectory(experiment_dir: Path) -> dict:
             _sm_paths(
                 derived,
                 arm_us,
-                sync_info.get("sm_arm_local_ts"),
+                sm_arm,
                 offset_s,
                 origin_lat,
                 origin_lon,
