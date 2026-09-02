@@ -49,12 +49,19 @@ describe("avatarMarkerStyle", () => {
     });
     expect(avatarMarkerStyle("sm_ned")).toMatchObject({
       symbol: "square-open",
-      mapSymbol: "square-stroked",
+      mapSymbol: "square-open",
     });
     expect(avatarMarkerStyle("sm_lla")).toMatchObject({
       symbol: "x",
-      mapSymbol: "cross",
+      mapSymbol: "x",
     });
+  });
+
+  it("mapSymbol equals the 3D symbol for every avatar", () => {
+    for (const key of AVATAR_KEYS) {
+      const s = avatarMarkerStyle(key);
+      expect(s.mapSymbol).toBe(s.symbol);
+    }
   });
 
   it("keeps the 3D x smaller than the ekf circle", () => {

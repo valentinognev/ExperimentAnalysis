@@ -4,7 +4,7 @@ import { AVATAR_KEYS } from "./avatars";
 export type AvatarMarkerStyle = {
   /** Plotly scatter3d / Cesium billboard. */
   symbol: string;
-  /** Plotly scattermap (Maki-safe). */
+  /** Same shape name as 3D; map2d may render via text glyphs. */
   mapSymbol: string;
   size: number;
   outline?: { color: string; width: number };
@@ -20,9 +20,8 @@ const STYLES: Record<AvatarKey, AvatarMarkerStyle> = {
     halo: true,
   },
   gps: { symbol: "square", mapSymbol: "square", size: 8 },
-  sm_ned: { symbol: "square-open", mapSymbol: "square-stroked", size: 8 },
-  /** Maki 8 `cross` is an X, matching scatter3d `x`. */
-  sm_lla: { symbol: "x", mapSymbol: "cross", size: 4 },
+  sm_ned: { symbol: "square-open", mapSymbol: "square-open", size: 8 },
+  sm_lla: { symbol: "x", mapSymbol: "x", size: 4 },
 };
 
 export function avatarMarkerStyle(label?: string): AvatarMarkerStyle {

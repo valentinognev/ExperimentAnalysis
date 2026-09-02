@@ -102,6 +102,11 @@ export function mapTraces(
 
 const MAP_MARKER_SIZE = 10;
 
+const MAP_TEXT_GLYPH: Record<string, string> = {
+  "square-open": "□",
+  x: "✕",
+};
+
 function currentPointTraces(points: MapPoint[], textColor?: string): Data[] {
   const traces: Data[] = [];
   const drones = points.filter((p) => (p.symbol ?? "circle") !== "diamond");
@@ -111,6 +116,21 @@ function currentPointTraces(points: MapPoint[], textColor?: string): Data[] {
     const symbol = p.symbol ?? "circle";
     const name = p.name ?? "drone";
     const color = p.color ?? DRONE_COLORS[0];
+    const glyph = MAP_TEXT_GLYPH[symbol];
+    if (glyph !== undefined) {
+      traces.push({
+        type: "scattermap",
+        mode: "text",
+        name,
+        legendgroup: name,
+        lat: [p.lat],
+        lon: [p.lon],
+        text: [glyph],
+        textfont: { size: MAP_MARKER_SIZE, color },
+        showlegend: true,
+      });
+      continue;
+    }
     if (p.halo && symbol === "circle") {
       traces.push({
         type: "scattermap",

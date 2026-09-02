@@ -139,6 +139,68 @@ describe("mapFigure", () => {
     expect(symbols).toContain("square");
   });
 
+  it("draws sm ned as a hollow-square glyph and sm lla as an x glyph", () => {
+    const { data } = mapFigure(
+      [
+        {
+          lat: 32,
+          lon: 35,
+          name: "D2 sm ned",
+          color: "#f00",
+          symbol: "square-open",
+        },
+        {
+          lat: 32.1,
+          lon: 35.1,
+          name: "D2 sm lla",
+          color: "#f00",
+          symbol: "x",
+        },
+      ],
+      [],
+    );
+    type T = {
+      name?: string;
+      mode?: string;
+      text?: string[];
+      marker?: { symbol?: string };
+    };
+    const ned = data.find((t) => (t as T).name === "D2 sm ned") as T;
+    const lla = data.find((t) => (t as T).name === "D2 sm lla") as T;
+    expect(ned?.mode).toContain("text");
+    expect(ned?.text).toEqual(["□"]);
+    expect(ned?.marker?.symbol).not.toBe("square-stroked");
+    expect(lla?.mode).toContain("text");
+    expect(lla?.text).toEqual(["✕"]);
+    expect(lla?.marker?.symbol).not.toBe("cross");
+  });
+
+  it("lists hollow-square and x pose markers in the legend", () => {
+    const { data } = mapFigure(
+      [
+        {
+          lat: 32,
+          lon: 35,
+          name: "D2 sm ned",
+          color: "#f00",
+          symbol: "square-open",
+        },
+        {
+          lat: 32.1,
+          lon: 35.1,
+          name: "D2 sm lla",
+          color: "#f00",
+          symbol: "x",
+        },
+      ],
+      [],
+    );
+    type T = { name?: string; showlegend?: boolean };
+    const legend = data.filter((t) => (t as T).showlegend !== false) as T[];
+    expect(legend.some((t) => t.name === "D2 sm ned")).toBe(true);
+    expect(legend.some((t) => t.name === "D2 sm lla")).toBe(true);
+  });
+
   it("draws a black ring behind ekf circles like 3D", () => {
     const { data } = mapFigure(
       [
