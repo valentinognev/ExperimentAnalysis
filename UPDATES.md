@@ -1,5 +1,14 @@
 # Updates
 
+## 0.82.0 - Remember last Replay setup
+- Replay drone + param filter/overrides persist in `ea-replay-session`; reopen restores and inspects that drone when it still has a ulog
+- After the first Replay visit, the panel stays mounted (hidden) so tab switches keep the last setup and an in-progress run
+
+## 0.81.1 - 2D GPS marker is a square
+- scattermap cannot draw Plotly `square` (it falls back to a circle); GPS/SM use map glyphs `■` / `□` / `✕`
+- scattermap text legends show “Aa”; glyph traces are hidden from the legend and a `legendonly` scatter supplies the real square / hollow-square / x
+- 2D trails are named `D# source trail` (same as 3D) so they no longer share the current-T marker name
+
 ## 0.81.0 - 2D markers and manual sync
 - Pose-source map markers: EKF circle+ring, GPS filled square, SM NED hollow square, SM LLA x (2D and 3D)
 - Analysis ARM|Manual sync toggle; Manual picks a main drone and relative Δt offsets (persisted in `manifest.sync`)

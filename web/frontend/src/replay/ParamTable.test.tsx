@@ -117,6 +117,8 @@ it("restores saved filter instead of the EKF2 default", () => {
     filter: "MC",
     experimentName: "",
     overrides: {},
+    slug: "",
+    droneId: null,
   });
   render(<ParamTable params={params} onOverrides={() => {}} />);
   expect(screen.getByLabelText("Filter")).toHaveValue("MC");
@@ -130,6 +132,8 @@ it("applies saved overrides once when params first arrive", () => {
     filter: "EKF2",
     experimentName: "",
     overrides: { EKF2_RNG_NOISE: 0.2, GONE: 1 },
+    slug: "",
+    droneId: null,
   });
   const onOverrides = vi.fn();
   const { rerender } = render(

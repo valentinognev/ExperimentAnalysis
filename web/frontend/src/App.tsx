@@ -109,6 +109,7 @@ export default function App() {
   const { skin } = useSkin();
   const [slug, setSlug] = useState<string | null>(null);
   const [tab, setTab] = useState<WorkspaceTab>(DEFAULT_TAB);
+  const [keepReplaySlug, setKeepReplaySlug] = useState<string | null>(null);
   const [manifest, setManifest] = useState<Record<string, unknown>>({});
   const [experimentName, setExperimentName] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
@@ -211,10 +212,15 @@ export default function App() {
     setTMax(60);
     setMarkers([]);
     setSelectedMarkerIds([]);
+    setKeepReplaySlug(null);
     mapDefaultAppliedRef.current = false;
     const cleared = plotsOnSlugChange(prevSlugRef.current, slug);
     if (cleared !== null) setPlots(cleared);
   }, [slug]);
+
+  useEffect(() => {
+    if (tab === "replay" && slug) setKeepReplaySlug(slug);
+  }, [tab, slug]);
 
   useEffect(() => {
     if (!slug) {
@@ -857,20 +863,27 @@ export default function App() {
           )}
         </div>
       )}
-      {tab === "replay" && (
+      {slug && (tab === "replay" || keepReplaySlug === slug) ? (
         <div
           role="tabpanel"
           id="workspace-panel-replay"
           aria-labelledby="workspace-tab-replay"
+          hidden={tab !== "replay"}
         >
-          {!slug ? (
+          <ReplayTab slug={slug} manifest={manifest} onPulled={handlePulled} />
+        </div>
+      ) : (
+        tab === "replay" && (
+          <div
+            role="tabpanel"
+            id="workspace-panel-replay"
+            aria-labelledby="workspace-tab-replay"
+          >
             <p className="px-4 py-8 text-sm text-zinc-400">
               Open an experiment on the Sources tab to replay.
             </p>
-          ) : (
-            <ReplayTab slug={slug} manifest={manifest} onPulled={handlePulled} />
-          )}
-        </div>
+          </div>
+        )
       )}
     </div>
   );

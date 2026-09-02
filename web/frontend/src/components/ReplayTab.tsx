@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { inspectReplay } from "../api";
 import { isReplayId } from "../replayId";
 import { OverlayPlots } from "../replay/OverlayPlots";
 import { ParamTable } from "../replay/ParamTable";
 import { RunPanel } from "../replay/RunPanel";
+import { loadSession, saveSessionPartial } from "../replay/sessionPrefs";
 import { useSkin } from "../SkinContext";
 import { INPUT, LABEL } from "../replay/ui";
 
@@ -55,7 +56,17 @@ export default function ReplayTab({
 }) {
   const { skin } = useSkin();
   const ids = physicalUlgIds(manifest);
-  const [droneId, setDroneId] = useState<number | null>(null);
+  const [droneId, setDroneId] = useState<number | null>(() => {
+    const prefs = loadSession();
+    if (
+      prefs.slug === slug &&
+      prefs.droneId != null &&
+      ids.includes(prefs.droneId)
+    ) {
+      return prefs.droneId;
+    }
+    return null;
+  });
   const [runId, setRunId] = useState<string | null>(null);
   const [params, setParams] = useState<Param[]>([]);
   const [overrides, setOverrides] = useState<Record<string, number | string>>(
@@ -76,17 +87,16 @@ export default function ReplayTab({
     setError(null);
   }
 
-  async function onSelect(raw: string) {
+  function resetSelection() {
+    inspectGen.current += 1;
+    setDroneId(null);
+    clearInspect();
+    setBusy(false);
+  }
+
+  async function inspectDrone(id: number) {
     inspectGen.current += 1;
     const gen = inspectGen.current;
-    if (raw === "") {
-      setDroneId(null);
-      clearInspect();
-      setBusy(false);
-      return;
-    }
-    const id = Number(raw);
-    if (!Number.isInteger(id)) return;
     setDroneId(id);
     clearInspect();
     setBusy(true);
@@ -106,6 +116,35 @@ export default function ReplayTab({
       if (gen === inspectGen.current) setBusy(false);
     }
   }
+
+  function onSelect(raw: string) {
+    if (raw === "") {
+      saveSessionPartial({ slug, droneId: null });
+      resetSelection();
+      return;
+    }
+    const id = Number(raw);
+    if (!Number.isInteger(id)) return;
+    saveSessionPartial({ slug, droneId: id });
+    void inspectDrone(id);
+  }
+
+  useEffect(() => {
+    const prefs = loadSession();
+    const id =
+      prefs.slug === slug &&
+      prefs.droneId != null &&
+      ids.includes(prefs.droneId)
+        ? prefs.droneId
+        : null;
+    if (id == null) {
+      resetSelection();
+      return;
+    }
+    void inspectDrone(id);
+    // Restore once per experiment slug; ids come from this render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">

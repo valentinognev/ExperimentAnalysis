@@ -82,7 +82,7 @@ describe("mapFigure", () => {
       legend.some((t) => t.name === "D2 ekf" && t.mode?.includes("markers")),
     ).toBe(true);
     expect(
-      legend.some((t) => t.name === "D2 gps" && t.mode?.includes("markers")),
+      legend.some((t) => t.name === "D2 gps" && (t as { type?: string }).type === "scatter"),
     ).toBe(true);
   });
 
@@ -131,12 +131,53 @@ describe("mapFigure", () => {
       ],
       [],
     );
-    const symbols = data.flatMap((t) => {
-      const s = (t as { marker?: { symbol?: string | string[] } }).marker?.symbol;
-      return s === undefined ? [] : Array.isArray(s) ? s : [s];
-    });
-    expect(symbols).toContain("circle");
-    expect(symbols).toContain("square");
+    const symbolsOf = (type: string) =>
+      data
+        .filter((t) => (t as { type?: string }).type === type)
+        .flatMap((t) => {
+          const s = (t as { marker?: { symbol?: string | string[] } }).marker
+            ?.symbol;
+          return s === undefined ? [] : Array.isArray(s) ? s : [s];
+        });
+    expect(symbolsOf("scattermap")).toContain("circle");
+    expect(symbolsOf("scattermap")).not.toContain("square");
+    expect(symbolsOf("scatter")).toContain("square");
+  });
+
+  it("hides cartesian axes so legend-only scatter does not overlay the map", () => {
+    const { layout } = mapFigure(
+      [{ lat: 32, lon: 35, name: "D2 gps", color: "#f00", symbol: "square" }],
+    );
+    expect(layout.xaxis?.visible).toBe(false);
+    expect(layout.yaxis?.visible).toBe(false);
+  });
+
+  it("draws gps as a filled-square glyph, not a scattermap circle", () => {
+    const { data } = mapFigure(
+      [{ lat: 32, lon: 35, name: "D2 gps", color: "#f00", symbol: "square" }],
+      [],
+    );
+    type T = {
+      name?: string;
+      type?: string;
+      mode?: string;
+      text?: string[];
+      visible?: string | boolean;
+      showlegend?: boolean;
+      marker?: { symbol?: string };
+    };
+    const onMap = data.find(
+      (t) => (t as T).name === "D2 gps" && (t as T).type === "scattermap",
+    ) as T;
+    const inLegend = data.find(
+      (t) => (t as T).name === "D2 gps" && (t as T).type === "scatter",
+    ) as T;
+    expect(onMap?.mode).toContain("text");
+    expect(onMap?.text).toEqual(["■"]);
+    expect(onMap?.showlegend).toBe(false);
+    expect(inLegend?.visible).toBe("legendonly");
+    expect(inLegend?.marker?.symbol).toBe("square");
+    expect(inLegend?.showlegend).not.toBe(false);
   });
 
   it("draws sm ned as a hollow-square glyph and sm lla as an x glyph", () => {
@@ -165,8 +206,12 @@ describe("mapFigure", () => {
       text?: string[];
       marker?: { symbol?: string };
     };
-    const ned = data.find((t) => (t as T).name === "D2 sm ned") as T;
-    const lla = data.find((t) => (t as T).name === "D2 sm lla") as T;
+    const ned = data.find(
+      (t) => (t as T).name === "D2 sm ned" && (t as { type?: string }).type === "scattermap",
+    ) as T;
+    const lla = data.find(
+      (t) => (t as T).name === "D2 sm lla" && (t as { type?: string }).type === "scattermap",
+    ) as T;
     expect(ned?.mode).toContain("text");
     expect(ned?.text).toEqual(["□"]);
     expect(ned?.marker?.symbol).not.toBe("square-stroked");
@@ -195,10 +240,22 @@ describe("mapFigure", () => {
       ],
       [],
     );
-    type T = { name?: string; showlegend?: boolean };
-    const legend = data.filter((t) => (t as T).showlegend !== false) as T[];
-    expect(legend.some((t) => t.name === "D2 sm ned")).toBe(true);
-    expect(legend.some((t) => t.name === "D2 sm lla")).toBe(true);
+    type T = {
+      name?: string;
+      type?: string;
+      visible?: string | boolean;
+      showlegend?: boolean;
+      marker?: { symbol?: string };
+    };
+    const legend = data.filter(
+      (t) => (t as T).showlegend !== false && (t as T).type === "scatter",
+    ) as T[];
+    const ned = legend.find((t) => t.name === "D2 sm ned");
+    const lla = legend.find((t) => t.name === "D2 sm lla");
+    expect(ned?.visible).toBe("legendonly");
+    expect(ned?.marker?.symbol).toBe("square-open");
+    expect(lla?.visible).toBe("legendonly");
+    expect(lla?.marker?.symbol).toBe("x");
   });
 
   it("draws a black ring behind ekf circles like 3D", () => {
@@ -282,6 +339,7 @@ describe("mapFigure", () => {
       1,
     );
     expect(tracks).toHaveLength(1);
+    expect(tracks[0].name).toBe("D2 ekf trail");
     expect(tracks[0].lat).toHaveLength(2);
     expect(tracks[0].lon).toHaveLength(2);
   });

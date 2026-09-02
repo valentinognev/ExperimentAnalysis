@@ -4,7 +4,7 @@ import { AVATAR_KEYS } from "./avatars";
 export type AvatarMarkerStyle = {
   /** Plotly scatter3d / Cesium billboard. */
   symbol: string;
-  /** Same shape name as 3D; map2d may render via text glyphs. */
+  /** Same shape name as 3D. scattermap only draws circles natively; map2d uses text glyphs for non-circles. */
   mapSymbol: string;
   size: number;
   outline?: { color: string; width: number };

@@ -561,5 +561,45 @@ describe("App analysis layout", () => {
       );
     });
   });
+
+  it("keeps Replay drone selected when switching to Analysis and back", async () => {
+    vi.mocked(listExperiments).mockResolvedValue([
+      { slug: "foo", name: "Foo", drone_ids: ["2"], missing: [] },
+    ]);
+    vi.mocked(openExperiment).mockResolvedValue({
+      slug: "foo",
+      manifest: {
+        name: "Foo",
+        drones: [{ id: 2, sources: { ulg: ["raw/drone_2/d2.ulg"] } }],
+      },
+    });
+    vi.mocked(inspectReplay).mockResolvedValue({
+      run_id: "abc",
+      params: [],
+      topics: [],
+      duration_s: 1,
+      warnings: [],
+    });
+    const user = userEvent.setup();
+    renderApp();
+    const picker = screen.getByRole("combobox", { name: "Experiment" });
+    await waitFor(() => {
+      expect(within(picker).getByRole("option", { name: "foo" })).toBeInTheDocument();
+    });
+    await user.selectOptions(picker, "foo");
+    await user.click(screen.getByRole("tab", { name: "Replay" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Replay drone" }),
+      "2",
+    );
+    await waitFor(() => {
+      expect(inspectReplay).toHaveBeenCalledTimes(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Analysis" }));
+    await user.click(screen.getByRole("tab", { name: "Replay" }));
+    expect(screen.getByRole("combobox", { name: "Replay drone" })).toHaveValue("2");
+    expect(inspectReplay).toHaveBeenCalledTimes(1);
+  });
 });
+
 

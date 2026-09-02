@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, cleanup, within, act } from "@testing-library/react";
+import { render, screen, cleanup, within, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
@@ -20,6 +20,7 @@ vi.mock("../api", () => ({
 
 import { inspectReplay } from "../api";
 import { SkinProvider } from "../SkinContext";
+import { loadSession, saveSession } from "../replay/sessionPrefs";
 import ReplayTab from "./ReplayTab";
 
 const manifest = {
@@ -137,4 +138,83 @@ it("overlapping inspect ignores the older response", async () => {
   });
   expect(screen.queryByText("d2-run")).not.toBeInTheDocument();
   expect(screen.getByText("d3-run")).toBeInTheDocument();
+});
+
+const emptySession = {
+  ulgPath: "",
+  filter: "EKF2",
+  experimentName: "",
+  overrides: {},
+  slug: "",
+  droneId: null as number | null,
+};
+
+it("selecting D2 saves slug and droneId", async () => {
+  vi.mocked(inspectReplay).mockResolvedValue({
+    run_id: "abc",
+    params: [],
+    topics: [],
+    duration_s: 1,
+    warnings: [],
+  });
+  renderTab();
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "Replay drone" }),
+    "2",
+  );
+  expect(loadSession().slug).toBe("foo");
+  expect(loadSession().droneId).toBe(2);
+});
+
+it("restores last drone for this slug and inspects", async () => {
+  saveSession({ ...emptySession, slug: "foo", droneId: 2 });
+  vi.mocked(inspectReplay).mockResolvedValue({
+    run_id: "abc",
+    params: [],
+    topics: [],
+    duration_s: 1,
+    warnings: [],
+  });
+  renderTab();
+  await waitFor(() => {
+    expect(inspectReplay).toHaveBeenCalledWith("foo", 2);
+  });
+  expect(screen.getByRole("combobox", { name: "Replay drone" })).toHaveValue("2");
+});
+
+it("does not restore a drone from another slug", () => {
+  saveSession({ ...emptySession, slug: "bar", droneId: 2 });
+  renderTab();
+  expect(inspectReplay).not.toHaveBeenCalled();
+  expect(screen.getByRole("combobox", { name: "Replay drone" })).toHaveValue("");
+});
+
+it("does not restore a drone that has no ulog", () => {
+  saveSession({ ...emptySession, slug: "foo", droneId: 1 });
+  renderTab();
+  expect(inspectReplay).not.toHaveBeenCalled();
+  expect(screen.getByRole("combobox", { name: "Replay drone" })).toHaveValue("");
+});
+
+it("clears inspect when the slug changes and session does not match", async () => {
+  vi.mocked(inspectReplay).mockResolvedValue({
+    run_id: "abc",
+    params: [],
+    topics: [],
+    duration_s: 1,
+    warnings: [],
+  });
+  const { rerender } = renderTab();
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "Replay drone" }),
+    "2",
+  );
+  expect(await screen.findByText("abc")).toBeInTheDocument();
+  rerender(
+    <SkinProvider>
+      <ReplayTab slug="bar" manifest={manifest} />
+    </SkinProvider>,
+  );
+  expect(screen.queryByText("abc")).not.toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Replay drone" })).toHaveValue("");
 });

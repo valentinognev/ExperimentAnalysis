@@ -7,6 +7,8 @@ export type SessionPrefs = {
   filter: string;
   experimentName: string;
   overrides: Record<string, number | string>;
+  slug: string;
+  droneId: number | null;
 };
 
 export const DEFAULT_SESSION: SessionPrefs = {
@@ -14,6 +16,8 @@ export const DEFAULT_SESSION: SessionPrefs = {
   filter: DEFAULT_PARAM_FILTER,
   experimentName: "",
   overrides: {},
+  slug: "",
+  droneId: null,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -31,6 +35,11 @@ function parseOverrides(raw: unknown): Record<string, number | string> {
   return out;
 }
 
+function parseDroneId(raw: unknown): number | null {
+  if (typeof raw === "number" && Number.isInteger(raw)) return raw;
+  return null;
+}
+
 export function parseSession(raw: unknown): SessionPrefs {
   if (!isRecord(raw)) {
     return { ...DEFAULT_SESSION, overrides: {} };
@@ -43,6 +52,8 @@ export function parseSession(raw: unknown): SessionPrefs {
         ? raw.experimentName
         : DEFAULT_SESSION.experimentName,
     overrides: parseOverrides(raw.overrides),
+    slug: typeof raw.slug === "string" ? raw.slug : DEFAULT_SESSION.slug,
+    droneId: parseDroneId(raw.droneId),
   };
 }
 

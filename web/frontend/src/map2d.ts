@@ -54,7 +54,9 @@ export function mapLayout(opts?: MapLayoutOpts): Partial<Layout> {
     datarevision: opts?.datarevision,
     paper_bgcolor: theme.paper_bgcolor,
     font: { color: theme.font_color },
-    map: { style: mapTileStyle(skin), uirevision: "map" },
+    map: { style: mapTileStyle(skin), uirevision: "map", domain: { x: [0, 1], y: [0, 1] } },
+    xaxis: { visible: false, showgrid: false, zeroline: false, showticklabels: false },
+    yaxis: { visible: false, showgrid: false, zeroline: false, showticklabels: false },
     margin: { l: 0, r: 0, t: 88, b: 0 },
     showlegend: true,
     legend: {
@@ -79,9 +81,10 @@ export function mapTraces(
   const traces: Data[] = [];
 
   for (const track of tracks) {
+    const lines = track.lat.length > 1;
     traces.push({
       type: "scattermap",
-      mode: track.lat.length > 1 ? "lines" : "markers",
+      mode: lines ? "lines" : "markers",
       name: track.name,
       lat: track.lat,
       lon: track.lon,
@@ -90,7 +93,7 @@ export function mapTraces(
         width: 2,
         dash: track.dash,
       },
-      marker: { size: 4, color: track.color },
+      ...(lines ? {} : { marker: { size: 4, color: track.color } }),
       legendgroup: track.name,
       showlegend: true,
     });
@@ -103,6 +106,7 @@ export function mapTraces(
 const MAP_MARKER_SIZE = 10;
 
 const MAP_TEXT_GLYPH: Record<string, string> = {
+  square: "■",
   "square-open": "□",
   x: "✕",
 };
@@ -127,7 +131,23 @@ function currentPointTraces(points: MapPoint[], textColor?: string): Data[] {
         lon: [p.lon],
         text: [glyph],
         textfont: { size: MAP_MARKER_SIZE, color },
+        showlegend: false,
+      });
+      traces.push({
+        type: "scatter",
+        mode: "markers",
+        name,
+        legendgroup: name,
+        x: [null],
+        y: [null],
+        marker: {
+          size: MAP_MARKER_SIZE,
+          color,
+          symbol,
+        },
+        visible: "legendonly",
         showlegend: true,
+        hoverinfo: "skip",
       });
       continue;
     }
@@ -234,7 +254,7 @@ export function stableMapTracks(
       tracks.push({
         lat,
         lon,
-        name: `D${id} ${avatarShortLabel(key as AvatarKey)}`,
+        name: `D${id} ${avatarShortLabel(key as AvatarKey)} trail`,
         color: replayColor(id),
       });
     }
