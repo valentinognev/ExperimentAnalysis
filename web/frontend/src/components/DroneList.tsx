@@ -19,10 +19,16 @@ import { droneColor, replayColor } from "../droneColor";
 import { type DroneSummary } from "../droneSummary";
 import { preselectKeys, rankByUlg, stampMs } from "../logStamp";
 import { avatarShortLabel, type AvatarKey } from "../avatars";
+import {
+  parseOffsetInput,
+  physicalSyncIds,
+  type SyncMode,
+} from "../syncMode";
 
 const EMPTY_HOSTS: Record<string, string> = {};
 const EMPTY_READY: Record<string, boolean> = {};
 const EMPTY_SUMMARIES: Record<string, DroneSummary> = {};
+const EMPTY_OFFSETS: Record<string, number> = {};
 const EMPTY_SUMMARY: DroneSummary = {
   ulg: "—",
   ulgOrigin: "",
@@ -39,6 +45,9 @@ const SSH_READY =
   "rounded border border-green-600 bg-green-700 px-1.5 py-0.5 text-xs text-white hover:bg-green-600 disabled:opacity-50";
 const BTN =
   "rounded border border-zinc-700 px-1.5 py-0.5 text-xs hover:bg-zinc-800 disabled:opacity-50";
+const SYNC_BTN_BASE = "rounded px-2 py-0.5 text-xs";
+const SYNC_BTN_ON = `${SYNC_BTN_BASE} bg-zinc-700 text-zinc-100`;
+const SYNC_BTN_OFF = `${SYNC_BTN_BASE} text-zinc-400 hover:bg-zinc-900`;
 
 function TransferBar({
   progress,
@@ -143,6 +152,12 @@ type Props = {
   enabledAvatars?: Record<string, AvatarKey[]>;
   onAvatarToggle?: (id: string, key: AvatarKey, checked: boolean) => void;
   physicalCount?: number;
+  syncMode?: SyncMode;
+  mainDroneId?: string;
+  offsets?: Record<string, number>;
+  onSyncModeChange?: (mode: SyncMode) => void;
+  onMainDroneChange?: (id: string) => void;
+  onOffsetChange?: (id: string, value: number) => void;
 };
 
 export default function DroneList({
@@ -160,8 +175,15 @@ export default function DroneList({
   enabledAvatars,
   onAvatarToggle,
   physicalCount,
+  syncMode = "arm",
+  mainDroneId,
+  offsets = EMPTY_OFFSETS,
+  onSyncModeChange,
+  onMainDroneChange,
+  onOffsetChange,
 }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>(hosts);
+  const [offsetDraft, setOffsetDraft] = useState<Record<string, string>>({});
   const [pulledOk, setPulledOk] = useState<Record<string, boolean>>({});
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -177,6 +199,14 @@ export default function DroneList({
   useEffect(() => {
     setDraft(hosts);
   }, [hosts]);
+
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    for (const [id, value] of Object.entries(offsets)) {
+      next[id] = String(value);
+    }
+    setOffsetDraft(next);
+  }, [offsets]);
 
   const displayIds =
     physicalCount != null && physicalCount >= 1
@@ -550,9 +580,38 @@ export default function DroneList({
     }
   }
 
+  const syncIds = physicalSyncIds(displayIds);
+  const mainId = mainDroneId && syncIds.includes(mainDroneId) ? mainDroneId : syncIds[0];
+
+  function commitOffset(id: string, raw: string) {
+    const parsed = parseOffsetInput(raw);
+    if (parsed === null) return;
+    onOffsetChange?.(id, parsed);
+  }
+
   return (
     <div className="flex flex-col gap-1 px-4 py-2 text-sm">
-      <span className="text-zinc-400">Drones</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-zinc-400">Drones</span>
+        {variant === "analysis" && onSyncModeChange ? (
+          <div className="flex items-center gap-1" role="group" aria-label="Sync mode">
+            <button
+              type="button"
+              className={syncMode === "arm" ? SYNC_BTN_ON : SYNC_BTN_OFF}
+              onClick={() => onSyncModeChange("arm")}
+            >
+              ARM
+            </button>
+            <button
+              type="button"
+              className={syncMode === "manual" ? SYNC_BTN_ON : SYNC_BTN_OFF}
+              onClick={() => onSyncModeChange("manual")}
+            >
+              Manual
+            </button>
+          </div>
+        ) : null}
+      </div>
       <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
         {displayIds.map((id) => {
           const replay = isReplayId(id);
@@ -882,6 +941,54 @@ export default function DroneList({
           );
         })}
       </ul>
+      {variant === "analysis" && syncMode === "manual" && syncIds.length > 0 ? (
+        <div className="mt-1 flex flex-col gap-1.5 border-t border-zinc-800 pt-2">
+          <label className="flex items-center gap-2 text-xs text-zinc-400">
+            <span>Main</span>
+            <select
+              aria-label="Main drone"
+              className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-100"
+              value={mainId ?? ""}
+              onChange={(e) => onMainDroneChange?.(e.target.value)}
+            >
+              {syncIds.map((id) => (
+                <option key={id} value={id}>
+                  D{id}
+                </option>
+              ))}
+            </select>
+          </label>
+          {syncIds
+            .filter((id) => id !== mainId)
+            .map((id) => {
+              const raw =
+                offsetDraft[id] ??
+                (offsets[id] !== undefined ? String(offsets[id]) : "0");
+              return (
+                <label
+                  key={id}
+                  className="flex items-center gap-2 text-xs text-zinc-400"
+                >
+                  <span>D{id} Δt</span>
+                  <input
+                    type="number"
+                    step="any"
+                    aria-label={`D${id} offset s`}
+                    className="w-24 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-100"
+                    value={raw}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setOffsetDraft((prev) => ({ ...prev, [id]: value }));
+                      commitOffset(id, value);
+                    }}
+                    onBlur={(e) => commitOffset(id, e.target.value)}
+                  />
+                  <span>s</span>
+                </label>
+              );
+            })}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,5 +1,10 @@
 # Updates
 
+## 0.81.0 - 2D markers and manual sync
+- Pose-source map markers: EKF circle+ring, GPS filled square, SM NED hollow square, SM LLA x (2D and 3D)
+- Analysis ARM|Manual sync toggle; Manual picks a main drone and relative Δt offsets (persisted in `manifest.sync`)
+- Backend Manual mode uses first-sample T=0 + offsets (ARM mode ignores offsets); unsynced banner hidden in Manual
+
 ## 0.80.2 - Replay success refreshes Sources and Analysis
 - After a successful replay, reload the experiment so `Di_rj` appears in the Sources and Analysis lists without reopening
 

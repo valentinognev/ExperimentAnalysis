@@ -1401,4 +1401,69 @@ describe("DroneList", () => {
     );
     expect(screen.queryByLabelText("D2 sources")).not.toBeInTheDocument();
   });
+
+  it("analysis header has ARM/Manual toggle to the right of Drones", () => {
+    render(
+      <DroneList
+        variant="analysis"
+        droneIds={["2", "3"]}
+        visible={new Set(["2", "3"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        syncMode="arm"
+        onSyncModeChange={() => {}}
+      />,
+    );
+    const drones = screen.getByText("Drones");
+    const manual = screen.getByRole("button", { name: "Manual" });
+    expect(screen.getByRole("button", { name: "ARM" })).toBeInTheDocument();
+    expect(
+      drones.compareDocumentPosition(manual) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("sources variant has no sync toggle", () => {
+    render(
+      <DroneList
+        variant="sources"
+        droneIds={["2"]}
+        visible={new Set(["2"])}
+        onToggle={() => {}}
+        slug="Baseball"
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "ARM" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Manual" })).not.toBeInTheDocument();
+  });
+
+  it("manual mode shows main select and offset fields for others", async () => {
+    const user = userEvent.setup();
+    const onMainDroneChange = vi.fn();
+    const onOffsetChange = vi.fn();
+    render(
+      <DroneList
+        variant="analysis"
+        droneIds={["2", "3", "2_r1"]}
+        visible={new Set(["2", "3", "2_r1"])}
+        onToggle={() => {}}
+        slug="Baseball"
+        syncMode="manual"
+        mainDroneId="2"
+        offsets={{ "2": 0, "3": 1.5 }}
+        onSyncModeChange={() => {}}
+        onMainDroneChange={onMainDroneChange}
+        onOffsetChange={onOffsetChange}
+      />,
+    );
+    expect(screen.getByLabelText("Main drone")).toHaveValue("2");
+    expect(screen.queryByLabelText("D2 offset s")).not.toBeInTheDocument();
+    const offset = screen.getByLabelText("D3 offset s");
+    expect(offset).toHaveValue(1.5);
+    expect(screen.queryByLabelText("D2_r1 offset s")).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Main drone"), "3");
+    expect(onMainDroneChange).toHaveBeenCalledWith("3");
+    await user.clear(offset);
+    await user.type(offset, "2");
+    expect(onOffsetChange).toHaveBeenCalled();
+  });
 });

@@ -38,6 +38,12 @@ import {
 } from "./visibleDrones";
 import { orderedDroneIds } from "./droneRows";
 import { isReplayId, physicalId } from "./replayId";
+import {
+  parseSyncMode,
+  physicalSyncIds,
+  rebaseOffsets,
+  type SyncMode,
+} from "./syncMode";
 
 const View3DCesium = lazy(() => import("./components/View3DCesium"));
 
@@ -122,6 +128,9 @@ export default function App() {
   const [mapLinked, setMapLinked] = useState(true);
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [selectedMarkerIds, setSelectedMarkerIds] = useState<string[]>([]);
+  const [syncMode, setSyncMode] = useState<SyncMode>("arm");
+  const [mainDroneId, setMainDroneId] = useState("");
+  const [syncOffsets, setSyncOffsets] = useState<Record<string, number>>({});
   const { pose, error: poseError } = usePose(slug, t, refreshToken);
   const [trajectory, setTrajectory] = useState<TrajectoryResponse | null>(null);
   const prevSlugRef = useRef<string | null>(null);
@@ -142,6 +151,48 @@ export default function App() {
       patchManifest(slug, hostPatch(id, trimmed)).catch(() => {});
     },
     [slug],
+  );
+
+  const persistSync = useCallback(
+    (mode: SyncMode, main: string, offsets: Record<string, number>) => {
+      if (!slug) return;
+      patchManifest(slug, {
+        sync: {
+          mode,
+          main_drone_id: main,
+          manual_offsets_s: offsets,
+        },
+      }).catch(() => {});
+      setRefreshToken((n) => n + 1);
+    },
+    [slug],
+  );
+
+  const handleSyncModeChange = useCallback(
+    (mode: SyncMode) => {
+      setSyncMode(mode);
+      persistSync(mode, mainDroneId, syncOffsets);
+    },
+    [mainDroneId, persistSync, syncOffsets],
+  );
+
+  const handleMainDroneChange = useCallback(
+    (id: string) => {
+      const nextOffsets = rebaseOffsets(syncOffsets, id);
+      setMainDroneId(id);
+      setSyncOffsets(nextOffsets);
+      persistSync(syncMode, id, nextOffsets);
+    },
+    [persistSync, syncMode, syncOffsets],
+  );
+
+  const handleOffsetChange = useCallback(
+    (id: string, value: number) => {
+      const next = { ...syncOffsets, [id]: value };
+      setSyncOffsets(next);
+      persistSync(syncMode, mainDroneId, next);
+    },
+    [mainDroneId, persistSync, syncMode, syncOffsets],
   );
 
   useEffect(() => {
@@ -170,6 +221,9 @@ export default function App() {
       setMapLinked(true);
       setMarkers([]);
       setSelectedMarkerIds([]);
+      setSyncMode("arm");
+      setMainDroneId("");
+      setSyncOffsets({});
       prevSlugRef.current = null;
       uiHydratedRef.current = false;
       skipSaveRef.current = true;
@@ -235,6 +289,35 @@ export default function App() {
           mapDefaultAppliedRef.current = ui.map_linked !== undefined;
           setMarkers(Array.isArray(ui.markers) ? ui.markers : []);
           setSelectedMarkerIds([]);
+
+          const syncRaw =
+            detail.manifest.sync && typeof detail.manifest.sync === "object"
+              ? (detail.manifest.sync as Record<string, unknown>)
+              : {};
+          const mode = parseSyncMode(syncRaw.mode);
+          setSyncMode(mode);
+          const physical = physicalSyncIds(rows);
+          const mainRaw = syncRaw.main_drone_id;
+          const mainFromManifest =
+            mainRaw !== undefined && mainRaw !== null && String(mainRaw) !== ""
+              ? String(mainRaw)
+              : "";
+          setMainDroneId(
+            mainFromManifest && physical.includes(mainFromManifest)
+              ? mainFromManifest
+              : (physical[0] ?? ""),
+          );
+          const offsRaw = syncRaw.manual_offsets_s;
+          const nextOffsets: Record<string, number> = {};
+          if (offsRaw && typeof offsRaw === "object") {
+            for (const [key, value] of Object.entries(
+              offsRaw as Record<string, unknown>,
+            )) {
+              const n = Number(value);
+              if (Number.isFinite(n)) nextOffsets[String(key)] = n;
+            }
+          }
+          setSyncOffsets(nextOffsets);
         } else {
           const listedMax = droneCountFromIds(combined);
           const liveReplays = new Set(combined.filter((id) => isReplayId(id)));
@@ -471,8 +554,13 @@ export default function App() {
   );
 
   const unsyncedBanner = useMemo(
-    () => (pose?.drones ? bannerText(pose.drones) : ""),
-    [pose?.drones],
+    () =>
+      syncMode === "manual"
+        ? ""
+        : pose?.drones
+          ? bannerText(pose.drones)
+          : "",
+    [pose?.drones, syncMode],
   );
 
   const availableAvatars = useMemo(() => {
@@ -634,6 +722,12 @@ export default function App() {
                 availableAvatars={availableAvatars}
                 enabledAvatars={enabledAvatars}
                 onAvatarToggle={handleAvatarToggle}
+                syncMode={syncMode}
+                mainDroneId={mainDroneId}
+                offsets={syncOffsets}
+                onSyncModeChange={handleSyncModeChange}
+                onMainDroneChange={handleMainDroneChange}
+                onOffsetChange={handleOffsetChange}
               />
               {poseError && (
                 <p className="px-4 text-sm text-red-400">Pose: {poseError}</p>

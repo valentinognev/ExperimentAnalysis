@@ -455,5 +455,50 @@ describe("App analysis layout", () => {
     expect(panel).toBeInTheDocument();
     expect(within(panel).getByText(/Open an experiment/)).toBeInTheDocument();
   });
+
+  it("hydrates Analysis sync from manifest and patches on Manual toggle", async () => {
+    vi.mocked(listExperiments).mockResolvedValue([
+      { slug: "foo", name: "Foo", drone_ids: ["2", "3"], missing: [] },
+    ]);
+    vi.mocked(openExperiment).mockResolvedValue({
+      slug: "foo",
+      manifest: {
+        name: "Foo",
+        drones: [{ id: 2 }, { id: 3 }],
+        sync: {
+          mode: "arm",
+          main_drone_id: "2",
+          manual_offsets_s: { "2": 0, "3": 1.5 },
+        },
+      },
+    });
+    vi.mocked(getPose).mockResolvedValue({
+      t: 0,
+      origin: { lat: 0, lon: 0, alt_m: 0 },
+      drones: {
+        "2": { present: true, synced: false },
+        "3": { present: true, synced: true },
+      },
+    });
+
+    const panel = await openAnalysis();
+    expect(within(panel).getByRole("button", { name: "ARM" })).toBeInTheDocument();
+    expect(within(panel).getByRole("status")).toHaveTextContent("ARM unsynced: 2");
+
+    const user = userEvent.setup();
+    await user.click(within(panel).getByRole("button", { name: "Manual" }));
+
+    await waitFor(() => {
+      expect(patchManifest).toHaveBeenCalledWith(
+        "foo",
+        expect.objectContaining({
+          sync: expect.objectContaining({ mode: "manual" }),
+        }),
+      );
+    });
+    expect(within(panel).queryByText(/ARM unsynced/)).not.toBeInTheDocument();
+    expect(within(panel).getByLabelText("Main drone")).toHaveValue("2");
+    expect(within(panel).getByLabelText("D3 offset s")).toHaveValue(1.5);
+  });
 });
 
