@@ -22,10 +22,19 @@ describe("physicalSyncIds", () => {
 
 describe("rebaseOffsets", () => {
   it("zeros the new main and subtracts its old offset", () => {
-    expect(rebaseOffsets({ "2": 0, "3": 1.5, "4": -0.5 }, "3")).toEqual({
+    expect(
+      rebaseOffsets({ "2": 0, "3": 1.5, "4": -0.5 }, "3", ["2", "3", "4"]),
+    ).toEqual({
       "2": -1.5,
       "3": 0,
       "4": -2.0,
+    });
+  });
+
+  it("materializes implicit zeros for missing physical ids", () => {
+    expect(rebaseOffsets({ "3": 1.5 }, "3", ["2", "3"])).toEqual({
+      "2": -1.5,
+      "3": 0,
     });
   });
 });
@@ -36,5 +45,7 @@ describe("parseOffsetInput", () => {
     expect(parseOffsetInput("-0.25")).toBe(-0.25);
     expect(parseOffsetInput("")).toBeNull();
     expect(parseOffsetInput("x")).toBeNull();
+    expect(parseOffsetInput("2.")).toBeNull();
+    expect(parseOffsetInput("-")).toBeNull();
   });
 });

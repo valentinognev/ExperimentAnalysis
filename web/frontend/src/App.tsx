@@ -154,16 +154,20 @@ export default function App() {
   );
 
   const persistSync = useCallback(
-    (mode: SyncMode, main: string, offsets: Record<string, number>) => {
+    async (mode: SyncMode, main: string, offsets: Record<string, number>) => {
       if (!slug) return;
-      patchManifest(slug, {
-        sync: {
-          mode,
-          main_drone_id: main,
-          manual_offsets_s: offsets,
-        },
-      }).catch(() => {});
-      setRefreshToken((n) => n + 1);
+      try {
+        await patchManifest(slug, {
+          sync: {
+            mode,
+            main_drone_id: main,
+            manual_offsets_s: offsets,
+          },
+        });
+        setRefreshToken((n) => n + 1);
+      } catch {
+        // Keep local sync state; do not refetch stale pose/trajectory.
+      }
     },
     [slug],
   );
@@ -171,28 +175,35 @@ export default function App() {
   const handleSyncModeChange = useCallback(
     (mode: SyncMode) => {
       setSyncMode(mode);
-      persistSync(mode, mainDroneId, syncOffsets);
+      void persistSync(mode, mainDroneId, syncOffsets);
     },
     [mainDroneId, persistSync, syncOffsets],
   );
 
   const handleMainDroneChange = useCallback(
     (id: string) => {
-      const nextOffsets = rebaseOffsets(syncOffsets, id);
+      const ids = physicalSyncIds(droneIds);
+      const nextOffsets = rebaseOffsets(syncOffsets, id, ids);
       setMainDroneId(id);
       setSyncOffsets(nextOffsets);
-      persistSync(syncMode, id, nextOffsets);
+      void persistSync(syncMode, id, nextOffsets);
     },
-    [persistSync, syncMode, syncOffsets],
+    [droneIds, persistSync, syncMode, syncOffsets],
   );
 
   const handleOffsetChange = useCallback(
     (id: string, value: number) => {
-      const next = { ...syncOffsets, [id]: value };
+      const ids = physicalSyncIds(droneIds);
+      const next: Record<string, number> = {};
+      for (const pid of ids) {
+        next[pid] = syncOffsets[pid] ?? 0;
+      }
+      next[id] = value;
+      if (mainDroneId) next[mainDroneId] = 0;
       setSyncOffsets(next);
-      persistSync(syncMode, mainDroneId, next);
+      void persistSync(syncMode, mainDroneId, next);
     },
-    [mainDroneId, persistSync, syncMode, syncOffsets],
+    [droneIds, mainDroneId, persistSync, syncMode, syncOffsets],
   );
 
   useEffect(() => {

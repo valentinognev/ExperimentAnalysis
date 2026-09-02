@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { useState } from "react";
 import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
@@ -1464,6 +1465,43 @@ describe("DroneList", () => {
     expect(onMainDroneChange).toHaveBeenCalledWith("3");
     await user.clear(offset);
     await user.type(offset, "2");
-    expect(onOffsetChange).toHaveBeenCalled();
+    await user.tab();
+    expect(onOffsetChange).toHaveBeenCalledWith("3", 2);
+  });
+
+  it("keeps fractional offset draft until blur", async () => {
+    const user = userEvent.setup();
+    const onOffsetChange = vi.fn();
+    function Harness() {
+      const [offsets, setOffsets] = useState<Record<string, number>>({
+        "2": 0,
+        "3": 0,
+      });
+      return (
+        <DroneList
+          variant="analysis"
+          droneIds={["2", "3"]}
+          visible={new Set(["2", "3"])}
+          onToggle={() => {}}
+          slug="Baseball"
+          syncMode="manual"
+          mainDroneId="2"
+          offsets={offsets}
+          onSyncModeChange={() => {}}
+          onOffsetChange={(id, value) => {
+            onOffsetChange(id, value);
+            setOffsets((prev) => ({ ...prev, [id]: value }));
+          }}
+        />
+      );
+    }
+    render(<Harness />);
+    const offset = screen.getByLabelText("D3 offset s");
+    await user.clear(offset);
+    await user.type(offset, "2.5");
+    expect(offset).toHaveValue(2.5);
+    expect(onOffsetChange).not.toHaveBeenCalled();
+    await user.tab();
+    expect(onOffsetChange).toHaveBeenCalledWith("3", 2.5);
   });
 });

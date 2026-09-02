@@ -500,5 +500,66 @@ describe("App analysis layout", () => {
     expect(within(panel).getByLabelText("Main drone")).toHaveValue("2");
     expect(within(panel).getByLabelText("D3 offset s")).toHaveValue(1.5);
   });
+
+  it("rebases sparse offsets when main drone changes", async () => {
+    vi.mocked(listExperiments).mockResolvedValue([
+      { slug: "foo", name: "Foo", drone_ids: ["1", "2"], missing: [] },
+    ]);
+    vi.mocked(openExperiment).mockResolvedValue({
+      slug: "foo",
+      manifest: {
+        name: "Foo",
+        drones: [{ id: 1 }, { id: 2 }],
+        sync: {
+          mode: "manual",
+          main_drone_id: "1",
+          manual_offsets_s: {},
+        },
+      },
+    });
+    vi.mocked(getPose).mockResolvedValue({
+      t: 0,
+      origin: { lat: 0, lon: 0, alt_m: 0 },
+      drones: {
+        "1": { present: true, synced: true },
+        "2": { present: true, synced: true },
+      },
+    });
+
+    const user = userEvent.setup();
+    const panel = await openAnalysis();
+    const offset = within(panel).getByLabelText("D2 offset s");
+    await user.clear(offset);
+    await user.type(offset, "1.5");
+    await user.tab();
+
+    await waitFor(() => {
+      expect(patchManifest).toHaveBeenCalledWith(
+        "foo",
+        expect.objectContaining({
+          sync: expect.objectContaining({
+            mode: "manual",
+            manual_offsets_s: expect.objectContaining({ "2": 1.5 }),
+          }),
+        }),
+      );
+    });
+
+    vi.mocked(patchManifest).mockClear();
+    await user.selectOptions(within(panel).getByLabelText("Main drone"), "2");
+
+    await waitFor(() => {
+      expect(patchManifest).toHaveBeenCalledWith(
+        "foo",
+        expect.objectContaining({
+          sync: expect.objectContaining({
+            mode: "manual",
+            main_drone_id: "2",
+            manual_offsets_s: { "1": -1.5, "2": 0 },
+          }),
+        }),
+      );
+    });
+  });
 });
 

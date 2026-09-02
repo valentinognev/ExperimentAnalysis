@@ -184,6 +184,7 @@ export default function DroneList({
 }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>(hosts);
   const [offsetDraft, setOffsetDraft] = useState<Record<string, string>>({});
+  const [offsetFocusId, setOffsetFocusId] = useState<string | null>(null);
   const [pulledOk, setPulledOk] = useState<Record<string, boolean>>({});
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -201,12 +202,15 @@ export default function DroneList({
   }, [hosts]);
 
   useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const [id, value] of Object.entries(offsets)) {
-      next[id] = String(value);
-    }
-    setOffsetDraft(next);
-  }, [offsets]);
+    setOffsetDraft((prev) => {
+      const next: Record<string, string> = { ...prev };
+      for (const [id, value] of Object.entries(offsets)) {
+        if (offsetFocusId === id) continue;
+        next[id] = String(value);
+      }
+      return next;
+    });
+  }, [offsets, offsetFocusId]);
 
   const displayIds =
     physicalCount != null && physicalCount >= 1
@@ -976,12 +980,20 @@ export default function DroneList({
                     aria-label={`D${id} offset s`}
                     className="w-24 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-100"
                     value={raw}
+                    onFocus={() => setOffsetFocusId(id)}
                     onChange={(e) => {
                       const value = e.target.value;
                       setOffsetDraft((prev) => ({ ...prev, [id]: value }));
-                      commitOffset(id, value);
                     }}
-                    onBlur={(e) => commitOffset(id, e.target.value)}
+                    onBlur={(e) => {
+                      commitOffset(id, e.target.value);
+                      setOffsetFocusId((prev) => (prev === id ? null : prev));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.currentTarget.blur();
+                      }
+                    }}
                   />
                   <span>s</span>
                 </label>

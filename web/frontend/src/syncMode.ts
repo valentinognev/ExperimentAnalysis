@@ -13,10 +13,12 @@ export function physicalSyncIds(droneIds: string[]): string[] {
 export function rebaseOffsets(
   offsets: Record<string, number>,
   newMain: string,
+  ids: string[],
 ): Record<string, number> {
   const base = offsets[newMain] ?? 0;
   const next: Record<string, number> = {};
-  for (const [id, value] of Object.entries(offsets)) {
+  for (const id of ids) {
+    const value = offsets[id] ?? 0;
     next[id] = id === newMain ? 0 : value - base;
   }
   next[newMain] = 0;
@@ -26,6 +28,8 @@ export function rebaseOffsets(
 export function parseOffsetInput(raw: string): number | null {
   const trimmed = raw.trim();
   if (trimmed === "") return null;
+  if (trimmed === "-" || trimmed === "." || trimmed === "-.") return null;
+  if (/^-?\d+\.$/.test(trimmed)) return null;
   const n = Number(trimmed);
   if (!Number.isFinite(n)) return null;
   return n;
