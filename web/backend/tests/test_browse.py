@@ -1,3 +1,4 @@
+import json
 import subprocess
 
 import pytest
@@ -212,9 +213,11 @@ def test_load_recents_corrupt_is_empty(isolated_browse_state):
     assert load_recents() == []
 
 
-def test_save_and_load_recents_roundtrip():
+def test_save_and_load_recents_roundtrip(isolated_browse_state):
     save_recents(["/a", "/b"])
     assert load_recents() == ["/a", "/b"]
+    on_disk = json.loads(isolated_browse_state.read_text())
+    assert on_disk == {"folders": ["/a", "/b"]}
 
 
 def test_remember_folder_prepends_dedupes_caps_at_8():

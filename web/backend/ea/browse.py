@@ -51,15 +51,18 @@ def load_recents(recents_file=None) -> list[str]:
         data = json.loads(raw)
     except ValueError:
         return []
-    if not isinstance(data, list):
+    if not isinstance(data, dict):
         return []
-    return [p for p in data if isinstance(p, str)]
+    folders = data.get("folders")
+    if not isinstance(folders, list):
+        return []
+    return [p for p in folders if isinstance(p, str)]
 
 
 def save_recents(recents: list[str], recents_file=None) -> None:
     path = recent_path(recents_file)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(recents))
+    path.write_text(json.dumps({"folders": recents}))
 
 
 def remember_folder(folder: str, recents_file=None) -> list[str]:
