@@ -3,7 +3,7 @@
 ## 0.83.0 - Import Browse path and recents
 - Path line in the native chooser (paste file or directory, Enter)
 - Last ~8 folders remembered; last used is the start folder when Import field is empty
-- GTK subprocess via system python; zenity/kdialog fallback still gets `--filename=`
+- GTK subprocess via system python; zenity fallback still gets `--filename=`, kdialog gets a positional start directory
 - Recents: `EA_BROWSE_RECENT` or `~/.local/state/experiment-analysis/browse-recent.json`
 
 ## 0.82.0 - Remember last Replay setup

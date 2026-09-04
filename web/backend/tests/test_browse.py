@@ -1,11 +1,13 @@
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app import app
 from ea.browse import (
+    _run_gtk,
     load_recents,
     pick_file,
     remember_folder,
@@ -213,6 +215,17 @@ def test_load_recents_corrupt_is_empty(isolated_browse_state):
     assert load_recents() == []
 
 
+def test_load_recents_non_utf8_is_empty(isolated_browse_state):
+    """A binary/non-UTF-8 recents file must not raise; `[]` instead.
+
+    `Path.read_text()` raises `UnicodeDecodeError` (a `ValueError`
+    subclass) on invalid UTF-8, which must be caught alongside `OSError`.
+    """
+    isolated_browse_state.parent.mkdir(parents=True, exist_ok=True)
+    isolated_browse_state.write_bytes(b"\xff\xfe\x00\x01\x80\x81")
+    assert load_recents() == []
+
+
 def test_save_and_load_recents_roundtrip(isolated_browse_state):
     save_recents(["/a", "/b"])
     assert load_recents() == ["/a", "/b"]
@@ -220,22 +233,49 @@ def test_save_and_load_recents_roundtrip(isolated_browse_state):
     assert on_disk == {"folders": ["/a", "/b"]}
 
 
-def test_remember_folder_prepends_dedupes_caps_at_8():
-    for i in range(8):
-        remember_folder(f"/f{i}")
-    # /f0.../f7 front-to-back is /f7,/f6,...,/f0
-    assert load_recents() == [f"/f{i}" for i in range(7, -1, -1)]
+def test_remember_folder_prepends_dedupes_caps_at_8(tmp_path):
+    folders = []
+    for i in range(9):
+        d = tmp_path / f"f{i}"
+        d.mkdir()
+        folders.append(str(d))
+
+    for f in folders[:8]:
+        remember_folder(f)
+    # f0...f7 front-to-back is f7,f6,...,f0
+    assert load_recents() == list(reversed(folders[:8]))
 
     # Re-remembering an existing folder moves it to the front, no duplicate.
-    remember_folder("/f3")
-    assert load_recents() == ["/f3", "/f7", "/f6", "/f5", "/f4", "/f2", "/f1", "/f0"]
+    remember_folder(folders[3])
+    assert load_recents() == [
+        folders[3],
+        folders[7],
+        folders[6],
+        folders[5],
+        folders[4],
+        folders[2],
+        folders[1],
+        folders[0],
+    ]
 
     # A 9th distinct folder drops the oldest (now at the back).
-    remember_folder("/f8")
+    remember_folder(folders[8])
     result = load_recents()
     assert len(result) == 8
-    assert result[0] == "/f8"
-    assert "/f0" not in result
+    assert result[0] == folders[8]
+    assert folders[0] not in result
+
+
+def test_remember_folder_skips_non_directory(tmp_path):
+    missing = tmp_path / "does-not-exist"
+    a_file = tmp_path / "afile.txt"
+    a_file.write_bytes(b"x")
+
+    remember_folder(str(missing))
+    assert load_recents() == []
+
+    remember_folder(str(a_file))
+    assert load_recents() == []
 
 
 # --- resolve_start_folder ---
@@ -299,17 +339,21 @@ def test_pick_file_empty_start_passes_recent_folder_to_zenity(tmp_path):
     assert recorded == [["zenity", "--file-selection", f"--filename={folder}/"]]
 
 
-def test_pick_file_success_remembers_parent():
+def test_pick_file_success_remembers_parent(tmp_path):
+    folder = tmp_path / "picked"
+    folder.mkdir()
+    ulg = folder / "d2.ulg"
+
     def fake_which(name):
         return "/usr/bin/zenity" if name == "zenity" else None
 
     def fake_runner(cmd, **kwargs):
-        return subprocess.CompletedProcess(cmd, 0, "/tmp/.../d2.ulg\n", "")
+        return subprocess.CompletedProcess(cmd, 0, str(ulg) + "\n", "")
 
     result = pick_file(runner=fake_runner, which=fake_which, gtk_python=None)
 
-    assert result == "/tmp/.../d2.ulg"
-    assert load_recents()[0] == "/tmp/..."
+    assert result == str(ulg)
+    assert load_recents()[0] == str(folder)
 
 
 def test_pick_file_prefers_gtk_when_available(tmp_path):
@@ -343,6 +387,13 @@ def test_pick_file_prefers_gtk_when_available(tmp_path):
 
 
 def test_pick_file_gtk_failure_falls_back_to_zenity():
+    """GTK *failure* (crash/cannot-start, exit 2) falls back to zenity.
+
+    This is the failure path, not the cancel path (exit 1). Per the
+    three-way exit convention (0=picked, 1=cancelled, 2=failed), only exit
+    2 (or an OSError launching the subprocess) triggers the zenity/kdialog
+    fallback.
+    """
     zenity_recorded = []
 
     def fake_which(name):
@@ -356,7 +407,7 @@ def test_pick_file_gtk_failure_falls_back_to_zenity():
         return "/usr/bin/python3"
 
     def fake_gtk_runner(cmd, **kwargs):
-        return subprocess.CompletedProcess(cmd, 1, "", "gtk crashed")
+        return subprocess.CompletedProcess(cmd, 2, "", "gtk crashed")
 
     result = pick_file(
         runner=fake_runner,
@@ -367,3 +418,93 @@ def test_pick_file_gtk_failure_falls_back_to_zenity():
 
     assert result == "/tmp/d2.ulg"
     assert len(zenity_recorded) == 1
+
+
+def test_pick_file_gtk_cancel_returns_none_without_zenity_fallback(tmp_path):
+    """GTK *cancel* (exit 1) returns None immediately.
+
+    No zenity/kdialog fallback dialog should pop up, and nothing should be
+    written to recents, since the operator explicitly cancelled.
+    """
+    zenity_recorded = []
+    recents_file = tmp_path / "recents.json"
+    recents_file.write_text(json.dumps({"folders": []}))
+
+    def fake_which(name):
+        return "/usr/bin/zenity" if name == "zenity" else None
+
+    def fake_runner(cmd, **kwargs):
+        zenity_recorded.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 0, "/tmp/d2.ulg\n", "")
+
+    def fake_gtk_python():
+        return "/usr/bin/python3"
+
+    def fake_gtk_runner(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, 1, "", "")
+
+    result = pick_file(
+        runner=fake_runner,
+        which=fake_which,
+        recents_file=str(recents_file),
+        gtk_python=fake_gtk_python,
+        gtk_runner=fake_gtk_runner,
+    )
+
+    assert result is None
+    assert zenity_recorded == []
+    assert load_recents(str(recents_file)) == []
+
+
+def test_run_gtk_argv_and_cwd(tmp_path):
+    """`_run_gtk` invokes `python -m ea.browse_gtk` with the right argv/cwd.
+
+    `--start` is passed only when a start folder is resolved; `--recent` is
+    repeated once per existing recent folder (missing dirs are skipped);
+    cwd is the backend dir (so `-m ea.browse_gtk` resolves).
+    """
+    existing = tmp_path / "existing"
+    existing.mkdir()
+    missing = tmp_path / "missing"
+
+    recorded = {}
+
+    def fake_gtk_runner(cmd, **kwargs):
+        recorded["cmd"] = list(cmd)
+        recorded["kwargs"] = kwargs
+        return subprocess.CompletedProcess(cmd, 0, "/tmp/d2.ulg\n", "")
+
+    result = _run_gtk(
+        "/usr/bin/python3",
+        str(existing),
+        [str(missing), str(existing)],
+        fake_gtk_runner,
+    )
+
+    assert result == "/tmp/d2.ulg"
+    assert recorded["cmd"] == [
+        "/usr/bin/python3",
+        "-m",
+        "ea.browse_gtk",
+        "--start",
+        str(existing),
+        "--recent",
+        str(existing),
+    ]
+    assert recorded["kwargs"].get("capture_output") is True
+    assert recorded["kwargs"].get("text") is True
+
+    backend_dir = Path(__file__).resolve().parent.parent
+    assert recorded["kwargs"].get("cwd") == str(backend_dir)
+
+
+def test_run_gtk_no_start_no_recents_omits_flags():
+    recorded = {}
+
+    def fake_gtk_runner(cmd, **kwargs):
+        recorded["cmd"] = list(cmd)
+        return subprocess.CompletedProcess(cmd, 0, "/tmp/d2.ulg\n", "")
+
+    _run_gtk("/usr/bin/python3", None, [], fake_gtk_runner)
+
+    assert recorded["cmd"] == ["/usr/bin/python3", "-m", "ea.browse_gtk"]

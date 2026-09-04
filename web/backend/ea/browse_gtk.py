@@ -11,8 +11,12 @@ Adds two extra widgets to the standard GTK file chooser:
   Enter to jump straight there.
 - a "Recent:" dropdown of recently used folders.
 
-On success, prints the chosen filename to stdout and exits 0. On cancel
-or error, exits 1 with nothing on stdout.
+Three-way exit code, consumed by `ea.browse._run_gtk`:
+- 0: a file was picked; its path is printed to stdout (one line).
+- 1: the operator cancelled the dialog. Nothing on stdout. The caller
+  must treat this as final and NOT fall back to zenity/kdialog.
+- 2: the dialog itself failed (an exception while building/running it).
+  Nothing on stdout. The caller falls back to zenity/kdialog.
 """
 
 import argparse
@@ -94,14 +98,21 @@ def build_dialog(start=None, recents=None):
 
 def main(argv=None) -> int:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    dialog = build_dialog(start=args.start, recents=args.recent)
-    dialog.show_all()
-    response = dialog.run()
-    filename = dialog.get_filename()
-    dialog.destroy()
+    try:
+        dialog = build_dialog(start=args.start, recents=args.recent)
+        dialog.show_all()
+        response = dialog.run()
+        filename = dialog.get_filename()
+        dialog.destroy()
+    except Exception:
+        # Dialog crashed / could not run: exit 2 (failure), distinct from
+        # a plain cancel (exit 1), so the caller falls back to zenity.
+        return 2
     if response == Gtk.ResponseType.OK and filename:
         print(filename)
         return 0
+    # CANCEL, DELETE_EVENT (dialog closed via window controls), or OK with
+    # no filename are all treated as an explicit cancel.
     return 1
 
 

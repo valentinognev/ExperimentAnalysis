@@ -45,7 +45,8 @@ def load_recents(recents_file=None) -> list[str]:
     path = recent_path(recents_file)
     try:
         raw = path.read_text()
-    except OSError:
+    except (OSError, ValueError):
+        # ValueError covers UnicodeDecodeError from a binary/non-UTF-8 file.
         return []
     try:
         data = json.loads(raw)
@@ -66,6 +67,9 @@ def save_recents(recents: list[str], recents_file=None) -> None:
 
 
 def remember_folder(folder: str, recents_file=None) -> list[str]:
+    if not folder or not Path(folder).is_dir():
+        # Junk (missing paths, files) must not occupy the 8 recent slots.
+        return load_recents(recents_file)
     recents = load_recents(recents_file)
     recents = [r for r in recents if r != folder]
     recents.insert(0, folder)
@@ -138,7 +142,20 @@ def gtk_python() -> str | None:
     return None
 
 
+# Sentinel distinguishing "GTK failed, fall back to zenity/kdialog" from a
+# real (if falsy) return value. Cancel is represented by `None` and must
+# NOT trigger a fallback dialog.
+_GTK_FAILED = object()
+
+
 def _run_gtk(python_bin, folder, recents, gtk_runner):
+    """Run the GTK chooser subprocess.
+
+    Three-way exit code contract with `ea/browse_gtk.py`:
+    0 = picked (stdout has the path), 1 = cancelled, 2 = failed.
+    Returns the picked path, `None` on cancel, or `_GTK_FAILED` on failure
+    (subprocess launch error, or exit code other than 0/1).
+    """
     backend_dir = Path(__file__).resolve().parent.parent
     cmd = [python_bin, "-m", "ea.browse_gtk"]
     if folder:
@@ -149,10 +166,13 @@ def _run_gtk(python_bin, folder, recents, gtk_runner):
     try:
         proc = gtk_runner(cmd, capture_output=True, text=True, cwd=str(backend_dir))
     except OSError:
+        return _GTK_FAILED
+    if proc.returncode == 0:
+        stdout = (proc.stdout or "").strip()
+        return stdout if stdout else _GTK_FAILED
+    if proc.returncode == 1:
         return None
-    if proc.returncode != 0 or not (proc.stdout or "").strip():
-        return None
-    return proc.stdout.strip()
+    return _GTK_FAILED
 
 
 def pick_file(
@@ -173,10 +193,15 @@ def pick_file(
 
     if python_bin:
         result = _run_gtk(python_bin, folder, recents, gtk_runner)
-        if result:
+        if result is _GTK_FAILED:
+            pass  # fall through to zenity/kdialog below
+        elif result is None:
+            # GTK cancel: return None immediately, no fallback dialog,
+            # no recents write (controller ruling).
+            return None
+        else:
             remember_folder(str(Path(result).parent), recents_file)
             return result
-        # fall through to zenity/kdialog below
 
     if which("zenity"):
         cmd = ["zenity", "--file-selection"]
