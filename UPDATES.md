@@ -1,5 +1,11 @@
 # Updates
 
+## 0.83.0 - Import Browse path and recents
+- Path line in the native chooser (paste file or directory, Enter)
+- Last ~8 folders remembered; last used is the start folder when Import field is empty
+- GTK subprocess via system python; zenity/kdialog fallback still gets `--filename=`
+- Recents: `EA_BROWSE_RECENT` or `~/.local/state/experiment-analysis/browse-recent.json`
+
 ## 0.82.0 - Remember last Replay setup
 - Replay drone + param filter/overrides persist in `ea-replay-session`; reopen restores and inspects that drone when it still has a ulog
 - After the first Replay visit, the panel stays mounted (hidden) so tab switches keep the last setup and an in-progress run
