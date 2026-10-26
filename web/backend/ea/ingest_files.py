@@ -42,6 +42,9 @@ def _is_ha_file(path: Path) -> bool:
 
 
 def _file_kind(path: Path) -> str | None:
+    name = path.name
+    if name.startswith("obs_") and name.endswith(".csv"):
+        return "ob"
     if path.suffix.lower() == ".ulg":
         return "ulg"
     if _is_sm_csv(path):
@@ -115,9 +118,18 @@ def import_paths(
     copied_dests: dict[int, list[Path]] = {}
 
     candidates: list[tuple[Path, int, bool, str]] = []
+    ob_rels: list[str] = []
     for file_path, from_dir in _collect_import_files(paths):
         kind = _file_kind(file_path)
         if kind is None:
+            continue
+        if kind == "ob":
+            dest_dir = exp_path / "raw" / "observation"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest = _dest_path(dest_dir, file_path.name)
+            shutil.copy2(file_path, dest)
+            ob_rels.append(dest.relative_to(exp_path).as_posix())
+            copied_any = True
             continue
         if drone_id is not None:
             filename_id = drone_id_from_filename(file_path.name)
@@ -181,6 +193,10 @@ def import_paths(
             dest_dir,
             copied_paths=copied_dests.get(touched_id),
         )
+
+    if ob_rels:
+        active = max(ob_rels, key=lambda rel: Path(rel).name)
+        manifest["observation"] = [active]
 
     save_manifest(manifest_path, manifest)
 

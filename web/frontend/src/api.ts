@@ -1,3 +1,4 @@
+import type { MissionSnapshot } from "./components/MissionPanel";
 import type { TransferProgress } from "./transferProgress";
 
 export type ExperimentSummary = {
@@ -385,6 +386,7 @@ export type PoseResponse = {
   t: number;
   origin: { lat: number; lon: number; alt_m: number };
   drones: Record<string, PoseDrone>;
+  mission?: MissionSnapshot | null;
 };
 
 export function getDuration(slug: string): Promise<{ t_max_s: number }> {

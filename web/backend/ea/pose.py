@@ -12,6 +12,7 @@ import pandas as pd
 from ea.geo import lla_to_enu, mean_origin, ned_to_enu
 from ea.interp import interp_scalar, slerp_xyzw
 from ea.manifest import load_manifest
+from ea.mission_command import mission_at
 from ea.replay_id import is_replay_id
 from ea.series import channel_value_at_t
 from ea.sync import sync_mode, t_sm, time_mapping
@@ -636,8 +637,10 @@ def pose_at(experiment_dir: Path, t: float) -> dict:
 
         drones_out[drone_id] = drone_dict
 
-    return {
+    pose = {
         "t": t,
         "origin": origin,
         "drones": drones_out,
     }
+    pose["mission"] = mission_at(experiment_dir, t)
+    return pose

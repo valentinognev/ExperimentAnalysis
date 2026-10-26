@@ -140,6 +140,27 @@ const topics = {
   },
 };
 
+it("lists observation command fields under Mission", () => {
+  const tree = topicsToChannelTree({
+    ob: {
+      ob: {
+        command: ["gs_goto_speed", "gs_formation_radius", "gs_goto_x"],
+      },
+    },
+  });
+  expect(tree).toEqual([
+    {
+      id: "ob",
+      label: "Mission",
+      children: [
+        { id: "ob.ob.command.gs_goto_x", label: "Dest X" },
+        { id: "ob.ob.command.gs_formation_radius", label: "R" },
+        { id: "ob.ob.command.gs_goto_speed", label: "Vmax" },
+      ],
+    },
+  ]);
+});
+
 it("topicsToChannelTree groups drone → source → topic → field", () => {
   const tree = topicsToChannelTree(topics);
   expect(tree.map((n) => n.label)).toEqual(["2", "4"]);

@@ -1,5 +1,10 @@
 # Updates
 
+## 0.84.0 - Observation Board command panel
+- Analysis shows the observation command panel under Markers
+- Time hold: a pre-ARM command is visible at T=0; a later change stays hidden until its time
+- Plot channels `ob.ob.command.<field>` are steps
+
 ## 0.83.2 - 3D keeps a drone after its log ends
 - Past the last sample, the 3D marker stays on that logged point and the trail remains (same path the 2D map already kept)
 - A source still inside its log uses the live pose and a trail sliced to T
