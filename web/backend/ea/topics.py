@@ -56,6 +56,15 @@ def _ha_topics_for_drone(experiment_dir: Path, drone_id: str) -> dict[str, list[
     return topics
 
 
+def _ob_command_topics(experiment_dir: Path) -> dict[str, list[str]]:
+    path = experiment_dir / "derived" / "observation" / "command.parquet"
+    if not path.is_file():
+        return {}
+    df = pd.read_parquet(path, columns=None)
+    fields = [column for column in df.columns if column != "t_recv_s"]
+    return {"command": fields}
+
+
 def list_topics(experiment_dir: Path) -> dict:
     derived_root = experiment_dir / "derived"
     if not derived_root.is_dir():
@@ -84,5 +93,9 @@ def list_topics(experiment_dir: Path) -> dict:
 
         if sources:
             tree[drone_id] = sources
+
+    ob_topics = _ob_command_topics(experiment_dir)
+    if ob_topics:
+        tree["ob"] = {"ob": ob_topics}
 
     return tree

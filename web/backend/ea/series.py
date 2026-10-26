@@ -26,6 +26,7 @@ _SOURCE_PARQUET_DIRS = {
     "ulog": lambda exp_dir, drone_id: exp_dir / "derived" / f"drone_{drone_id}",
     "sm": lambda exp_dir, drone_id: exp_dir / "derived" / f"drone_{drone_id}",
     "ha": lambda exp_dir, drone_id: exp_dir / "derived" / "ha" / f"drone_{drone_id}",
+    "ob": lambda exp_dir, drone_id: exp_dir / "derived" / "observation",
 }
 
 
@@ -82,6 +83,79 @@ def _ha_experiment_times(df: pd.DataFrame, offset_s: float = 0.0) -> list[float]
     return [float(ts) - first + offset_s for ts in df["timestamp"]]
 
 
+def _finite_number(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def _sync_t_max_s(experiment_dir: Path) -> float | None:
+    sync_path = experiment_dir / "derived" / "sync.json"
+    if not sync_path.is_file():
+        return None
+    with open(sync_path) as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        return None
+    return _finite_number(data.get("t_max_s"))
+
+
+def _arm_recv_s(experiment_dir: Path) -> float | None:
+    anchor_path = experiment_dir / "derived" / "observation" / "anchor.json"
+    if not anchor_path.is_file():
+        return None
+    with open(anchor_path) as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        return None
+    return _finite_number(data.get("arm_recv_s"))
+
+
+def _observation_experiment_times(df: pd.DataFrame, experiment_dir: Path) -> list[float]:
+    recv = [float(v) for v in df["t_recv_s"]]
+    if not recv:
+        return []
+    arm = _arm_recv_s(experiment_dir)
+    origin = recv[0] if arm is None else arm
+    return [t - origin for t in recv]
+
+
+def _step_series(
+    times: list[float],
+    values: list[float | None],
+    t_max_s: float | None,
+) -> tuple[list[float], list[float]]:
+    """Flat segments between command changes, then hold through t_max_s."""
+    points = [(t, y) for t, y in zip(times, values) if y is not None]
+    if not points:
+        return [], []
+
+    out_t = [points[0][0]]
+    out_y = [points[0][1]]
+    for t, y in points[1:]:
+        out_t.append(t)
+        out_y.append(out_y[-1])
+        out_t.append(t)
+        out_y.append(y)
+
+    t_last, y_last = points[-1]
+    t_end = t_last if t_max_s is None else max(t_max_s, t_last)
+    if t_end > t_last:
+        out_t.append(t_end)
+        out_y.append(y_last)
+    return out_t, out_y
+
+
+def _held_at(t: float, t_vals: list[float], y_vals: list[float]) -> float | None:
+    held: float | None = None
+    for ti, yi in zip(t_vals, y_vals):
+        if ti <= t:
+            held = yi
+        else:
+            break
+    return held
+
+
 def _load_channel_series(
     experiment_dir: Path,
     drone_id: str,
@@ -112,6 +186,17 @@ def _load_channel_series(
         if "timestamp" not in df.columns:
             return [], []
         t_vals = _ha_experiment_times(df, offset_s)
+    elif source == "ob":
+        if "t_recv_s" not in df.columns:
+            return [], []
+        values: list[float | None] = []
+        for raw in df[field]:
+            values.append(None if pd.isna(raw) else float(raw))
+        return _step_series(
+            _observation_experiment_times(df, experiment_dir),
+            values,
+            _sync_t_max_s(experiment_dir),
+        )
     else:
         if "timestamp" not in df.columns:
             return [], []
@@ -132,7 +217,10 @@ def channel_value_at_t(
     channel: str,
     t: float,
 ) -> float | None:
-    """Interpolate a single channel value at experiment time t."""
+    """Channel value at experiment time t.
+
+    Observation commands hold the last sample. Other sources interpolate.
+    """
     from ea.interp import interp_scalar
 
     parsed = _parse_channel(channel)
@@ -152,6 +240,8 @@ def channel_value_at_t(
     )
     if not t_vals:
         return None
+    if source == "ob":
+        return _held_at(t, t_vals, y_vals)
     return interp_scalar(t, t_vals, y_vals)
 
 

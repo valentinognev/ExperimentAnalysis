@@ -141,16 +141,53 @@ function topicChildren(
   return nodes.sort((a, b) => a.label.localeCompare(b.label));
 }
 
+const OB_COMMAND_LABELS: Record<string, string> = {
+  mission_type: "mission type",
+  gs_goto_speed: "Vmax",
+  gs_takeoff_altitude: "altitude m",
+  gs_takeoff_delta: "Δ m",
+  gs_formation_radius: "R",
+  gs_formation_heading: "H",
+  gs_goto_x: "Dest X",
+  gs_goto_y: "Dest Y",
+};
+
+function obMissionLeaves(
+  sources: Record<string, Record<string, string[]>>,
+): ChannelNode[] {
+  const leaves: ChannelNode[] = [];
+  for (const source of Object.keys(sources)) {
+    for (const topic of Object.keys(sources[source])) {
+      for (const field of sources[source][topic]) {
+        leaves.push({
+          id: `ob.${source}.${topic}.${field}`,
+          label: OB_COMMAND_LABELS[field] ?? field,
+        });
+      }
+    }
+  }
+  return leaves.sort((a, b) => a.label.localeCompare(b.label));
+}
+
 export function topicsToChannelTree(tree: TopicsTree): ChannelNode[] {
-  return sortKeys(Object.keys(tree)).map((drone) => ({
-    id: drone,
-    label: drone,
-    children: sortKeys(Object.keys(tree[drone])).map((source) => ({
-      id: `${drone}.${source}`,
-      label: source,
-      children: topicChildren(drone, source, tree[drone][source]),
-    })),
-  }));
+  return sortKeys(Object.keys(tree)).map((drone) => {
+    if (drone === "ob") {
+      return {
+        id: drone,
+        label: "Mission",
+        children: obMissionLeaves(tree[drone]),
+      };
+    }
+    return {
+      id: drone,
+      label: drone,
+      children: sortKeys(Object.keys(tree[drone])).map((source) => ({
+        id: `${drone}.${source}`,
+        label: source,
+        children: topicChildren(drone, source, tree[drone][source]),
+      })),
+    };
+  });
 }
 
 export function filterChannelTree(nodes: ChannelNode[], query: string): ChannelNode[] {

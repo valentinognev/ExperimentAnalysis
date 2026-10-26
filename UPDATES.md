@@ -1,5 +1,10 @@
 # Updates
 
+## 0.84.0 - Observation Board command panel
+- Analysis shows the observation command panel under Markers
+- Time hold: a pre-ARM command is visible at T=0; a later change stays hidden until its time
+- Plot channels `ob.ob.command.<field>` are steps
+
 ## 0.83.0 - Import Browse path and recents
 - Path line in the native chooser (paste file or directory, Enter)
 - Last ~8 folders remembered; last used is the start folder when Import field is empty

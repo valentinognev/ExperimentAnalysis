@@ -9,6 +9,7 @@ import pandas as pd
 
 from ea.arm import sm_arm_local_ts, ulog_arm_us
 from ea.extract_ha import extract_ha
+from ea.extract_ob import extract_ob
 from ea.extract_sm import extract_sm
 from ea.extract_ulog import extract_ulog
 from ea.replay_id import is_replay_id, parent_id
@@ -51,6 +52,53 @@ def _ha_log_paths(drone_dir: Path) -> list[Path]:
         elif "mavlink" in name and name.endswith((".txt", ".log")):
             paths.append(path)
     return paths
+
+
+def _main_drone_id(manifest: dict) -> int | None:
+    sync = manifest.get("sync")
+    if not isinstance(sync, dict):
+        return None
+    value = sync.get("main_drone_id")
+    if type(value) is int:
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return int(text)
+        except ValueError:
+            return None
+    return None
+
+
+def _clear_observation_derived(exp_path: Path) -> None:
+    dest = exp_path / "derived" / "observation"
+    for name in ("command.parquet", "anchor.json"):
+        path = dest / name
+        if path.is_file():
+            path.unlink()
+
+
+def _extract_observation(exp_path: Path, manifest: dict) -> None:
+    rels = manifest.get("observation")
+    if not isinstance(rels, list):
+        return
+    for rel in rels:
+        if not isinstance(rel, str):
+            continue
+        csv_path = exp_path / rel
+        if not csv_path.is_file():
+            _clear_observation_derived(exp_path)
+            continue
+        result = extract_ob(
+            csv_path,
+            exp_path / "derived" / "observation",
+            main_drone_id=_main_drone_id(manifest),
+        )
+        if result == "skipped":
+            _clear_observation_derived(exp_path)
+        return
 
 
 def rebuild(slug: str) -> dict:
@@ -135,6 +183,7 @@ def rebuild(slug: str) -> dict:
             }
 
     sync = write_sync(exp_path, per_drone)
+    _extract_observation(exp_path, opened["manifest"])
     t_max_s = experiment_t_max_s(exp_path)
     sync["t_max_s"] = t_max_s
     sync_path = exp_path / "derived" / "sync.json"

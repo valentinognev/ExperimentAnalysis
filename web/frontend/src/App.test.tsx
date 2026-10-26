@@ -600,6 +600,35 @@ describe("App analysis layout", () => {
     expect(screen.getByRole("combobox", { name: "Replay drone" })).toHaveValue("2");
     expect(inspectReplay).toHaveBeenCalledTimes(1);
   });
+
+  it("places the mission block under Markers and follows pose", async () => {
+    vi.mocked(getPose).mockResolvedValue({
+      t: 0,
+      origin: { lat: 0, lon: 0, alt_m: 0 },
+      drones: {},
+      mission: {
+        mission_type: 0,
+        mission_label: "NONE",
+        vmax: 1,
+        altitude_m: 1,
+        delta_m: 0,
+        radius_m: 2,
+        heading_deg: 0,
+        dest_x_m: 0.5,
+        dest_y_m: 0,
+      },
+    });
+    const panel = await openAnalysis();
+    const markers = within(panel).getByRole("heading", { name: "Markers" });
+    const mission = within(panel).getByRole("heading", { name: "Mission" });
+    expect(follows(markers, mission)).toBe(true);
+    expect(within(panel).getByLabelText("Vmax")).toHaveTextContent("1");
+  });
+
+  it("hides the mission block when pose has no mission", async () => {
+    const panel = await openAnalysis();
+    expect(within(panel).queryByRole("heading", { name: "Mission" })).toBeNull();
+  });
 });
 
 

@@ -80,6 +80,38 @@ def _max_ha_t(ha_dir: Path, offset_s: float) -> float | None:
     return best
 
 
+def _finite_number(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def _arm_recv_s(experiment_dir: Path) -> float | None:
+    anchor_path = experiment_dir / "derived" / "observation" / "anchor.json"
+    if not anchor_path.is_file():
+        return None
+    with open(anchor_path) as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        return None
+    return _finite_number(data.get("arm_recv_s"))
+
+
+def _last_command_experiment_t(experiment_dir: Path) -> float | None:
+    path = experiment_dir / "derived" / "observation" / "command.parquet"
+    if not path.is_file():
+        return None
+    df = pd.read_parquet(path, columns=["t_recv_s"])
+    if df.empty or "t_recv_s" not in df.columns:
+        return None
+    recv = df["t_recv_s"].dropna()
+    if recv.empty:
+        return None
+    arm = _arm_recv_s(experiment_dir)
+    origin = float(recv.iloc[0]) if arm is None else arm
+    return float(recv.iloc[-1]) - origin
+
+
 def experiment_t_max_s(experiment_dir: Path) -> float:
     """Max experiment time T (seconds) across synced derived sources."""
     manifest_path = experiment_dir / "manifest.json"
@@ -106,5 +138,9 @@ def experiment_t_max_s(experiment_dir: Path) -> float:
         ):
             if candidate is not None and candidate > max_t:
                 max_t = candidate
+
+    command_t = _last_command_experiment_t(experiment_dir)
+    if command_t is not None and command_t > max_t:
+        max_t = command_t
 
     return math.floor(max_t) if max_t > 0 else 0.0

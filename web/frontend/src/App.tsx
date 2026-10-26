@@ -13,6 +13,7 @@ import {
 } from "./avatars";
 import ChannelPlot from "./components/ChannelPlot";
 import MarkerPanel from "./components/MarkerPanel";
+import MissionPanel from "./components/MissionPanel";
 import PlotBoard from "./components/PlotBoard";
 import DroneList from "./components/DroneList";
 import ExperimentBar from "./components/ExperimentBar";
@@ -837,6 +838,7 @@ export default function App() {
                       onLabelChange={handleMarkerLabelChange}
                       onRemove={handleMarkerRemove}
                     />
+                    <MissionPanel mission={pose?.mission ?? null} />
                   </div>
                 </div>
               </div>
