@@ -1,10 +1,25 @@
 # Updates
 
+## 0.83.2 - 3D keeps a drone after its log ends
+- Past the last sample, the 3D marker stays on that logged point and the trail remains (same path the 2D map already kept)
+- A source still inside its log uses the live pose and a trail sliced to T
+
+## 0.83.1 - Import Browse path field fills the dialog
+- Native chooser Path (and Recent) row stretches to the right edge; entry no longer shares the row half-and-half with the label
+
 ## 0.83.0 - Import Browse path and recents
 - Path line in the native chooser (paste file or directory, Enter)
 - Last ~8 folders remembered; last used is the start folder when Import field is empty
 - GTK subprocess via system python; zenity fallback still gets `--filename=`, kdialog gets a positional start directory
 - Recents: `EA_BROWSE_RECENT` or `~/.local/state/experiment-analysis/browse-recent.json`
+
+## 0.82.2 - 2D GPS squares visible
+- scattermap GPS/SM markers use Maki `square` / `square-stroked` / `cross` with `allowoverlap` (unicode text glyphs were collision-culled under the EKF circle)
+- D4 EKF x/y is NED (x North, y East) and matches GPS (~1 m); swapping XY would be ~14 m — SE vs NE on the map is real heading, not an axis swap
+
+## 0.82.1 - EKF not at lat/lon 0,0
+- Ignore unset 0,0 home/GPS; world origin and EKF reference fall back to the first valid GPS (wake-up), not Null Island
+- 2D map and Plotly 3D reframe when that origin changes so a previous 0,0 camera is not kept
 
 ## 0.82.0 - Remember last Replay setup
 - Replay drone + param filter/overrides persist in `ea-replay-session`; reopen restores and inspects that drone when it still has a ulog

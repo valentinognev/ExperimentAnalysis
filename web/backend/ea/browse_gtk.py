@@ -54,6 +54,15 @@ def _on_recent_changed(combo, dialog):
         dialog.set_current_folder(folder)
 
 
+def _stretch_extra_to_dialog(dialog, allocation, extra):
+    # GtkFileChooser packs extra_widget with expand=False, so Path/Recent stay
+    # at natural width unless we request the chooser's current width.
+    target = max(allocation.width - 36, 400)
+    current, _ = extra.get_size_request()
+    if current != target:
+        extra.set_size_request(target, -1)
+
+
 def build_dialog(start=None, recents=None):
     recents = recents or []
     dialog = Gtk.FileChooserDialog(
@@ -69,26 +78,39 @@ def build_dialog(start=None, recents=None):
     dialog.set_default_response(Gtk.ResponseType.OK)
 
     extra = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    extra.set_hexpand(True)
+    extra.set_halign(Gtk.Align.FILL)
 
-    path_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-    path_box.add(Gtk.Label(label="Path:"))
+    path_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    path_box.set_hexpand(True)
+    path_label = Gtk.Label(label="Path:", xalign=0)
     entry = Gtk.Entry()
     entry.set_placeholder_text("Paste path and press Enter")
+    entry.set_hexpand(True)
+    entry.set_width_chars(80)
     entry.connect("activate", _on_path_activate, dialog)
-    path_box.add(entry)
-    extra.add(path_box)
+    # Label must not expand: Gtk.Box.add() gives both children expand=True, so
+    # the entry only got half the row. Pack so the field fills to the right.
+    path_box.pack_start(path_label, False, False, 0)
+    path_box.pack_start(entry, True, True, 0)
+    extra.pack_start(path_box, False, True, 0)
 
     if recents:
-        recent_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-        recent_box.add(Gtk.Label(label="Recent:"))
+        recent_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        recent_box.set_hexpand(True)
+        recent_label = Gtk.Label(label="Recent:", xalign=0)
         combo = Gtk.ComboBoxText()
+        combo.set_hexpand(True)
         for r in recents:
             combo.append_text(r)
         combo.connect("changed", _on_recent_changed, dialog)
-        recent_box.add(combo)
-        extra.add(recent_box)
+        recent_box.pack_start(recent_label, False, False, 0)
+        recent_box.pack_start(combo, True, True, 0)
+        extra.pack_start(recent_box, False, True, 0)
 
     dialog.set_extra_widget(extra)
+    dialog.set_default_size(900, 600)
+    dialog.connect("size-allocate", _stretch_extra_to_dialog, extra)
 
     if start:
         dialog.set_current_folder(start)

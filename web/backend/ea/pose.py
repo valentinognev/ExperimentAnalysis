@@ -103,12 +103,36 @@ def _wxyz_to_xyzw(qw: float, qx: float, qy: float, qz: float) -> tuple[float, fl
     return (qx, qy, qz, qw)
 
 
+def _is_valid_lla(lat: float, lon: float, alt: float = 0.0) -> bool:
+    if not (math.isfinite(lat) and math.isfinite(lon) and math.isfinite(alt)):
+        return False
+    if abs(lat) < 1e-9 and abs(lon) < 1e-9:
+        return False
+    if abs(lat) > 90.0 or abs(lon) > 180.0:
+        return False
+    return True
+
+
+def _first_valid_lla(df: pd.DataFrame) -> tuple[float, float, float] | None:
+    if df.empty:
+        return None
+    lats, lons, alts = _lla_arrays(df)
+    for lat, lon, alt in zip(lats, lons, alts, strict=True):
+        lla = (float(lat), float(lon), float(alt))
+        if _is_valid_lla(*lla):
+            return lla
+    return None
+
+
 def _lla_at_timestamp(df: pd.DataFrame, t_us: int) -> tuple[float, float, float] | None:
     if df.empty:
         return None
     idx = (df["timestamp"] - t_us).abs().idxmin()
     row = df.loc[idx]
-    return _lla_from_row(row)
+    lla = _lla_from_row(row)
+    if not _is_valid_lla(*lla):
+        return None
+    return lla
 
 
 def _home_lla(derived: Path) -> tuple[float, float, float] | None:
@@ -116,17 +140,18 @@ def _home_lla(derived: Path) -> tuple[float, float, float] | None:
     if path is None:
         return None
     df = pd.read_parquet(path)
-    if df.empty:
-        return None
-    return _lla_from_row(df.iloc[0])
+    return _first_valid_lla(df)
 
 
 def _reference_lla(derived: Path, arm_us: int | None) -> tuple[float, float, float] | None:
     home = _home_lla(derived)
     if home is not None:
         return home
+    first = _gps_lla_first(derived)
+    if first is not None:
+        return first
     if arm_us is None:
-        return _gps_lla_first(derived)
+        return None
     return _gps_lla_at_arm(derived, arm_us)
 
 
@@ -143,9 +168,7 @@ def _gps_lla_first(derived: Path) -> tuple[float, float, float] | None:
     if gps_path is None:
         return None
     df = pd.read_parquet(gps_path)
-    if df.empty:
-        return None
-    return _lla_from_row(df.iloc[0])
+    return _first_valid_lla(df)
 
 
 def _interpolate_ekf_ned(
@@ -518,6 +541,8 @@ def _compute_origin(
         else:
             arm_us = sync_info.get("ulog_arm_us")
             lla = _gps_lla_at_arm(derived, arm_us)
+            if lla is None:
+                lla = _gps_lla_first(derived)
         if lla is not None:
             llas.append(lla)
 

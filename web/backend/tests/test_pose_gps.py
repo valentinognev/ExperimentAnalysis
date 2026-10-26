@@ -3,6 +3,7 @@
 from math import pi
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from ea.arm import ulog_arm_us
@@ -149,6 +150,19 @@ def test_pose_at_gps_one_meter_north_at_later_t(tmp_path):
     assert gps["u"] == pytest.approx(0.0, abs=0.05)
 
 
+def test_ekf_ned_x_is_north_matching_gps_not_swapped_xy(tmp_path):
+    """PX4 local x is North. Swapping x/y would send EKF east of a north GPS move."""
+    exp_dir = _build_two_gps_fixture(tmp_path)
+
+    result = pose_at(exp_dir, t=0.010)
+    ekf = result["drones"]["2"]["avatars"]["ekf_ned"]
+    gps = result["drones"]["2"]["avatars"]["gps"]
+    assert gps["n"] == pytest.approx(1.0, abs=0.05)
+    assert gps["e"] == pytest.approx(0.0, abs=0.05)
+    assert ekf["n"] == pytest.approx(1.0, abs=0.05)
+    assert ekf["e"] == pytest.approx(0.0, abs=0.05)
+
+
 def test_pose_at_no_gps_omits_gps_avatar(tmp_path):
     exp_dir = _build_no_gps_fixture(tmp_path)
 
@@ -157,3 +171,66 @@ def test_pose_at_no_gps_omits_gps_avatar(tmp_path):
     assert "gps" not in d0["avatars"]
     assert "ekf_ned" in d0["avatars"]
     assert d0["local_frame"] is True
+
+
+def _build_unsynced_gps_fixture(tmp_path, home_rows=None) -> Path:
+    exp_dir = tmp_path / "exp"
+    exp_dir.mkdir()
+    ulg = tmp_path / "drone2.ulg"
+    messages = {
+        "vehicle_status": [
+            {"timestamp": 1000, "arming_state": 1},
+        ],
+        "vehicle_local_position": [
+            {"timestamp": 5000, "x": 0.0, "y": 0.0, "z": 0.0},
+        ],
+        "vehicle_attitude": [
+            {"timestamp": 5000, "q[0]": 1.0, "q[1]": 0.0, "q[2]": 0.0, "q[3]": 0.0},
+        ],
+        "vehicle_gps_position": [
+            {"timestamp": 5000, "lat": 320800000, "lon": 347800000, "alt": 50000},
+        ],
+    }
+    _write_ulog(ulg, messages)
+    derived = _extract_drone(exp_dir, 2, ulg)
+    write_sync(
+        exp_dir,
+        {"2": {"ulog_arm_us": None, "sm_arm_local_ts": None, "synced": False}},
+    )
+    _save_manifest_drones(exp_dir, [2])
+    if home_rows is not None:
+        pd.DataFrame(home_rows).to_parquet(derived / "home_position.parquet", index=False)
+    return exp_dir
+
+
+def test_unsynced_origin_is_first_gps_not_null_island(tmp_path):
+    exp_dir = _build_unsynced_gps_fixture(tmp_path)
+
+    result = pose_at(exp_dir, t=0.0)
+    origin = result["origin"]
+    assert origin["lat"] == pytest.approx(32.08, abs=1e-4)
+    assert origin["lon"] == pytest.approx(34.78, abs=1e-4)
+    assert origin["alt_m"] == pytest.approx(50.0, abs=1e-4)
+    ekf = result["drones"]["2"]["avatars"]["ekf_ned"]
+    assert ekf["e"] == pytest.approx(0.0, abs=1.0)
+    assert ekf["n"] == pytest.approx(0.0, abs=1.0)
+    assert ekf["u"] == pytest.approx(0.0, abs=1.0)
+
+
+def test_ekf_skips_wake_up_zero_home(tmp_path):
+    exp_dir = _build_unsynced_gps_fixture(
+        tmp_path,
+        home_rows=[
+            {"timestamp": 1000, "lat": 0.0, "lon": 0.0, "alt": 0.0},
+            {"timestamp": 5000, "lat": 32.08, "lon": 34.78, "alt": 50.0},
+        ],
+    )
+
+    result = pose_at(exp_dir, t=0.0)
+    origin = result["origin"]
+    assert origin["lat"] == pytest.approx(32.08, abs=1e-4)
+    assert origin["lon"] == pytest.approx(34.78, abs=1e-4)
+    ekf = result["drones"]["2"]["avatars"]["ekf_ned"]
+    assert abs(ekf["e"]) < 10.0
+    assert abs(ekf["n"]) < 10.0
+    assert abs(ekf["u"]) < 10.0

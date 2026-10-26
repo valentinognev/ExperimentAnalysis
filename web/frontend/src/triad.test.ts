@@ -51,6 +51,22 @@ describe("View3D sceneLayout", () => {
     expect(at10.datarevision).toBe("t=10");
   });
 
+  it("reframes the 3D scene when the world origin moves off 0,0", () => {
+    const atNull = sceneLayout({
+      origin: { lat: 0, lon: 0, alt_m: 0 },
+    });
+    const atGps = sceneLayout({
+      origin: { lat: 32.86, lon: 35.26, alt_m: 300 },
+      datarevision: "t=0",
+    });
+    const laterT = sceneLayout({
+      origin: { lat: 32.86, lon: 35.26, alt_m: 300 },
+      datarevision: "t=10",
+    });
+    expect(atNull.uirevision).not.toBe(atGps.uirevision);
+    expect(laterT.uirevision).toBe(atGps.uirevision);
+  });
+
   it("keeps the legend inside the plot so it cannot cover the 2D map", () => {
     const layout = sceneLayout();
     expect(layout.legend?.x).toBeLessThanOrEqual(1);

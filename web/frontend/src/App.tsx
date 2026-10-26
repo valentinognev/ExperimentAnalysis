@@ -5,7 +5,6 @@ import { sshReadyFromManifest } from "./sshReady";
 import { summariesFromManifest, type DroneSummary } from "./droneSummary";
 import {
   availableAvatarKeys,
-  avatarUsesTriad,
   enabledAvatarKeys,
   hasAnyMapAvatar,
   toggleAvatarKeys,
@@ -21,13 +20,13 @@ import ReplayTab from "./components/ReplayTab";
 import WorkspaceTabs from "./components/WorkspaceTabs";
 import { DEFAULT_TAB, type WorkspaceTab } from "./workspaceTab";
 import Map2D from "./components/Map2D";
-import View3D, { type DronePose } from "./components/View3D";
+import View3D from "./components/View3D";
 import { shouldLoadCesium } from "./engineToggle";
 import { useSkin } from "./SkinContext";
 import SkinToggle from "./components/SkinToggle";
 import { llaToEnu, newMarkerId, type Marker } from "./markers";
 import { plotsOnSlugChange, type PlotDef } from "./plotBoard";
-import { sliceTrail } from "./trail";
+import { sceneDrones } from "./sceneDrones";
 import { usePose } from "./usePose";
 import { bannerText } from "./unsynced";
 import {
@@ -598,54 +597,17 @@ export default function App() {
     return out;
   }, [pose, avatars]);
 
-  const drones = useMemo((): DronePose[] => {
-    if (!pose) return [];
-    const visible = new Set(visibleDroneIds);
-    const out: DronePose[] = [];
-    const identity: [number, number, number, number] = [0, 0, 0, 1];
-
-    for (const [id, d] of Object.entries(pose.drones)) {
-      if (!visible.has(id) || !d.avatars) continue;
-      const enabled = enabledAvatarKeys(id, d.avatars, avatars);
-      if (enabled.length === 0) continue;
-
-      const cfg = vectorConfigs[id];
-      const vectorAvatar = (cfg?.avatar ?? "ekf_ned") as AvatarKey;
-
-      enabled.forEach((key) => {
-        const pos = d.avatars![key];
-        if (!pos) return;
-        const useTriad = avatarUsesTriad(key, d);
-        const vectorBase =
-          vectorAvatar === "gps" && d.avatars!.gps
-            ? d.avatars!.gps
-            : d.avatars!.ekf_ned ?? pos;
-        const series = trajectory?.drones?.[id]?.[key];
-        const trail = series ? sliceTrail(series, pose.t) : undefined;
-
-        out.push({
-          id,
-          label: key,
-          pos,
-          attitude_q_xyzw: useTriad ? d.attitude_q_xyzw : identity,
-          style: useTriad ? "triad" : "point",
-          trail,
-          vectors:
-            useTriad &&
-            key === vectorAvatar &&
-            d.vectors?.velocity &&
-            vectorBase
-              ? {
-                  velocity: d.vectors.velocity,
-                  scale: cfg?.scale ?? 1,
-                  base: vectorBase,
-                }
-              : undefined,
-        });
-      });
-    }
-    return out;
-  }, [pose, trajectory, visibleDroneIds, vectorConfigs, avatars]);
+  const drones = useMemo(
+    () =>
+      sceneDrones({
+        pose,
+        trajectory,
+        visibleDroneIds,
+        uiAvatars: avatars,
+        vectorConfigs,
+      }),
+    [pose, trajectory, visibleDroneIds, vectorConfigs, avatars],
+  );
 
   const markerPositions = useMemo(() => {
     if (!pose?.origin) return [];

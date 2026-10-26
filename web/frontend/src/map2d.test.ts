@@ -140,7 +140,7 @@ describe("mapFigure", () => {
           return s === undefined ? [] : Array.isArray(s) ? s : [s];
         });
     expect(symbolsOf("scattermap")).toContain("circle");
-    expect(symbolsOf("scattermap")).not.toContain("square");
+    expect(symbolsOf("scattermap")).toContain("square");
     expect(symbolsOf("scatter")).toContain("square");
   });
 
@@ -152,19 +152,30 @@ describe("mapFigure", () => {
     expect(layout.yaxis?.visible).toBe(false);
   });
 
-  it("draws gps as a filled-square glyph, not a scattermap circle", () => {
+  it("draws gps as a scattermap square that is allowed to overlap the ekf circle", () => {
     const { data } = mapFigure(
-      [{ lat: 32, lon: 35, name: "D2 gps", color: "#f00", symbol: "square" }],
+      [
+        {
+          lat: 32,
+          lon: 35,
+          name: "D2 ekf",
+          color: "#0ea5e9",
+          symbol: "circle",
+          halo: true,
+        },
+        { lat: 32, lon: 35, name: "D2 gps", color: "#0ea5e9", symbol: "square" },
+      ],
       [],
     );
     type T = {
       name?: string;
       type?: string;
       mode?: string;
-      text?: string[];
+      lat?: number[];
+      lon?: number[];
       visible?: string | boolean;
       showlegend?: boolean;
-      marker?: { symbol?: string };
+      marker?: { symbol?: string; allowoverlap?: boolean };
     };
     const onMap = data.find(
       (t) => (t as T).name === "D2 gps" && (t as T).type === "scattermap",
@@ -172,15 +183,19 @@ describe("mapFigure", () => {
     const inLegend = data.find(
       (t) => (t as T).name === "D2 gps" && (t as T).type === "scatter",
     ) as T;
-    expect(onMap?.mode).toContain("text");
-    expect(onMap?.text).toEqual(["■"]);
+    expect(onMap?.mode).toContain("markers");
+    expect(onMap?.mode).not.toContain("text");
+    expect(onMap?.marker?.symbol).toBe("square");
+    expect(onMap?.marker?.allowoverlap).toBe(true);
+    expect(onMap?.lat).toEqual([32]);
+    expect(onMap?.lon).toEqual([35]);
     expect(onMap?.showlegend).toBe(false);
     expect(inLegend?.visible).toBe("legendonly");
     expect(inLegend?.marker?.symbol).toBe("square");
     expect(inLegend?.showlegend).not.toBe(false);
   });
 
-  it("draws sm ned as a hollow-square glyph and sm lla as an x glyph", () => {
+  it("draws sm ned as a hollow maki square and sm lla as a maki cross", () => {
     const { data } = mapFigure(
       [
         {
@@ -212,12 +227,16 @@ describe("mapFigure", () => {
     const lla = data.find(
       (t) => (t as T).name === "D2 sm lla" && (t as { type?: string }).type === "scattermap",
     ) as T;
-    expect(ned?.mode).toContain("text");
-    expect(ned?.text).toEqual(["□"]);
-    expect(ned?.marker?.symbol).not.toBe("square-stroked");
-    expect(lla?.mode).toContain("text");
-    expect(lla?.text).toEqual(["✕"]);
-    expect(lla?.marker?.symbol).not.toBe("cross");
+    expect(ned?.mode).toContain("markers");
+    expect(ned?.marker?.symbol).toBe("square-stroked");
+    expect((ned as { marker?: { allowoverlap?: boolean } }).marker?.allowoverlap).toBe(
+      true,
+    );
+    expect(lla?.mode).toContain("markers");
+    expect(lla?.marker?.symbol).toBe("cross");
+    expect((lla as { marker?: { allowoverlap?: boolean } }).marker?.allowoverlap).toBe(
+      true,
+    );
   });
 
   it("lists hollow-square and x pose markers in the legend", () => {
@@ -312,6 +331,22 @@ describe("mapFigure", () => {
     );
     expect(a.datarevision).toBe(1);
     expect(b.datarevision).toBe(2);
+  });
+
+  it("reframes the map when the world origin moves off 0,0", () => {
+    const atNull = mapLayout({
+      origin: { lat: 0, lon: 0, alt_m: 0 },
+    });
+    const atGps = mapLayout({
+      origin: { lat: 32.86, lon: 35.26, alt_m: 300 },
+      datarevision: 1,
+    });
+    const laterT = mapLayout({
+      origin: { lat: 32.86, lon: 35.26, alt_m: 300 },
+      datarevision: 2,
+    });
+    expect(atNull.uirevision).not.toBe(atGps.uirevision);
+    expect(laterT.uirevision).toBe(atGps.uirevision);
   });
 
   it("map tracks keep only samples at or before T", () => {

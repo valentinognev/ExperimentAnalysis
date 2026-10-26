@@ -124,6 +124,7 @@ function Map2D({
   const { data, layout } = mapFigure(points, tracks, {
     datarevision: pose?.t ?? 0,
     skin,
+    origin,
   });
 
   return (

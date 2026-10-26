@@ -17,10 +17,16 @@ function sceneAxis(
 export function sceneLayout(opts?: {
   datarevision?: string | number;
   skin?: Skin;
+  origin?: { lat: number; lon: number; alt_m: number };
 }): Partial<Layout> {
   const theme = plotTheme(opts?.skin ?? "night");
+  const origin = opts?.origin;
+  const uirevision =
+    origin !== undefined
+      ? `camera:${origin.lat.toFixed(6)},${origin.lon.toFixed(6)}`
+      : "camera";
   return {
-    uirevision: "camera",
+    uirevision,
     datarevision: opts?.datarevision,
     paper_bgcolor: theme.paper_bgcolor,
     legend: {

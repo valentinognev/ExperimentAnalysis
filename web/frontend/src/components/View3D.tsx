@@ -290,7 +290,7 @@ function View3D({
     <div className="h-full w-full min-h-0 overflow-hidden" onContextMenu={handleContextMenu}>
       <Plot
         data={traces}
-        layout={sceneLayout({ datarevision, skin })}
+        layout={sceneLayout({ datarevision, skin, origin })}
         config={{ responsive: true, doubleClick: false }}
         style={{ width: "100%", height: "100%" }}
         useResizeHandler

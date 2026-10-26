@@ -14,6 +14,7 @@ import { sliceTrail } from "./trail";
 type MapLayoutOpts = {
   datarevision?: string | number;
   skin?: Skin;
+  origin?: Origin;
 };
 
 export type MapPoint = {
@@ -48,13 +49,18 @@ export type MapTrajectory = {
 export function mapLayout(opts?: MapLayoutOpts): Partial<Layout> {
   const skin = opts?.skin ?? "night";
   const theme = plotTheme(skin);
+  const origin = opts?.origin;
+  const uirevision =
+    origin !== undefined
+      ? `map:${origin.lat.toFixed(6)},${origin.lon.toFixed(6)}`
+      : "map";
   return {
     autosize: true,
-    uirevision: "map",
+    uirevision,
     datarevision: opts?.datarevision,
     paper_bgcolor: theme.paper_bgcolor,
     font: { color: theme.font_color },
-    map: { style: mapTileStyle(skin), uirevision: "map", domain: { x: [0, 1], y: [0, 1] } },
+    map: { style: mapTileStyle(skin), uirevision, domain: { x: [0, 1], y: [0, 1] } },
     xaxis: { visible: false, showgrid: false, zeroline: false, showticklabels: false },
     yaxis: { visible: false, showgrid: false, zeroline: false, showticklabels: false },
     margin: { l: 0, r: 0, t: 88, b: 0 },
@@ -105,10 +111,11 @@ export function mapTraces(
 
 const MAP_MARKER_SIZE = 10;
 
-const MAP_TEXT_GLYPH: Record<string, string> = {
-  square: "■",
-  "square-open": "□",
-  x: "✕",
+/** scattermap draws non-circles via MapLibre Maki icons, not Plotly cartesian names. */
+const MAP_MAKI_SYMBOL: Record<string, string> = {
+  square: "square",
+  "square-open": "square-stroked",
+  x: "cross",
 };
 
 function currentPointTraces(points: MapPoint[], textColor?: string): Data[] {
@@ -120,17 +127,21 @@ function currentPointTraces(points: MapPoint[], textColor?: string): Data[] {
     const symbol = p.symbol ?? "circle";
     const name = p.name ?? "drone";
     const color = p.color ?? DRONE_COLORS[0];
-    const glyph = MAP_TEXT_GLYPH[symbol];
-    if (glyph !== undefined) {
+    const maki = MAP_MAKI_SYMBOL[symbol];
+    if (maki !== undefined) {
       traces.push({
         type: "scattermap",
-        mode: "text",
+        mode: "markers",
         name,
         legendgroup: name,
         lat: [p.lat],
         lon: [p.lon],
-        text: [glyph],
-        textfont: { size: MAP_MARKER_SIZE, color },
+        marker: {
+          size: MAP_MARKER_SIZE,
+          color,
+          symbol: maki,
+          allowoverlap: true,
+        },
         showlegend: false,
       });
       traces.push({

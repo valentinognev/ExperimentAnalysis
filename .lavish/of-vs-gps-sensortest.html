@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SensorTest · D2 optical flow vs GPS velocity</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-d2: #008CFF;
+      --color-paper: #09090b;
+      --color-ink: #f4f4f5;
+      --color-muted: #a1a1aa;
+      --color-line: #27272a;
+      --color-panel: #18181b;
+      --color-of: #22d3ee;
+      --color-gps: #fbbf24;
+    }
+  </style>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { background: #09090b; color: #f4f4f5; }
+    :where(.grid, .flex) > * { min-width: 0; }
+    :where(p, h1, h2, h3, h4, li, td, th, code, label, figcaption) { overflow-wrap: anywhere; }
+    :where(img, svg, video, canvas, iframe) { max-width: 100%; height: auto; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .mermaid { background: #18181b; border: 1px solid #27272a; border-radius: 0.5rem; padding: 1rem; overflow-x: auto; }
+  </style>
+</head>
+<body class="min-h-screen bg-paper text-ink antialiased">
+  <header class="border-b border-line">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-3 px-4 py-4 lg:px-8">
+      <div class="min-w-0">
+        <p class="text-xs uppercase tracking-widest text-muted">SensorTest · RLcat2 log 1 · 2026-9-2 10:40:50</p>
+        <h1 class="text-2xl font-semibold">Why optical flow and GPS velocity diverge</h1>
+      </div>
+      <p class="text-sm text-muted">D2 walk at 1–2 m/s. Never armed. Design: ExperimentAnalysis night + D2 azure.</p>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl space-y-10 px-4 py-8 lg:px-8">
+    <section class="rounded-lg border border-line bg-panel p-5">
+      <p class="text-xs uppercase tracking-widest text-gps">Verdict</p>
+      <p class="mt-2 text-lg leading-relaxed">Two independent effects. The <strong class="text-ink">~2.1 s phase</strong> is Analysis plotting each topic from its own first sample, because this log has no ARM. The <strong class="text-ink">0.59× magnitude</strong> is real: Holybro H-Flow’s PAA3905 is publishing ~59% of true radians. The module’s own AFBR-S50 ToF is ~1.02 m and is not the scale error. On flight-controller time the residual lag is 20–40 ms.</p>
+    </section>
+
+    <section class="grid gap-4 md:grid-cols-2">
+      <article class="rounded-lg border border-line bg-panel p-5">
+        <p class="text-xs uppercase tracking-widest text-gps">Time phase</p>
+        <h2 class="mt-1 text-xl font-semibold">2.11 s is per-topic T=0</h2>
+        <p class="mt-2 text-sm text-muted">No ARM, so ExperimentAnalysis sets <code class="text-ink">T = (t − first_row_of_that_parquet)</code>. D2 <code class="text-ink">sensor_gps</code> starts at FC 4.365 s; <code class="text-ink">estimator_optical_flow_vel.01</code> starts at 6.473 s. The same instant is drawn <strong class="text-ink">2.11 s later</strong> on the GPS trace. Aligned on FC timestamps, lag is <strong class="text-ink">20–40 ms</strong> (GPS slightly behind, as expected).</p>
+      </article>
+      <article class="rounded-lg border border-line bg-panel p-5">
+        <p class="text-xs uppercase tracking-widest text-of">Magnitude</p>
+        <h2 class="mt-1 text-xl font-semibold">Flow is 0.59× GPS</h2>
+        <p class="mt-2 text-sm text-muted">NE flow matches GPS shape (moving r² ≈ 0.84 speed, 0.95 on N and E) at <strong class="text-ink">59% of GPS speed</strong>. That is <code class="text-ink">vel = flow_rad/s × H-Flow ToF</code> with the ToF correct, so <code class="text-ink">pixel_flow</code> radians are 0.59 of truth. Equivalent to treating the PAA3905 42° FOV as ~25°, or a rad/pixel constant from a wider-FOV driver. D4 is also 0.59× — same module class.</p>
+      </article>
+    </section>
+
+    <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div class="rounded-lg border border-line bg-panel p-4">
+        <p class="text-xs text-muted">OF / GPS scale</p>
+        <p class="text-3xl font-semibold tabular-nums">0.59</p>
+        <p class="text-xs text-muted">Need × 1.70 on PAA3905 radians</p>
+      </div>
+      <div class="rounded-lg border border-line bg-panel p-4">
+        <p class="text-xs text-muted">Plot offset GPS vs OF</p>
+        <p class="text-3xl font-semibold tabular-nums">2.11 s</p>
+        <p class="text-xs text-muted">GPS topic starts earlier</p>
+      </div>
+      <div class="rounded-lg border border-line bg-panel p-4">
+        <p class="text-xs text-muted">True sensor lag</p>
+        <p class="text-3xl font-semibold tabular-nums">20–40 ms</p>
+        <p class="text-xs text-muted">FC-time xcorr peak 0.98</p>
+      </div>
+      <div class="rounded-lg border border-line bg-panel p-4">
+        <p class="text-xs text-muted">Lidar while moving</p>
+        <p class="text-3xl font-semibold tabular-nums">1.02 m</p>
+        <p class="text-xs text-muted">H-Flow AFBR-S50, not VL53</p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">What you are seeing in Analysis</h2>
+      <p class="mt-1 mb-3 text-sm text-muted">Your pane plots D2 <code class="text-ink">estimator_optical_flow_vel.01.vel_ne</code> against D2 <code class="text-ink">sensor_gps.vel_n/e</code>. Those two parquet files do not share T=0. <code class="text-ink">sensor_gps</code> is also only ~1 Hz, so it looks like a delayed staircase next to 5 Hz flow.</p>
+      <figure class="overflow-hidden rounded-lg border border-line bg-panel">
+        <img src="of-gps-phase.png" alt="Optical flow vs GPS speed: Analysis T offset vs flight-controller time">
+        <figcaption class="border-t border-line px-4 py-2 text-xs text-muted">Top: as drawn in Analysis. Bottom: same samples on the FC clock. Phase collapse, scale remains.</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">Why GPS looks 2 s behind flow</h2>
+      <p class="mt-1 mb-3 text-sm text-muted"><code>ulog_arm_us</code> is null (arming_state stayed 1, motors never armed). Series time is first-row-relative per topic, not a shared drone clock.</p>
+      <pre class="mermaid">
+flowchart LR
+  gps["D2 sensor_gps first row<br/>FC 4.365 s"] --> axis["Each channel T = 0 at its own first row"]
+  of["D2 OF vel.01 first row<br/>FC 6.473 s"] --> axis
+  axis --> look["Same FC instant: GPS drawn 2.11 s later"]
+      </pre>
+      <p class="mt-3 text-sm text-muted">Switching Analysis to Manual sync does not fix this: Manual still uses first-sample per series. A shared per-drone origin (boot, GPS UTC, or first common timestamp) would line them up. Shifting the GPS trace left by 2.11 s already recovers the 20–40 ms residual.</p>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">The 0.59× scale survives clock alignment</h2>
+      <p class="mt-1 mb-3 text-sm text-muted">PX4 does <code>vel ≈ flow_rad/s × rangefinder</code>. Gyro compensation and estimator math check out. Height is right. Angular rate is 0.59 of truth. Dividing flow by 0.59 overlays GPS.</p>
+      <div class="grid gap-4 lg:grid-cols-5">
+        <figure class="overflow-hidden rounded-lg border border-line bg-panel lg:col-span-3">
+          <img src="of-gps-scale.png" alt="Zoomed optical flow vs GPS before and after 0.59 scale">
+          <figcaption class="border-t border-line px-4 py-2 text-xs text-muted">FC 203–243 s, around the 3.9 m/s peak. Shape is the same walk; amplitude is a constant scale.</figcaption>
+        </figure>
+        <figure class="overflow-hidden rounded-lg border border-line bg-panel lg:col-span-2">
+          <img src="of-gps-scatter.png" alt="Scatter of optical-flow speed vs GPS speed">
+          <figcaption class="border-t border-line px-4 py-2 text-xs text-muted">Moving samples (GPS &gt; 0.5 m/s). Cloud sits on 0.59, not 1:1.</figcaption>
+        </figure>
+      </div>
+      <pre class="mermaid mt-4">
+flowchart TD
+  pix["pixel_flow radians 0.59 of truth"] --> rate["flow_rate rad per s"]
+  gyro["gyro compensation OK"] --> rate
+  rate --> mul["times rangefinder about 1.02 m"]
+  mul --> body["vel_body"]
+  body --> yaw["rotate by yaw to NE"]
+  yaw --> ofne["vel_ne is 0.59 times GPS"]
+  gpsd["GPS Doppler NE"] --> truth["GPS speed is the walk speed"]
+      </pre>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">H-Flow identity in this log</h2>
+      <p class="mt-1 mb-3 text-sm text-muted">The CAN module matches Holybro H-Flow, not a generic PX4FLOW. Do not use the 120° IR LED figure as the optical FOV — that is the illuminator, not the PAA3905.</p>
+      <div class="overflow-x-auto rounded-lg border border-line">
+        <table class="w-full min-w-[36rem] text-left text-sm">
+          <thead class="bg-panel text-muted">
+            <tr>
+              <th class="px-3 py-2 font-medium">H-Flow spec</th>
+              <th class="px-3 py-2 font-medium">In this ulog</th>
+              <th class="px-3 py-2 font-medium">Implication</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            <tr>
+              <td class="px-3 py-2">PAA3905E1, viewing angle 42°, max 7.4 rad/s</td>
+              <td class="px-3 py-2"><code>vehicle_optical_flow.max_flow_rate</code> = 7.4</td>
+              <td class="px-3 py-2">Flow node is H-Flow firmware</td>
+            </tr>
+            <tr>
+              <td class="px-3 py-2">AFBR-S50LV85D ToF, FoV 12.4° × 6.2°, 80 mm–30 m</td>
+              <td class="px-3 py-2">One <code>distance_sensor</code>, h_fov = 6.0°, range 0.02–1.20 m</td>
+              <td class="px-3 py-2">Height is the module’s own ToF. VL53 is enabled in params but not logging.</td>
+            </tr>
+            <tr>
+              <td class="px-3 py-2">IR LED 120° (illuminator only)</td>
+              <td class="px-3 py-2">Not a uORB FOV field</td>
+              <td class="px-3 py-2">If a driver used 120° as camera FOV, flow would be too <em>large</em>. We see too <em>small</em>.</td>
+            </tr>
+            <tr>
+              <td class="px-3 py-2">DroneCAN flow + range</td>
+              <td class="px-3 py-2"><code>UAVCAN_SUB_FLOW=1</code>, <code>UAVCAN_SUB_RNG=1</code>, <code>SENS_EN_PAA3905=0</code></td>
+              <td class="px-3 py-2">Radians are computed on the H-Flow MCU, then sent over CAN</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">Height hypothesis is closed</h2>
+      <p class="mt-1 mb-3 text-sm text-muted">If the PAA3905 radians were perfect, matching 1.5 m/s GPS at this flow rate would need ~1.7 m AGL. The H-Flow ToF median while moving is 1.02 m; EKF z is −1.05 m. Same module, same 1 m carry.</p>
+      <figure class="overflow-hidden rounded-lg border border-line bg-panel">
+        <img src="of-gps-height.png" alt="Lidar height versus implied height from OF/GPS ratio">
+        <figcaption class="border-t border-line px-4 py-2 text-xs text-muted">Green is H-Flow AFBR-S50. Pink is the height that would be required for OF to equal GPS. Pink is a PAA3905 radian/FOV error, not a ToF error.</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">Evidence on D2 (GPS speed &gt; 0.5 m/s)</h2>
+      <div class="mt-3 overflow-x-auto rounded-lg border border-line">
+        <table class="w-full min-w-[36rem] text-left text-sm">
+          <thead class="bg-panel text-muted">
+            <tr>
+              <th class="px-3 py-2 font-medium">Pair</th>
+              <th class="px-3 py-2 font-medium">Scale</th>
+              <th class="px-3 py-2 font-medium">r²</th>
+              <th class="px-3 py-2 font-medium">Read</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            <tr>
+              <td class="px-3 py-2">OF.01 vel_ne vs sensor_gps Doppler</td>
+              <td class="px-3 py-2 tabular-nums">0.59</td>
+              <td class="px-3 py-2 tabular-nums">0.84</td>
+              <td class="px-3 py-2">Same motion, scaled down</td>
+            </tr>
+            <tr>
+              <td class="px-3 py-2">N and E separately vs GPS</td>
+              <td class="px-3 py-2 tabular-nums">0.58 / 0.59</td>
+              <td class="px-3 py-2 tabular-nums">0.95 / 0.95</td>
+              <td class="px-3 py-2">Axes correct; not a yaw swap</td>
+            </tr>
+            <tr>
+              <td class="px-3 py-2">compensated flow × range vs OF body</td>
+              <td class="px-3 py-2 tabular-nums">0.97</td>
+              <td class="px-3 py-2 tabular-nums">0.99</td>
+              <td class="px-3 py-2">Estimator math is not the bug</td>
+            </tr>
+            <tr>
+              <td class="px-3 py-2">EKF vx,vy vs GPS</td>
+              <td class="px-3 py-2 tabular-nums">0.58</td>
+              <td class="px-3 py-2 tabular-nums">0.93</td>
+              <td class="px-3 py-2">EKF follows flow; GNSS vel not fused</td>
+            </tr>
+            <tr>
+              <td class="px-3 py-2">D4 OF vs GPS (same walk)</td>
+              <td class="px-3 py-2 tabular-nums">0.59</td>
+              <td class="px-3 py-2 tabular-nums">0.80</td>
+              <td class="px-3 py-2">Same camera class, same FOV error</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">Log conditions that matter</h2>
+      <div class="mt-3 overflow-x-auto rounded-lg border border-line">
+        <table class="w-full min-w-[32rem] text-left text-sm">
+          <thead class="bg-panel text-muted">
+            <tr>
+              <th class="px-3 py-2 font-medium">Flag / field</th>
+              <th class="px-3 py-2 font-medium">Value</th>
+              <th class="px-3 py-2 font-medium">Meaning</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            <tr><td class="px-3 py-2">arming_state / armed</td><td class="px-3 py-2">1 / 0 entire log</td><td class="px-3 py-2">Handheld; no ARM T=0</td></tr>
+            <tr><td class="px-3 py-2">sensor_gps rate</td><td class="px-3 py-2">1.00 Hz</td><td class="px-3 py-2">Your GPS trace is a 1 Hz stair; vehicle_gps_position is 7 Hz</td></tr>
+            <tr><td class="px-3 py-2">estimator_optical_flow_vel.01</td><td class="px-3 py-2">5.00 Hz</td><td class="px-3 py-2">Same scale as instance .00</td></tr>
+            <tr><td class="px-3 py-2">EKF2_GPS_CTRL</td><td class="px-3 py-2">1 (lon/lat only)</td><td class="px-3 py-2">GPS velocity bit off; cs_gnss_vel never 1</td></tr>
+            <tr><td class="px-3 py-2">UAVCAN_SUB_FLOW / RNG</td><td class="px-3 py-2">1 / 1</td><td class="px-3 py-2">H-Flow over DroneCAN; SENS_EN_PAA3905=0</td></tr>
+            <tr><td class="px-3 py-2">SENS_FLOW_SCALE / MINHGT / MAXR</td><td class="px-3 py-2">absent</td><td class="px-3 py-2">This FC firmware has no SENS_FLOW_* group (PX4 1.16 added SCALE)</td></tr>
+            <tr><td class="px-3 py-2">UAVCAN_RNG_MIN</td><td class="px-3 py-2">0.01 (Holybro wants 0.08)</td><td class="px-3 py-2">Does not create a 0.59 scale</td></tr>
+            <tr><td class="px-3 py-2">cs_in_air</td><td class="px-3 py-2">almost never</td><td class="px-3 py-2">EKF treats vehicle as on ground</td></tr>
+            <tr><td class="px-3 py-2">flow quality</td><td class="px-3 py-2">~148 / 255</td><td class="px-3 py-2">Usable; not a texture dropout</td></tr>
+            <tr><td class="px-3 py-2">sensor_optical_flow.distance_available</td><td class="px-3 py-2">0</td><td class="px-3 py-2">Range arrives as distance_sensor from the same H-Flow, not embedded in the flow msg</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">Ruled out</h2>
+      <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+        <li>Wrong height — H-Flow ToF 1.02 m matches the carry; EKF z −1.05 m.</li>
+        <li>Yaw / axis swap on D2 — N and E each correlate at r² 0.95 with the matching GPS axis.</li>
+        <li>EKF mixing GPS and flow into a mushy velocity — GNSS vel is disabled; EKF just copies the too-small flow.</li>
+        <li>A 2 s sensor delay — that delay is the Analysis timebase. True lag is one GPS sample.</li>
+        <li>Bad GPS fix — 18 sats, fix 3–6, vel_ned_valid ≈ 1; Doppler matches the walk.</li>
+      </ul>
+    </section>
+
+    <section class="rounded-lg border border-line bg-panel p-5">
+      <p class="text-xs uppercase tracking-widest text-of">Your question</p>
+      <h2 class="mt-1 text-xl font-semibold">Latest PX4 on H-Flow: yes, but it is not the FC image</h2>
+      <p class="mt-2 text-sm text-muted">The missing calibration knob is only half of it. This FC log has no <code class="text-ink">SENS_FLOW_SCALE</code> (PX4 1.16 added it on the <strong class="text-ink">Pixhawk</strong>, range 0.5–1.5). That param multiplies flow <em>after</em> DroneCAN. The 0.59× is already in the radians H-Flow publishes. 1.5 still leaves ~1.13× error, so upgrading only the FC cannot finish the job.</p>
+      <p class="mt-3 text-sm text-muted">H-Flow runs its own PX4 DroneCAN firmware on the STM32F412 (<code class="text-ink">holybro_h-flow_default</code>, board id 87). You <strong class="text-ink">can</strong> install the latest PX4 build of that target. Do <strong class="text-ink">not</strong> copy a Pixhawk <code>.px4</code> onto the sensor. Holybro ships 1.15+; flash by putting <code class="text-ink">holybro_h-flow_default</code> on the FC SD-card root and rebooting (DroneCAN update). The node driver converts PAA3905 counts with <code class="text-ink">11.914 CPI/m</code> → radians; that constant is the likely 0.59 source, and it lives on the sensor, not in <code class="text-ink">SENS_FLOW_SCALE</code>.</p>
+      <div class="mt-4 overflow-x-auto rounded-lg border border-line">
+        <table class="w-full min-w-[32rem] text-left text-sm">
+          <thead class="bg-panel text-muted">
+            <tr>
+              <th class="px-3 py-2 font-medium">Where</th>
+              <th class="px-3 py-2 font-medium">Latest PX4 does</th>
+              <th class="px-3 py-2 font-medium">Fixes 0.59×?</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            <tr>
+              <td class="px-3 py-2">Flight controller</td>
+              <td class="px-3 py-2">Adds <code>SENS_FLOW_SCALE</code> (max 1.5)</td>
+              <td class="px-3 py-2">Partial (need 1.70) — see below</td>
+            </tr>
+            <tr>
+              <td class="px-3 py-2">H-Flow node <code>holybro_h-flow_default</code></td>
+              <td class="px-3 py-2">Same PAA3905 driver, DroneCAN publish</td>
+              <td class="px-3 py-2">Yes, if you patch CPI→radian (preferred)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-line bg-panel p-5">
+      <p class="text-xs uppercase tracking-widest text-gps">Your question</p>
+      <h2 class="mt-1 text-xl font-semibold">Filling 1.50 → 1.70</h2>
+      <p class="mt-2 text-sm text-muted">QGC’s 1.5 cap is metadata (<code>@max 1.5</code>). The FC just multiplies <code>_flow_integral *= SENS_FLOW_SCALE</code>. You need ×1.70 total. Put that factor in <strong class="text-ink">one</strong> place, not both.</p>
+      <ol class="mt-4 list-decimal space-y-2 pl-5 text-sm">
+        <li><strong class="text-ink">Preferred — H-Flow node.</strong> In <code class="text-ink">src/drivers/optical_flow/paa3905/PAA3905.cpp</code> the counts become radians with <code class="text-ink">PIXART_RESOLUTION = 11.914</code> (CPI per metre). Change it to <code class="text-ink">11.914 / 1.70 ≈ 7.01</code>, or multiply <code>pixel_flow</code> by 1.70 after that line. Build <code class="text-ink">holybro_h-flow_default</code>, copy the binary to the FC SD-card root, reboot. Leave <code class="text-ink">SENS_FLOW_SCALE = 1.0</code>.</li>
+        <li><strong class="text-ink">FC only, if you cannot rebuild the node.</strong> Upgrade the Pixhawk to PX4 1.16+. QGC will refuse 1.70. Either <code class="text-ink">param set SENS_FLOW_SCALE 1.70</code> from the MAVLink shell, or raise <code>@max</code> to 2.0 in <code class="text-ink">sensor_params_flow.c</code> and rebuild the FC. Do not also patch the node or you will double-scale.</li>
+        <li><strong class="text-ink">Do not split 1.5 × 1.13</strong> unless you are stuck mid-migration. Two knobs drift and the next walk will look “fixed then broken.”</li>
+      </ol>
+      <p class="mt-3 text-sm text-muted">Check: same 10 m walk, FC timestamps, <code>scale = mean(GPS speed / OF speed)</code> while GPS &gt; 0.5 m/s. Target 1.00 ± 0.05. This log is 1.70.</p>
+    </section>
+
+    <section class="rounded-lg border border-line bg-panel p-5">
+      <p class="text-xs uppercase tracking-widest text-of">Your question</p>
+      <h2 class="mt-1 text-xl font-semibold">Why stock firmware is 40% off GPS</h2>
+      <p class="mt-2 text-sm text-muted">It is not a mysterious 1% datasheet typo. The H-Flow node uses a <strong class="text-ink">copied PixArt CPI</strong> that does not match this module’s lens. PX4 never compared flow to GPS Doppler on this walk, so the error shipped.</p>
+      <pre class="mermaid mt-3">
+flowchart LR
+  paw["PAW3902 / PMW3901 driver<br/>11.914 CPI per metre"] --> paa["PAA3905.cpp copies the same number"]
+  paa --> hflow["H-Flow 42° lens, fewer counts per ground metre"]
+  hflow --> rad["radians = counts / 11.914 / 39.37"]
+  rad --> low["Reported vel is 0.59 of GPS"]
+      </pre>
+      <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-muted">
+        <li><code class="text-ink">PAA3905.cpp</code> and <code class="text-ink">PAW3902.cpp</code> share the identical comment and <code>PIXART_RESOLUTION = 11.914</code>. Holybro’s H-Flow setup page still says PAW3902 for <code>SENS_FLOW_MAXR</code>. The optical constant was not re-measured on the PAA3905 + H-Flow lens.</li>
+        <li>CPI falls as FOV widens (same pixel array, more ground per count). 11.914 fits a ~25° stack. H-Flow’s PAA3905 is specified at <strong class="text-ink">42°</strong>. 25/42 ≈ 0.60, which is the 0.59 we measured. Shape is right (r² 0.95); only the gain is wrong. That is a lens constant, not noise.</li>
+        <li>Stock bring-up checks quality, ToF range, and “it hovers.” This log fuses GNSS <em>position</em> but not GNSS <em>velocity</em>, so EKF horizontal speed silently follows the too-small flow. GPS as ground truth only shows up if you overlay the two, as you did.</li>
+        <li>PX4 added <code class="text-ink">SENS_FLOW_SCALE</code> in 1.16 after Ark Flow velocity oscillations — they already knew generic CPI is not module-true. The knob only goes to 1.5; this lens needs 1.70.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold">What to change on the vehicle</h2>
+      <p class="mt-1 text-sm text-muted">H-Flow computes radians on its STM32 and publishes them over DroneCAN. This flight-controller firmware has no <code class="text-ink">SENS_FLOW_SCALE</code> (that param appeared in PX4 1.16, range 0.5–1.5). 1.5 is still short of the 1.70 this log needs, so the durable fix is the H-Flow node FOV / rad-per-pixel, not a PX4 fudge that cannot reach the target.</p>
+      <ol class="mt-4 list-decimal space-y-2 pl-5 text-sm">
+        <li>Do not treat the 120° IR LED as camera FOV. Optical FOV is 42°. Using 120° would make flow too large; this log is too small.</li>
+        <li>Keep GPS Doppler as walk-speed truth. Height is already the H-Flow ToF at ~1.0 m.</li>
+        <li>Update H-Flow firmware (<code class="text-ink">holybro_h-flow_default</code> via DroneCAN / SD card). Holybro’s setup page still copies ARK Flow / PAW3902 constants for <code class="text-ink">SENS_FLOW_MAXR</code>; confirm the PAA3905 rad/pixel in the node firmware matches 42°, not a leftover wider-FOV constant (~70° would explain 42/71 ≈ 0.59).</li>
+        <li>If you cannot rebuild H-Flow, upgrade the FC to PX4 1.16+ and set <code class="text-ink">SENS_FLOW_SCALE</code> to 1.70 (shell / raise <code>@max</code>); QGC’s 1.5 cap is UI only. Do not combine with a node patch.</li>
+        <li>Set the Holybro-recommended FC params that are missing or off here: <code class="text-ink">UAVCAN_RNG_MIN=0.08</code>, <code class="text-ink">SENS_FLOW_MINHGT=0.08</code>, <code class="text-ink">SENS_FLOW_MAXHGT=30</code>, <code class="text-ink">SENS_FLOW_MAXR=7.4</code>, <code class="text-ink">EKF2_OF_POS_*</code> to the real lever arm. Those do not fix 0.59×.</li>
+        <li>Repeat a 10 m walk at taped 1.00 m AGL. Integrate GPS <code>vel_n/e</code> and OF <code>vel_ne</code> on <strong class="text-ink">FC timestamps</strong>. Target scale 1.00.</li>
+        <li>Do not “fix” it by enabling GPS velocity fusion (<code class="text-ink">EKF2_GPS_CTRL</code> bit 2). EKF would then track GPS and hide the H-Flow error.</li>
+        <li>In ExperimentAnalysis today: plot <code class="text-ink">vehicle_gps_position</code> (7 Hz) not <code class="text-ink">sensor_gps</code> (1 Hz), and subtract 2.11 s, or wait for a shared drone T=0.</li>
+      </ol>
+    </section>
+
+    <section class="rounded-lg border border-line bg-panel p-5">
+      <h2 class="text-lg font-semibold">Want a follow-up in ExperimentAnalysis?</h2>
+      <p class="mt-1 mb-4 text-sm text-muted">A shared per-drone T=0 on unsynced logs would remove the 2.11 s plot offset. Queue if you want that change.</p>
+      <form class="space-y-3" data-lavish-question="ea-sync" onsubmit="event.preventDefault(); const choice = new FormData(event.currentTarget).get('ea'); if (choice) window.lavish.queuePrompt('ExperimentAnalysis follow-up: ' + choice, { tag: 'choice', text: 'EA: ' + choice, element: event.currentTarget, data: { question: 'ea-sync', answer: choice } });">
+        <fieldset class="space-y-2">
+          <legend class="text-sm font-medium">Shared drone time origin</legend>
+          <label class="flex items-start gap-2 text-sm"><input type="radio" name="ea" value="fix-per-drone-t0" class="mt-1"> Yes — use one T=0 per drone when ARM is missing.</label>
+          <label class="flex items-start gap-2 text-sm"><input type="radio" name="ea" value="leave-ea" class="mt-1"> No — I will compare on FC time / another tool.</label>
+        </fieldset>
+        <button type="submit" class="rounded bg-zinc-100 px-3 py-1.5 text-sm text-zinc-900">Queue answer</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+
+    const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const paint = document.createElement("canvas").getContext("2d");
+    function toRgba(color) {
+      paint.clearRect(0, 0, 1, 1);
+      paint.fillStyle = "#000";
+      paint.fillStyle = color;
+      paint.fillRect(0, 0, 1, 1);
+      return paint.getImageData(0, 0, 1, 1).data;
+    }
+    function compositeRgba(foreground, background) {
+      const foregroundAlpha = foreground[3] / 255;
+      const backgroundAlpha = background[3] / 255;
+      const alpha = foregroundAlpha + backgroundAlpha * (1 - foregroundAlpha);
+      if (alpha === 0) return [0, 0, 0, 0];
+      return [
+        (foreground[0] * foregroundAlpha + background[0] * backgroundAlpha * (1 - foregroundAlpha)) / alpha,
+        (foreground[1] * foregroundAlpha + background[1] * backgroundAlpha * (1 - foregroundAlpha)) / alpha,
+        (foreground[2] * foregroundAlpha + background[2] * backgroundAlpha * (1 - foregroundAlpha)) / alpha,
+        alpha * 255,
+      ];
+    }
+    function pageIsDark() {
+      const root = document.documentElement;
+      const rootBackground = toRgba(getComputedStyle(root).backgroundColor);
+      const bodyBackground = document.body ? toRgba(getComputedStyle(document.body).backgroundColor) : [0, 0, 0, 0];
+      const [r, g, b, a] = compositeRgba(bodyBackground, rootBackground);
+      if (a > 0) {
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.5;
+      }
+      return true;
+    }
+    const diagrams = [...document.querySelectorAll(".mermaid")].map((el) => ({ el, src: el.textContent }));
+    let applied;
+    let rendering = false;
+    let queued = false;
+    function queueRender() {
+      queued = true;
+      if (rendering) return;
+      void render();
+    }
+    async function render() {
+      rendering = true;
+      try {
+        while (queued) {
+          queued = false;
+          const theme = pageIsDark() ? "dark" : "default";
+          if (theme === applied) continue;
+          mermaid.initialize({ startOnLoad: false, theme, securityLevel: "strict" });
+          for (const { el, src } of diagrams) {
+            el.removeAttribute("data-processed");
+            el.textContent = src;
+          }
+          try {
+            await mermaid.run({ nodes: diagrams.map((d) => d.el) });
+          } catch (error) {
+            console.error("Mermaid diagram render failed:", error);
+            return;
+          }
+          applied = theme;
+        }
+      } finally {
+        rendering = false;
+        if (queued) queueRender();
+      }
+    }
+    if (document.readyState === "complete") queueRender();
+    else window.addEventListener("load", queueRender, { once: true });
+    const themeObserver = new MutationObserver(queueRender);
+    for (const el of [document.documentElement, document.body]) {
+      if (!el) continue;
+      themeObserver.observe(el, { attributes: true, attributeFilter: ["data-theme", "class", "style"] });
+    }
+    document.addEventListener("change", queueRender, true);
+    document.addEventListener("transitionend", ({ propertyName }) => {
+      if (propertyName === "background-color") queueRender();
+    }, true);
+    darkQuery.addEventListener("change", queueRender);
+  </script>
+</body>
+</html>
